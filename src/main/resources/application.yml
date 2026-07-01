@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: radar-intelligence-service
+  datasource:
+    url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/radar}
+    username: ${POSTGRES_USER:radar}
+    password: ${POSTGRES_PASSWORD:radar}
+  ai:
+    # Local in-process ONNX embeddings (all-MiniLM-L6-v2, 384-dim) — no API key, no server.
+    # First boot downloads an ~80MB model, then everything runs inside the JVM.
+    model:
+      embedding: transformers
+    vectorstore:
+      pgvector:
+        dimensions: 384
+        index-type: HNSW
+        distance-type: COSINE_DISTANCE
+        initialize-schema: true            # creates the vector_store table on first run
+
+radar:
+  notion:
+    token: ${NOTION_TOKEN}
+    version: "2025-09-03"                   # the API version that introduced data sources
+    # Trending Archive data source (same id as github-radar-ui/lib/config.ts).
+    trending-data-source: ${TRENDING_DATA_SOURCE:f67aaa24-d5f2-415c-9358-c7d9d2f9713e}
+
+logging:
+  level:
+    com.radar.intel: DEBUG
