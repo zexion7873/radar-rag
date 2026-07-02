@@ -24,6 +24,12 @@ radar:
     # Trending Archive data source (same id as github-radar-ui/lib/config.ts).
     trending-data-source: ${TRENDING_DATA_SOURCE:f67aaa24-d5f2-415c-9358-c7d9d2f9713e}
 
+server:
+  error:
+    # Internal service: surface the validation reason (e.g. "q is required") in the JSON body,
+    # matching ApiErrorHandler's expose-the-cause stance. Don't enable on a public-facing app.
+    include-message: always
+
 logging:
   level:
     com.radar.intel: DEBUG

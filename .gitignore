@@ -6,3 +6,7 @@ target/
 .idea/
 *.iml
 .vscode/
+.classpath
+.project
+.settings/
+.omc/

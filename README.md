@@ -1,17 +1,19 @@
-# Radar Intelligence Service (P0)
+# Radar Intelligence Service (P0–P1)
 
 A standalone Java / Spring Boot service that adds LLM-powered intelligence on top of the
 GitHub-radar Notion archive written by the `ai-assistant` routines. **P0** stands up the
 skeleton: pgvector, Notion ingestion of the **Trending** table, and a semantic `/search`
-endpoint. RAG `/ask`, evals, and tracing come in later phases (see the design spec).
+endpoint. **P1** adds metadata-filtered search. RAG `/ask`, evals, and tracing come in
+later phases (see the design spec).
 
 > Not a proxy in front of Notion — it exposes *new* capabilities (semantic search now,
 > grounded Q&A later) that the pure-reader `github-radar-ui` cannot do.
 
-## What P0 gives you
+## What P0–P1 gives you
 
 - `POST /sync` — pull the Trending Archive from Notion, embed each row into pgvector (upsert).
-- `POST /search` — semantic search over the embedded rows.
+- `POST /search` — semantic search over the embedded rows, optionally filtered by metadata
+  (`source` / `category` / `language` / `week` exact match, `stars_per_week` ≥ `minStars`).
 
 ## Prerequisites
 
@@ -39,6 +41,11 @@ curl -X POST localhost:8080/sync
 curl -X POST localhost:8080/search \
   -H 'Content-Type: application/json' \
   -d '{"q":"agent frameworks and tool-use orchestration","topK":5}'
+
+# P1: narrow the same search by metadata (all filter fields optional, AND-combined)
+curl -X POST localhost:8080/search \
+  -H 'Content-Type: application/json' \
+  -d '{"q":"agent frameworks","topK":5,"language":"Python","minStars":500}'
 ```
 
 `/search` returns each hit's `text`, `metadata` (source/repo/week/category/language/url), and a
@@ -74,5 +81,6 @@ src/main/java/com/radar/intel/
 
 ## Next (from the spec)
 
-P1 metadata-filtered search · P2 RAG `/ask` with citations · P3 eval harness (precision@k +
-LLM-as-judge) + CI gate · P4 Langfuse tracing · P5 Blog/Loot ingest + "Ask the radar" in the UI.
+~~P1 metadata-filtered search~~ (done) · P2 RAG `/ask` with citations · P3 eval harness
+(precision@k + LLM-as-judge) + CI gate · P4 Langfuse tracing · P5 Blog/Loot ingest +
+"Ask the radar" in the UI.
