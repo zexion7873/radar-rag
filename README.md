@@ -1,19 +1,22 @@
-# Radar Intelligence Service (P0–P1)
+# Radar Intelligence Service (P0–P2)
 
 A standalone Java / Spring Boot service that adds LLM-powered intelligence on top of the
 GitHub-radar Notion archive written by the `ai-assistant` routines. **P0** stands up the
 skeleton: pgvector, Notion ingestion of the **Trending** table, and a semantic `/search`
-endpoint. **P1** adds metadata-filtered search. RAG `/ask`, evals, and tracing come in
-later phases (see the design spec).
+endpoint. **P1** adds metadata-filtered search. **P2** adds a RAG `/ask` endpoint —
+grounded Q&A with citations. Evals and tracing come in later phases (see the design spec).
 
-> Not a proxy in front of Notion — it exposes *new* capabilities (semantic search now,
-> grounded Q&A later) that the pure-reader `github-radar-ui` cannot do.
+> Not a proxy in front of Notion — it exposes *new* capabilities (semantic search and
+> grounded Q&A) that the pure-reader `github-radar-ui` cannot do.
 
-## What P0–P1 gives you
+## What P0–P2 gives you
 
 - `POST /sync` — pull the Trending Archive from Notion, embed each row into pgvector (upsert).
 - `POST /search` — semantic search over the embedded rows, optionally filtered by metadata
   (`source` / `category` / `language` / `week` exact match, `stars_per_week` ≥ `minStars`).
+- `POST /ask` — ask a question in natural language; the service retrieves the relevant radar
+  rows from pgvector, has **Claude** answer from them, and returns the answer plus the source
+  rows as **citations**. Needs `ANTHROPIC_API_KEY`; `/sync` and `/search` do not.
 
 ## Prerequisites
 
@@ -46,10 +49,17 @@ curl -X POST localhost:8080/search \
 curl -X POST localhost:8080/search \
   -H 'Content-Type: application/json' \
   -d '{"q":"agent frameworks","topK":5,"language":"Python","minStars":500}'
+
+# P2: grounded Q&A with citations (needs an Anthropic key)
+export ANTHROPIC_API_KEY=sk-ant-...
+curl -X POST localhost:8080/ask \
+  -H 'Content-Type: application/json' \
+  -d '{"q":"which trending repos are about agent skills, and what do they do?"}'
 ```
 
 `/search` returns each hit's `text`, `metadata` (source/repo/week/category/language/url), and a
-similarity `score`.
+similarity `score`. `/ask` returns `{answer, citations}`, where each citation is a source row
+(`repo` / `url` / `week` / retrieval `score`).
 
 ## Layout
 
@@ -64,8 +74,11 @@ src/main/java/com/radar/intel/
 ├── ingest/
 │   ├── TrendingIngestService.java      # Notion rows -> Document -> vectorStore.add (upsert by URL)
 │   └── IngestController.java           # POST /sync
-└── search/
-    └── SearchController.java           # POST /search
+├── search/
+│   └── SearchController.java           # POST /search
+├── ask/
+│   └── AskController.java              # POST /ask — RetrievalAugmentationAdvisor + Claude, with citations
+└── ApiErrorHandler.java                # surfaces upstream (Notion / Anthropic) failure causes
 ```
 
 ## Notes / decisions
@@ -78,9 +91,15 @@ src/main/java/com/radar/intel/
   rather than duplicating.
 - **Spring AI moves fast.** Versions/artifact ids match the reference docs at scaffold time —
   verify against `start.spring.io` / the current reference when you build.
+- **RAG is grounded, not filtered.** `/ask` retrieves from the same pgvector store `/search` uses
+  (`RetrievalAugmentationAdvisor` + `VectorStoreDocumentRetriever`) and returns the retrieved rows
+  as citations. It takes only a question — no metadata-filter fields — so it has no SQL-filter
+  input surface (unlike `/search`, which validates its filter values). Because the embeddings are
+  English-centric over a partly Traditional-Chinese corpus, the retriever uses a low similarity
+  threshold and bounds context by `topK`.
 
 ## Next (from the spec)
 
-~~P1 metadata-filtered search~~ (done) · P2 RAG `/ask` with citations · P3 eval harness
-(precision@k + LLM-as-judge) + CI gate · P4 Langfuse tracing · P5 Blog/Loot ingest +
+~~P1 metadata-filtered search~~ (done) · ~~P2 RAG `/ask` with citations~~ (done) · P3 eval
+harness (precision@k + LLM-as-judge) + CI gate · P4 Langfuse tracing · P5 Blog/Loot ingest +
 "Ask the radar" in the UI.
