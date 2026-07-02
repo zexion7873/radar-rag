@@ -9,6 +9,11 @@ on:
     #   - "pom.xml"
     #   - "src/main/resources/**"
 
+# A new push to the same PR cancels the in-flight review instead of paying for both.
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   claude-review:
     # Optional: Filter by PR author
