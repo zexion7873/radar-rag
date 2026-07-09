@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A new push to the same ref supersedes the in-flight run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-eval:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # The local ONNX embedding model (~80MB) downloads on first embed; cache it so
+      # the retrieval evals don't re-download it every run.
+      - name: Cache ONNX embedding model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/spring-ai-onnx-model
+          key: onnx-all-minilm-l6-v2
+
+      # Runs the P3 eval gate: retrieval evals (precision@k / recall@k / MRR over the
+      # golden set, keyless, Testcontainers pgvector) always run; the LLM-as-judge eval
+      # of /ask runs only when the ANTHROPIC_API_KEY secret is configured and is
+      # skipped otherwise.
+      - name: Build and run evals
+        run: mvn -B verify
+        env:
+          ONNX_CACHE_DIR: /home/runner/.cache/spring-ai-onnx-model
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

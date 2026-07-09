@@ -1,0 +1,91 @@
+{
+  "_comment": "Golden set over eval/corpus.json. 'retrieval' cases drive precision@k / recall@k / MRR; 'relevant' lists the corpus link(s) a correct retrieval must surface. Queries mix English and Traditional Chinese on purpose — the embedding model is English-centric while the corpus is zh-TW, and the per-language split in the eval report is the evidence for (or against) swapping to a multilingual model. 'judge' cases drive the LLM-as-judge relevancy eval of /ask answers.",
+  "retrieval": [
+    {
+      "q": "framework for orchestrating multiple AI agents with roles and tasks",
+      "lang": "en",
+      "relevant": ["https://github.com/crewAIInc/crewAI", "https://github.com/huggingface/smolagents"]
+    },
+    {
+      "q": "多 agent 協作編排框架",
+      "lang": "zh",
+      "relevant": ["https://github.com/crewAIInc/crewAI", "https://github.com/huggingface/smolagents"]
+    },
+    {
+      "q": "autonomous AI agent that writes code, edits files and runs tests",
+      "lang": "en",
+      "relevant": ["https://github.com/All-Hands-AI/OpenHands", "https://github.com/cline/cline", "https://github.com/Aider-AI/aider"]
+    },
+    {
+      "q": "終端機裡的 AI 結對程式設計工具",
+      "lang": "zh",
+      "relevant": ["https://github.com/Aider-AI/aider"]
+    },
+    {
+      "q": "vector database for similarity search",
+      "lang": "en",
+      "relevant": ["https://github.com/qdrant/qdrant", "https://github.com/pgvector/pgvector"]
+    },
+    {
+      "q": "向量資料庫相似度搜尋",
+      "lang": "zh",
+      "relevant": ["https://github.com/qdrant/qdrant", "https://github.com/pgvector/pgvector"]
+    },
+    {
+      "q": "run large language models locally on a laptop",
+      "lang": "en",
+      "relevant": ["https://github.com/ggml-org/llama.cpp"]
+    },
+    {
+      "q": "high-throughput LLM inference and serving engine",
+      "lang": "en",
+      "relevant": ["https://github.com/vllm-project/vllm"]
+    },
+    {
+      "q": "讓 agent 自己操作瀏覽器點擊填表",
+      "lang": "zh",
+      "relevant": ["https://github.com/browser-use/browser-use"]
+    },
+    {
+      "q": "parse GUI screenshots into structured elements for computer-use agents",
+      "lang": "en",
+      "relevant": ["https://github.com/microsoft/OmniParser"]
+    },
+    {
+      "q": "fine-tune an LLM faster with less GPU memory",
+      "lang": "en",
+      "relevant": ["https://github.com/unslothai/unsloth"]
+    },
+    {
+      "q": "把會議錄音轉成逐字稿的語音辨識",
+      "lang": "zh",
+      "relevant": ["https://github.com/SYSTRAN/faster-whisper"]
+    },
+    {
+      "q": "RAG engine that parses PDFs and answers with citations",
+      "lang": "en",
+      "relevant": ["https://github.com/infiniflow/ragflow"]
+    },
+    {
+      "q": "LLM 應用的追蹤觀測與評估平台",
+      "lang": "zh",
+      "relevant": ["https://github.com/langfuse/langfuse"]
+    },
+    {
+      "q": "self-hosted chat UI for multiple LLM providers",
+      "lang": "en",
+      "relevant": ["https://github.com/lobehub/lobe-chat", "https://github.com/danny-avila/LibreChat"]
+    },
+    {
+      "q": "幫 AI 助理加上長期記憶",
+      "lang": "zh",
+      "relevant": ["https://github.com/mem0ai/mem0"]
+    }
+  ],
+  "judge": [
+    { "q": "Which repos help an AI agent control a web browser, and how do they differ?" },
+    { "q": "What are my options for running LLM inference, both locally and at scale?" },
+    { "q": "我想幫我的 AI 應用加上可觀測性跟評估，radar 上有什麼選擇？" },
+    { "q": "有哪些工具可以在編輯器或終端機裡幫我寫程式？" }
+  ]
+}

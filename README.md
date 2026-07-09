@@ -1,10 +1,12 @@
-# Radar Intelligence Service (P0–P2)
+# Radar Intelligence Service (P0–P3)
 
 A standalone Java / Spring Boot service that adds LLM-powered intelligence on top of the
 GitHub-radar Notion archive written by the `ai-assistant` routines. **P0** stands up the
 skeleton: pgvector, Notion ingestion of the **Trending** table, and a semantic `/search`
 endpoint. **P1** adds metadata-filtered search. **P2** adds a RAG `/ask` endpoint —
-grounded Q&A with citations. Evals and tracing come in later phases (see the design spec).
+grounded Q&A with citations. **P3** adds the eval harness — a golden-set retrieval gate
+(precision@k / recall@k / MRR) plus an LLM-as-judge check of `/ask`, wired into CI.
+Tracing comes in a later phase (see the design spec).
 
 > Not a proxy in front of Notion — it exposes *new* capabilities (semantic search and
 > grounded Q&A) that the pure-reader `github-radar-ui` cannot do.
@@ -61,6 +63,31 @@ curl -X POST localhost:8080/ask \
 similarity `score`. `/ask` returns `{answer, citations}`, where each citation is a source row
 (`repo` / `url` / `week` / retrieval `score`).
 
+## Evals (P3)
+
+`mvn verify` runs the eval harness (Docker required — Testcontainers spins up a disposable
+`pgvector/pgvector:pg16`; nothing touches your real store):
+
+- **Retrieval gate** (`RetrievalEvalTest`, keyless): ingests a fixture corpus through the
+  *production* row→Document mapping, runs a golden set of queries (English **and**
+  Traditional Chinese, mirroring the real archive), and scores precision@5 / recall@5 / MRR.
+  The build fails if the means drop below the calibrated floors, so an embedding-model swap
+  or retrieval regression can't land silently. The report also splits means by query
+  language — the before/after evidence for a future multilingual-embedding swap.
+- **LLM-as-judge** (`AskJudgeEvalTest`): drives the real `/ask` flow and has Claude
+  (Spring AI `RelevancyEvaluator`) judge each answer against the question and the retrieved
+  context. Runs only when `ANTHROPIC_API_KEY` is set (locally or as a repo secret) and is
+  skipped otherwise — the keyless gate above runs everywhere.
+
+CI (`.github/workflows/ci.yml`) runs the same `mvn verify` on every PR and push to `main`,
+caching the ~80MB ONNX embedding model between runs. The fixture corpus lives in
+`src/test/resources/eval/corpus.json`, the golden set in `src/test/resources/eval/golden.json`;
+its texts are deliberately Traditional Chinese to match the real archive.
+
+> macOS + Docker Desktop: if Testcontainers can't find Docker (`Could not find a valid
+> Docker environment`), either enable *Settings → Advanced → Allow the default Docker socket
+> to be used*, or run with `DOCKER_HOST=unix://$HOME/.docker/run/docker.sock mvn verify`.
+
 ## Layout
 
 ```
@@ -79,6 +106,11 @@ src/main/java/com/radar/intel/
 ├── ask/
 │   └── AskController.java              # POST /ask — RetrievalAugmentationAdvisor + Claude, with citations
 └── ApiErrorHandler.java                # surfaces upstream (Notion / Anthropic) failure causes
+
+src/test/java/com/radar/intel/eval/     # P3 eval harness (golden set under src/test/resources/eval/)
+├── EvalSupport.java                    # Testcontainers pgvector + fixture ingest via the prod mapping
+├── RetrievalEvalTest.java              # precision@5 / recall@5 / MRR gate (keyless)
+└── AskJudgeEvalTest.java               # LLM-as-judge over /ask (needs ANTHROPIC_API_KEY, else skipped)
 ```
 
 ## Notes / decisions
@@ -100,6 +132,6 @@ src/main/java/com/radar/intel/
 
 ## Next (from the spec)
 
-~~P1 metadata-filtered search~~ (done) · ~~P2 RAG `/ask` with citations~~ (done) · P3 eval
-harness (precision@k + LLM-as-judge) + CI gate · P4 Langfuse tracing · P5 Blog/Loot ingest +
-"Ask the radar" in the UI.
+~~P1 metadata-filtered search~~ (done) · ~~P2 RAG `/ask` with citations~~ (done) · ~~P3 eval
+harness (precision@k + LLM-as-judge) + CI gate~~ (done) · P4 Langfuse tracing · P5 Blog/Loot
+ingest + "Ask the radar" in the UI.

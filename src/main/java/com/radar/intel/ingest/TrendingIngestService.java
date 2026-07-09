@@ -29,36 +29,49 @@ public class TrendingIngestService {
     public int sync() {
         List<Document> docs = new ArrayList<>();
         for (TrendingRow r : notion.fetchTrending()) {
-            String content = String.join("\n\n", r.repo(), r.description(), r.comment()).strip();
-            if (content.isBlank()) {
-                continue;
+            Document d = toDocument(r);
+            if (d != null) {
+                docs.add(d);
             }
-            Map<String, Object> md = new HashMap<>();
-            md.put("source", "trending");
-            putIfPresent(md, "repo", r.repo());
-            putIfPresent(md, "week", r.week());
-            putIfPresent(md, "category", r.category());
-            putIfPresent(md, "language", r.language());
-            putIfPresent(md, "url", r.link());
-            if (r.starsPerWeek() != null) {
-                md.put("stars_per_week", r.starsPerWeek());
-            }
-
-            // PgVectorStore stores ids in a uuid column and calls UUID.fromString(id),
-            // so the id MUST be a valid UUID (a raw URL throws "Invalid UUID string").
-            // Derive a STABLE name-based UUID from the URL (else repo) => re-sync UPSERTS
-            // the same row instead of duplicating.
-            Document.Builder b = Document.builder().text(content).metadata(md);
-            String key = firstNonBlank(r.link(), r.repo());
-            if (key != null) {
-                b.id(UUID.nameUUIDFromBytes(key.getBytes(StandardCharsets.UTF_8)).toString());
-            }
-            docs.add(b.build());
         }
         if (!docs.isEmpty()) {
             vectorStore.add(docs);
         }
         return docs.size();
+    }
+
+    /**
+     * Maps one Trending row to its embedded Document. Public + static so the eval harness
+     * ingests fixture rows through the exact text/metadata/id mapping production uses.
+     *
+     * @return the Document, or null when the row has no embeddable text.
+     */
+    public static Document toDocument(TrendingRow r) {
+        String content = String.join("\n\n", r.repo(), r.description(), r.comment()).strip();
+        if (content.isBlank()) {
+            return null;
+        }
+        Map<String, Object> md = new HashMap<>();
+        md.put("source", "trending");
+        putIfPresent(md, "repo", r.repo());
+        putIfPresent(md, "week", r.week());
+        putIfPresent(md, "category", r.category());
+        putIfPresent(md, "language", r.language());
+        putIfPresent(md, "url", r.link());
+        if (r.starsPerWeek() != null) {
+            md.put("stars_per_week", r.starsPerWeek());
+        }
+
+        // PgVectorStore stores ids in a uuid column and calls UUID.fromString(id),
+        // so the id MUST be a valid UUID (a raw URL throws "Invalid UUID string").
+        // Derive a STABLE name-based UUID from the URL (else repo) => re-sync UPSERTS
+        // the same row instead of duplicating.
+        Document.Builder b = Document.builder().text(content).metadata(md);
+        String key = firstNonBlank(r.link(), r.repo());
+        if (key != null) {
+            b.id(UUID.nameUUIDFromBytes(key.getBytes(StandardCharsets.UTF_8)).toString());
+        }
+        return b.build();
     }
 
     private static void putIfPresent(Map<String, Object> md, String key, String val) {

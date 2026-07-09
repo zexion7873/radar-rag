@@ -1,0 +1,15 @@
+# Eval profile: everything else inherits from application.yml.
+radar:
+  notion:
+    # NotionClient is never called by the evals; the property just has to bind
+    # (application.yml has no default for it, so a bare test JVM would fail to boot).
+    token: eval-dummy
+
+spring:
+  ai:
+    embedding:
+      transformer:
+        cache:
+          # CI points ONNX_CACHE_DIR at an actions/cache path so the ~80MB model
+          # downloads once, not on every run. Locally the default tmpdir cache applies.
+          directory: ${ONNX_CACHE_DIR:${java.io.tmpdir}/spring-ai-onnx-model}

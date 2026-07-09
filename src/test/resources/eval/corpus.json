@@ -1,0 +1,185 @@
+{
+  "_comment": "Fixture corpus for the retrieval evals. Descriptions and comments are DELIBERATELY Traditional Chinese: the real radar archive is written that way, and the eval must measure the English-centric embedding model against representative text, not against a sanitized English stand-in. Field names mirror TrendingRow.",
+  "rows": [
+    {
+      "repo": "crewAIInc/crewAI",
+      "week": "2026-06-13",
+      "starsPerWeek": 4200,
+      "language": "Python",
+      "category": "agents",
+      "link": "https://github.com/crewAIInc/crewAI",
+      "description": "用角色分工編排多 agent 協作的框架：定義 crew、指派任務、串工具鏈，主打流程式多 agent 自動化。",
+      "comment": "多 agent 編排的國民入門款，抽象漂亮，深入客製就開始跟框架搏鬥。"
+    },
+    {
+      "repo": "huggingface/smolagents",
+      "week": "2026-06-13",
+      "starsPerWeek": 3100,
+      "language": "Python",
+      "category": "agents",
+      "link": "https://github.com/huggingface/smolagents",
+      "description": "HuggingFace 出的極簡 agent 框架，agent 直接生成 Python 程式碼呼叫工具，幾百行核心就能跑多 agent 協作。",
+      "comment": "別人堆抽象層，它直接讓 agent 寫 code——簡單粗暴，反而好 debug。"
+    },
+    {
+      "repo": "All-Hands-AI/OpenHands",
+      "week": "2026-06-20",
+      "starsPerWeek": 5800,
+      "language": "Python",
+      "category": "agents",
+      "link": "https://github.com/All-Hands-AI/OpenHands",
+      "description": "自主軟體開發 agent 平台：開終端機、改檔案、跑測試、逛網頁，目標是把整個開發流程交給 agent。",
+      "comment": "號稱 AI 軟體工程師，寫 CRUD 有模有樣，碰到祖傳碼還是會跪。"
+    },
+    {
+      "repo": "lobehub/lobe-chat",
+      "week": "2026-06-13",
+      "starsPerWeek": 2900,
+      "language": "TypeScript",
+      "category": "apps",
+      "link": "https://github.com/lobehub/lobe-chat",
+      "description": "開源 LLM 聊天介面，支援多家模型、插件市集、語音對話與知識庫，一鍵自架。",
+      "comment": "聊天 UI 捲成這樣，選擇困難症患者的地獄，自架黨的天堂。"
+    },
+    {
+      "repo": "danny-avila/LibreChat",
+      "week": "2026-06-20",
+      "starsPerWeek": 2400,
+      "language": "TypeScript",
+      "category": "apps",
+      "link": "https://github.com/danny-avila/LibreChat",
+      "description": "自架的 ChatGPT 替代品，整合 OpenAI、Anthropic、Google 等多家供應商，帶對話分支與搜尋。",
+      "comment": "一個介面收編所有模型訂閱，錢包表示感謝。"
+    },
+    {
+      "repo": "cline/cline",
+      "week": "2026-06-20",
+      "starsPerWeek": 6300,
+      "language": "TypeScript",
+      "category": "tooling",
+      "link": "https://github.com/cline/cline",
+      "description": "VS Code 裡的自主 coding agent 擴充，能多檔案編輯、跑終端指令、看瀏覽器回饋，人工核可每一步。",
+      "comment": "IDE 內建 agent 的卡位戰打得火熱，這款靠開源和人審機制圈粉。"
+    },
+    {
+      "repo": "Aider-AI/aider",
+      "week": "2026-06-13",
+      "starsPerWeek": 3600,
+      "language": "Python",
+      "category": "tooling",
+      "link": "https://github.com/Aider-AI/aider",
+      "description": "終端機裡的 AI 結對程式設計工具，git 原生整合，改動自動 commit，支援多數主流模型。",
+      "comment": "用 terminal 的老派工程師也能無痛上車，commit 訊息還寫得比人類同事好。"
+    },
+    {
+      "repo": "qdrant/qdrant",
+      "week": "2026-06-13",
+      "starsPerWeek": 1800,
+      "language": "Rust",
+      "category": "infra",
+      "link": "https://github.com/qdrant/qdrant",
+      "description": "Rust 寫的向量資料庫，HNSW 索引、payload 過濾與量化壓縮，主打高效相似度搜尋。",
+      "comment": "Rust 信仰加持的向量庫，效能是真的，社群吵架也是真的。"
+    },
+    {
+      "repo": "pgvector/pgvector",
+      "week": "2026-06-20",
+      "starsPerWeek": 1200,
+      "language": "C",
+      "category": "infra",
+      "link": "https://github.com/pgvector/pgvector",
+      "description": "PostgreSQL 的向量擴充，SQL 裡直接做相似度搜尋，支援 HNSW 與 IVFFlat 索引。",
+      "comment": "不想多養一套資料庫的人的最愛：Postgres 一路用到底。"
+    },
+    {
+      "repo": "infiniflow/ragflow",
+      "week": "2026-06-20",
+      "starsPerWeek": 4700,
+      "language": "Python",
+      "category": "tooling",
+      "link": "https://github.com/infiniflow/ragflow",
+      "description": "深度文件理解的 RAG 引擎：OCR、版面解析、表格抽取，答案帶引用溯源。",
+      "comment": "RAG 引擎捲到開始比誰更會讀 PDF，這款把文件解析當主戰場。"
+    },
+    {
+      "repo": "vllm-project/vllm",
+      "week": "2026-06-13",
+      "starsPerWeek": 5200,
+      "language": "Python",
+      "category": "infra",
+      "link": "https://github.com/vllm-project/vllm",
+      "description": "高吞吐 LLM 推論引擎，PagedAttention 管理 KV cache，continuous batching 榨乾 GPU。",
+      "comment": "自架 LLM serving 的事實標準，不用它反而要寫理由。"
+    },
+    {
+      "repo": "ggml-org/llama.cpp",
+      "week": "2026-06-27",
+      "starsPerWeek": 4100,
+      "language": "C++",
+      "category": "models",
+      "link": "https://github.com/ggml-org/llama.cpp",
+      "description": "純 C/C++ 的本地 LLM 推論，GGUF 量化格式讓大模型跑在筆電甚至手機上。",
+      "comment": "一人硬扛出整個本地推論生態，蘋果晶片使用者的救世主。"
+    },
+    {
+      "repo": "unslothai/unsloth",
+      "week": "2026-06-27",
+      "starsPerWeek": 3800,
+      "language": "Python",
+      "category": "models",
+      "link": "https://github.com/unslothai/unsloth",
+      "description": "LoRA/QLoRA 微調加速工具，記憶體省一半、速度翻倍，單卡也能微調大模型。",
+      "comment": "fine-tuning 窮人恩物，Colab 免費額度都能調 7B。"
+    },
+    {
+      "repo": "browser-use/browser-use",
+      "week": "2026-06-27",
+      "starsPerWeek": 5900,
+      "language": "Python",
+      "category": "agents",
+      "link": "https://github.com/browser-use/browser-use",
+      "description": "讓 AI agent 操作瀏覽器的函式庫，把 DOM 結構化餵給 LLM，點擊、填表、爬流程全自動。",
+      "comment": "agent 終於學會用瀏覽器，搶票腳本文藝復興指日可待。"
+    },
+    {
+      "repo": "microsoft/OmniParser",
+      "week": "2026-06-20",
+      "starsPerWeek": 3300,
+      "language": "Python",
+      "category": "models",
+      "link": "https://github.com/microsoft/OmniParser",
+      "description": "把 GUI 截圖解析成結構化互動元素的視覺模型，給 computer-use agent 當眼睛。",
+      "comment": "螢幕截圖直接變 DOM，GUI agent 的近視眼鏡終於配好了。"
+    },
+    {
+      "repo": "SYSTRAN/faster-whisper",
+      "week": "2026-06-27",
+      "starsPerWeek": 1500,
+      "language": "Python",
+      "category": "models",
+      "link": "https://github.com/SYSTRAN/faster-whisper",
+      "description": "用 CTranslate2 重寫的 Whisper 語音辨識，速度快四倍、記憶體減半，支援批次轉錄。",
+      "comment": "Whisper 加速版裡的常青樹，會議逐字稿量產機。"
+    },
+    {
+      "repo": "mem0ai/mem0",
+      "week": "2026-06-27",
+      "starsPerWeek": 2700,
+      "language": "Python",
+      "category": "tooling",
+      "link": "https://github.com/mem0ai/mem0",
+      "description": "AI 應用的記憶層：自動萃取、更新與檢索使用者長期記憶，支援多層級記憶範圍。",
+      "comment": "幫金魚腦 LLM 裝海馬迴，記憶管理本身又是一個 RAG 問題。"
+    },
+    {
+      "repo": "langfuse/langfuse",
+      "week": "2026-06-20",
+      "starsPerWeek": 2100,
+      "language": "TypeScript",
+      "category": "tooling",
+      "link": "https://github.com/langfuse/langfuse",
+      "description": "開源 LLM 工程平台：tracing、prompt 管理、評估與資料集，自架或雲端皆可。",
+      "comment": "LLM 應用的黑盒子終於有飛行紀錄器，出事至少知道怪誰。"
+    }
+  ]
+}

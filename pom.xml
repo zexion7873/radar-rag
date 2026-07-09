@@ -21,6 +21,9 @@
         <java.version>21</java.version>
         <!-- Spring AI moves fast; bump to the latest GA when you scaffold. -->
         <spring-ai.version>1.0.0</spring-ai.version>
+        <!-- Boot 3.4.1 manages 1.20.4, whose docker-java speaks API 1.32 — Docker 29+
+             (MinAPIVersion 1.40) rejects it with an opaque 400. 1.21+ negotiates properly. -->
+        <testcontainers.version>1.21.4</testcontainers.version>
     </properties>
 
     <dependencyManagement>
@@ -79,6 +82,13 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- P3: eval harness — Testcontainers spins a disposable pgvector for the golden-set evals. -->
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>
