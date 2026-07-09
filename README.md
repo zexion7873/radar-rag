@@ -1,4 +1,4 @@
-# Radar Intelligence Service (P0–P3)
+# Radar Intelligence Service (P0–P4)
 
 A standalone Java / Spring Boot service that adds LLM-powered intelligence on top of the
 GitHub-radar Notion archive written by the `ai-assistant` routines. **P0** stands up the
@@ -6,7 +6,7 @@ skeleton: pgvector, Notion ingestion of the **Trending** table, and a semantic `
 endpoint. **P1** adds metadata-filtered search. **P2** adds a RAG `/ask` endpoint —
 grounded Q&A with citations. **P3** adds the eval harness — a golden-set retrieval gate
 (precision@k / recall@k / MRR) plus an LLM-as-judge check of `/ask`, wired into CI.
-Tracing comes in a later phase (see the design spec).
+**P4** adds Langfuse tracing over OTLP.
 
 > Not a proxy in front of Notion — it exposes *new* capabilities (semantic search and
 > grounded Q&A) that the pure-reader `github-radar-ui` cannot do.
@@ -88,6 +88,25 @@ its texts are deliberately Traditional Chinese to match the real archive.
 > Docker environment`), either enable *Settings → Advanced → Allow the default Docker socket
 > to be used*, or run with `DOCKER_HOST=unix://$HOME/.docker/run/docker.sock mvn verify`.
 
+## Tracing (P4)
+
+Every request is traced (HTTP server span + Spring AI chat / vector-store observation
+spans, sampling 1.0) and exported to **Langfuse** over OTLP with Basic auth:
+
+```bash
+export LANGFUSE_PUBLIC_KEY=pk-lf-...
+export LANGFUSE_SECRET_KEY=sk-lf-...
+# EU cloud is the default host; override for US cloud or self-hosted:
+# export LANGFUSE_HOST=https://us.cloud.langfuse.com
+```
+
+Without the keys the span exporter is a no-op — the app boots and runs exactly as before
+(same keyless stance as `/ask`). `LANGFUSE_OTLP_ENDPOINT` overrides the full traces URL,
+which also lets you point the exporter at a plain OTel collector for debugging.
+
+Spring AI 1.0.0 puts model name and token usage on the spans; prompt/completion *content*
+is intentionally not exported (the framework moved content capture to logs at 1.0.0-RC1).
+
 ## Layout
 
 ```
@@ -105,6 +124,9 @@ src/main/java/com/radar/intel/
 │   └── SearchController.java           # POST /search
 ├── ask/
 │   └── AskController.java              # POST /ask — RetrievalAugmentationAdvisor + Claude, with citations
+├── tracing/
+│   ├── LangfuseProperties.java         # langfuse.* config (keys, host, endpoint override)
+│   └── LangfuseTracingConfig.java      # OTLP span exporter with Basic auth; no-op without keys
 └── ApiErrorHandler.java                # surfaces upstream (Notion / Anthropic) failure causes
 
 src/test/java/com/radar/intel/eval/     # P3 eval harness (golden set under src/test/resources/eval/)
@@ -133,5 +155,5 @@ src/test/java/com/radar/intel/eval/     # P3 eval harness (golden set under src/
 ## Next (from the spec)
 
 ~~P1 metadata-filtered search~~ (done) · ~~P2 RAG `/ask` with citations~~ (done) · ~~P3 eval
-harness (precision@k + LLM-as-judge) + CI gate~~ (done) · P4 Langfuse tracing · P5 Blog/Loot
-ingest + "Ask the radar" in the UI.
+harness (precision@k + LLM-as-judge) + CI gate~~ (done) · ~~P4 Langfuse tracing~~ (done) ·
+P5 Blog/Loot ingest + "Ask the radar" in the UI.

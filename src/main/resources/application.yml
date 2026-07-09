@@ -26,6 +26,20 @@ spring:
         distance-type: COSINE_DISTANCE
         initialize-schema: true            # creates the vector_store table on first run
 
+# P4: sample everything — this is a single-user internal service, and Langfuse without
+# the request spans is half a trace. Export is a no-op until the langfuse.* keys are set.
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+
+langfuse:
+  public-key: ${LANGFUSE_PUBLIC_KEY:}
+  secret-key: ${LANGFUSE_SECRET_KEY:}
+  host: ${LANGFUSE_HOST:https://cloud.langfuse.com}
+  # Full OTLP traces URL override (e.g. a local OTel collector); wins over host.
+  endpoint: ${LANGFUSE_OTLP_ENDPOINT:}
+
 radar:
   notion:
     token: ${NOTION_TOKEN}

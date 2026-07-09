@@ -79,6 +79,21 @@
             <artifactId>spring-ai-rag</artifactId>
         </dependency>
 
+        <!-- P4: Langfuse tracing — actuator turns on Micrometer observations, the OTel
+             bridge turns them into spans, and the OTLP exporter ships them to Langfuse. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-tracing-bridge-otel</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-exporter-otlp</artifactId>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
