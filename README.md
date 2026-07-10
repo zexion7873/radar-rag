@@ -1,4 +1,4 @@
-# Radar Intelligence Service (P0–P4)
+# Radar Intelligence Service (P0–P5)
 
 A standalone Java / Spring Boot service that adds LLM-powered intelligence on top of the
 GitHub-radar Notion archive written by the `ai-assistant` routines. **P0** stands up the
@@ -6,16 +6,21 @@ skeleton: pgvector, Notion ingestion of the **Trending** table, and a semantic `
 endpoint. **P1** adds metadata-filtered search. **P2** adds a RAG `/ask` endpoint —
 grounded Q&A with citations. **P3** adds the eval harness — a golden-set retrieval gate
 (precision@k / recall@k / MRR) plus an LLM-as-judge check of `/ask`, wired into CI.
-**P4** adds Langfuse tracing over OTLP.
+**P4** adds Langfuse tracing over OTLP. **P5** ingests the remaining archive tables —
+Loot (Claude + Copilot) and Blog — so search and Q&A cover the whole radar.
 
 > Not a proxy in front of Notion — it exposes *new* capabilities (semantic search and
 > grounded Q&A) that the pure-reader `github-radar-ui` cannot do.
 
 ## What P0–P2 gives you
 
-- `POST /sync` — pull the Trending Archive from Notion, embed each row into pgvector (upsert).
+- `POST /sync` — pull all four archive tables from Notion (Trending, Loot×2, Blog), embed
+  each row into pgvector (upsert). Returns per-table counts. Sources: `trending`,
+  `loot-claude`, `loot-copilot`, `blog`.
 - `POST /search` — semantic search over the embedded rows, optionally filtered by metadata
   (`source` / `category` / `language` / `week` exact match, `stars_per_week` ≥ `minStars`).
+  The shared keys stretch per source: loot's `category` is its asset Type (skill/mcp/…),
+  blog's `week` is its published date.
 - `POST /ask` — ask a question in natural language; the service retrieves the relevant radar
   rows from pgvector, has **Claude** answer from them, and returns the answer plus the source
   rows as **citations**. Needs `ANTHROPIC_API_KEY`; `/sync` and `/search` do not.
@@ -113,13 +118,17 @@ is intentionally not exported (the framework moved content capture to logs at 1.
 src/main/java/com/radar/intel/
 ├── RadarIntelligenceApplication.java   # boot + @ConfigurationPropertiesScan
 ├── notion/
-│   ├── NotionProperties.java           # radar.notion.* config
+│   ├── NotionProperties.java           # radar.notion.* config (all four data-source ids)
 │   ├── NotionClient.java               # resolve data source + paginated query (mirrors lib/notion.ts)
 │   ├── NotionProps.java                # typed property extractors
-│   └── TrendingRow.java
+│   ├── TrendingRow.java
+│   ├── LootRow.java
+│   └── BlogRow.java
 ├── ingest/
 │   ├── TrendingIngestService.java      # Notion rows -> Document -> vectorStore.add (upsert by URL)
-│   └── IngestController.java           # POST /sync
+│   ├── LootIngestService.java          # Loot Claude/Copilot tables (source-prefixed ids)
+│   ├── BlogIngestService.java          # Blog table (title identity, published -> week)
+│   └── IngestController.java           # POST /sync (all four tables)
 ├── search/
 │   └── SearchController.java           # POST /search
 ├── ask/
@@ -141,8 +150,11 @@ src/test/java/com/radar/intel/eval/     # P3 eval harness (golden set under src/
   `spring-ai-starter-model-transformers`. If you later switch embedding models (Ollama, OpenAI,
   Voyage), keep `spring.ai.vectorstore.pgvector.dimensions` in sync and recreate the
   `vector_store` table (the embedding column is a fixed-width `vector(N)`).
-- **Idempotent re-sync.** Documents use the repo URL as a stable id, so `POST /sync` upserts
-  rather than duplicating.
+- **Idempotent re-sync.** Each document's id is a stable name-based UUID, so `POST /sync`
+  upserts rather than duplicating. Trending keys on the repo URL; loot and blog prefix the
+  key with their source (`loot-claude|…`, `blog|…`) so a URL that appears in more than one
+  table stays one document per table. Loot, which is one row per candidate per *week*
+  upstream, is collapsed to each candidate's most recent week before embedding.
 - **Spring AI moves fast.** Versions/artifact ids match the reference docs at scaffold time —
   verify against `start.spring.io` / the current reference when you build.
 - **RAG is grounded, not filtered.** `/ask` retrieves from the same pgvector store `/search` uses
@@ -156,4 +168,4 @@ src/test/java/com/radar/intel/eval/     # P3 eval harness (golden set under src/
 
 ~~P1 metadata-filtered search~~ (done) · ~~P2 RAG `/ask` with citations~~ (done) · ~~P3 eval
 harness (precision@k + LLM-as-judge) + CI gate~~ (done) · ~~P4 Langfuse tracing~~ (done) ·
-P5 Blog/Loot ingest + "Ask the radar" in the UI.
+~~P5 Blog/Loot ingest~~ (done; the "Ask the radar" box lives in github-radar-ui).

@@ -57,7 +57,10 @@ class RetrievalEvalTest extends EvalSupport {
     }
 
     private static Scored score(GoldenQuery gq, List<String> retrieved) {
-        long found = retrieved.stream().filter(gq.relevant()::contains).count();
+        // Count distinct RELEVANT urls that were retrieved, not raw hits: the corpus
+        // intentionally embeds one url under two sources, so filtering the retrieved
+        // list would double-count and push recall past 1.0.
+        long found = gq.relevant().stream().filter(retrieved::contains).count();
         double precision = (double) found / K;
         double recall = (double) found / gq.relevant().size();
         double mrr = 0;

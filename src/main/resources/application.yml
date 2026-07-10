@@ -44,8 +44,11 @@ radar:
   notion:
     token: ${NOTION_TOKEN}
     version: "2025-09-03"                   # the API version that introduced data sources
-    # Trending Archive data source (same id as github-radar-ui/lib/config.ts).
+    # Archive data sources (same ids as github-radar-ui/lib/config.ts).
     trending-data-source: ${TRENDING_DATA_SOURCE:f67aaa24-d5f2-415c-9358-c7d9d2f9713e}
+    loot-claude-data-source: ${LOOT_CLAUDE_DATA_SOURCE:8223d65e-4ed6-4a6e-b8ad-fb0c98c9a4ed}
+    loot-copilot-data-source: ${LOOT_COPILOT_DATA_SOURCE:bafde792-70ff-4e07-9ffd-00ecf77f51be}
+    blog-data-source: ${BLOG_DATA_SOURCE:d8e442b5-17c1-4e6f-a665-feb49d6e3099}
 
 server:
   error:

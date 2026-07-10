@@ -80,6 +80,21 @@
       "q": "幫 AI 助理加上長期記憶",
       "lang": "zh",
       "relevant": ["https://github.com/mem0ai/mem0"]
+    },
+    {
+      "q": "skill for extracting text and tables from PDF files",
+      "lang": "en",
+      "relevant": ["https://github.com/anthropics/skills"]
+    },
+    {
+      "q": "context engineering 的官方指南",
+      "lang": "zh",
+      "relevant": ["https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents"]
+    },
+    {
+      "q": "embedding 模型的多語言陷阱與對策",
+      "lang": "zh",
+      "relevant": ["https://example.dev/blog/multilingual-embedding-pitfalls"]
     }
   ],
   "judge": [

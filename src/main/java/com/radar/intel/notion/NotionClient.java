@@ -47,6 +47,46 @@ public class NotionClient {
         return rows;
     }
 
+    /** A Loot archive table's rows (Claude or Copilot — same schema, two tables). */
+    public List<LootRow> fetchLoot(String dataSourceUuid) {
+        String dataSourceId = resolveDataSourceId(dataSourceUuid);
+        List<LootRow> rows = new ArrayList<>();
+        for (JsonNode page : queryAll(dataSourceId)) {
+            JsonNode p = page.path("properties");
+            rows.add(new LootRow(
+                    NotionProps.text(p, "Repo"),
+                    NotionProps.text(p, "Intro"),
+                    NotionProps.text(p, "Asset"),
+                    NotionProps.select(p, "Type"),
+                    NotionProps.dateStart(p, "Week"),
+                    NotionProps.url(p, "Link"),
+                    NotionProps.text(p, "Why"),
+                    NotionProps.text(p, "How"),
+                    NotionProps.select(p, "Status")));
+        }
+        return rows;
+    }
+
+    /** The Blog archive table's rows. */
+    public List<BlogRow> fetchBlog() {
+        String dataSourceId = resolveDataSourceId(props.blogDataSource());
+        List<BlogRow> rows = new ArrayList<>();
+        for (JsonNode page : queryAll(dataSourceId)) {
+            JsonNode p = page.path("properties");
+            rows.add(new BlogRow(
+                    NotionProps.text(p, "Title"),
+                    NotionProps.url(p, "URL"),
+                    NotionProps.text(p, "Source"),
+                    NotionProps.select(p, "Type"),
+                    NotionProps.text(p, "Author"),
+                    NotionProps.dateStart(p, "Published"),
+                    NotionProps.text(p, "Brief"),
+                    NotionProps.text(p, "Summary"),
+                    NotionProps.text(p, "Comment")));
+        }
+        return rows;
+    }
+
     /**
      * The configured uuid already IS a data-source id under the 2025-09-03 API; a GET
      * confirms it. Fall back to the legacy database endpoint if it turns out to be a

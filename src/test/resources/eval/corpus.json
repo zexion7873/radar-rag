@@ -181,5 +181,54 @@
       "description": "開源 LLM 工程平台：tracing、prompt 管理、評估與資料集，自架或雲端皆可。",
       "comment": "LLM 應用的黑盒子終於有飛行紀錄器，出事至少知道怪誰。"
     }
+  ],
+  "_loot_comment": "P5: loot fixtures flow through LootIngestService.toDocument as source loot-claude. The browser-use row shares its link with the trending row above ON PURPOSE — it pins the source-prefixed id scheme (same URL in two sources must stay two documents).",
+  "loot": [
+    {
+      "repo": "anthropics/skills",
+      "intro": "官方 skills 倉庫的 PDF 抽取技能，把 PDF 轉成結構化文字與表格。",
+      "asset": "pdf-extraction skill",
+      "type": "skill",
+      "week": "2026-06-27",
+      "link": "https://github.com/anthropics/skills",
+      "why": "處理 PDF 是日常剛需，官方維護、品質穩定。",
+      "how": "安裝到 ~/.claude/skills 後，對話提到 PDF 會自動觸發。",
+      "status": "new"
+    },
+    {
+      "repo": "browser-use/browser-use",
+      "intro": "把 browser-use 包成 MCP server，讓 Claude Code 直接操作瀏覽器。",
+      "asset": "browser-use MCP server",
+      "type": "mcp",
+      "week": "2026-06-27",
+      "link": "https://github.com/browser-use/browser-use",
+      "why": "讓 agent 能開瀏覽器做端對端驗證，補上純 CLI 的盲區。",
+      "how": "claude mcp add browser-use，之後對話中直接請它操作頁面。",
+      "status": "new"
+    }
+  ],
+  "blog": [
+    {
+      "title": "Effective context engineering for AI agents",
+      "url": "https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents",
+      "source": "Anthropic Engineering",
+      "type": "official",
+      "author": "Anthropic",
+      "published": "2026-06-20",
+      "brief": "context engineering 的官方方法論。",
+      "summary": "把 context 當稀缺資源：如何設計 system prompt、工具回傳與 memory，讓 agent 在有限 context 下維持任務品質。",
+      "comment": "把 prompt engineering 正名成 context engineering，行銷與工程各佔一半。"
+    },
+    {
+      "title": "為什麼你的 RAG 檢索不準：embedding 模型的多語言陷阱",
+      "url": "https://example.dev/blog/multilingual-embedding-pitfalls",
+      "source": "個人部落格",
+      "type": "individual",
+      "author": "某工程師",
+      "published": "2026-06-25",
+      "brief": "多語言 embedding 選型踩坑記。",
+      "summary": "英文中心的 embedding 模型在中文語料上 recall 崩壞的實測與對策：換 multilingual 模型、混合檢索、query 翻譯。",
+      "comment": "跟本 repo 自己的 eval 結論一模一樣，看來大家都在同一個坑裡。"
+    }
   ]
 }

@@ -2,7 +2,11 @@ package com.radar.intel.eval;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.radar.intel.ingest.BlogIngestService;
+import com.radar.intel.ingest.LootIngestService;
 import com.radar.intel.ingest.TrendingIngestService;
+import com.radar.intel.notion.BlogRow;
+import com.radar.intel.notion.LootRow;
 import com.radar.intel.notion.TrendingRow;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.ai.document.Document;
@@ -63,7 +67,7 @@ public abstract class EvalSupport {
     public record JudgeCase(String q) {
     }
 
-    record Corpus(List<TrendingRow> rows) {
+    record Corpus(List<TrendingRow> rows, List<LootRow> loot, List<BlogRow> blog) {
     }
 
     record Golden(List<GoldenQuery> retrieval, List<JudgeCase> judge) {
@@ -82,18 +86,28 @@ public abstract class EvalSupport {
         return read("/eval/golden.json", Golden.class);
     }
 
-    /** Fixture rows mapped through the production ingest mapping (TrendingIngestService.toDocument). */
+    /** Fixture rows mapped through the production ingest mappings, one per source. */
     static List<Document> fixtureDocuments() {
-        return read("/eval/corpus.json", Corpus.class).rows().stream()
-                .map(TrendingIngestService::toDocument)
-                .filter(Objects::nonNull)
-                .toList();
+        Corpus c = read("/eval/corpus.json", Corpus.class);
+        List<Document> docs = new java.util.ArrayList<>();
+        c.rows().stream().map(TrendingIngestService::toDocument)
+                .filter(Objects::nonNull).forEach(docs::add);
+        c.loot().stream().map(r -> LootIngestService.toDocument(r, LootIngestService.SOURCE_CLAUDE))
+                .filter(Objects::nonNull).forEach(docs::add);
+        c.blog().stream().map(BlogIngestService::toDocument)
+                .filter(Objects::nonNull).forEach(docs::add);
+        return docs;
     }
 
-    /** Fixture documents keyed by link, to hand the judge the exact texts a citation points at. */
+    /**
+     * Fixture documents keyed by link, to hand the judge the exact texts a citation points
+     * at. A url can appear in two sources (the browser-use trending/loot pair) — either
+     * text serves the judge, so first-wins on merge.
+     */
     static Map<String, Document> corpusByUrl() {
         return fixtureDocuments().stream()
-                .collect(Collectors.toMap(d -> (String) d.getMetadata().get("url"), Function.identity()));
+                .collect(Collectors.toMap(d -> (String) d.getMetadata().get("url"),
+                        Function.identity(), (a, b) -> a));
     }
 
     private static <T> T read(String classpath, Class<T> type) {

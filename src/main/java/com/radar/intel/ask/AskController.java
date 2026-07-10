@@ -78,8 +78,9 @@ public class AskController {
         return ((List<Document>) list).stream()
                 .map(d -> {
                     Map<String, Object> md = d.getMetadata();
-                    return new Citation(str(md.get("repo")), str(md.get("url")),
-                            str(md.get("week")), d.getScore());
+                    // Blog rows have no repo; their display identity is the title.
+                    return new Citation(str(md.getOrDefault("repo", md.get("title"))),
+                            str(md.get("url")), str(md.get("week")), d.getScore());
                 })
                 .toList();
     }
