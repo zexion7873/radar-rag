@@ -10,6 +10,14 @@ spring:
     # First boot downloads an ~80MB model, then everything runs inside the JVM.
     model:
       embedding: transformers
+    embedding:
+      transformer:
+        # Pinned to the spring-ai v1.0.0 commit; the default URIs follow its `main` branch, and the
+        # eval gate reads any rank change under a moving model as a regression.
+        onnx:
+          model-uri: https://github.com/spring-projects/spring-ai/raw/fcd2803f36f35939c20ed152c9c1b0863fa35dcf/models/spring-ai-transformers/src/main/resources/onnx/all-MiniLM-L6-v2/model.onnx
+        tokenizer:
+          uri: https://raw.githubusercontent.com/spring-projects/spring-ai/fcd2803f36f35939c20ed152c9c1b0863fa35dcf/models/spring-ai-transformers/src/main/resources/onnx/all-MiniLM-L6-v2/tokenizer.json
     # P2: Claude generates the grounded /ask answers. Empty key still boots (only /ask calls fail),
     # so /sync and /search stay usable without an Anthropic key.
     anthropic:
