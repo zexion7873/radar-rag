@@ -4,7 +4,7 @@ A standalone Java / Spring Boot service that adds LLM-powered intelligence on to
 GitHub-radar Notion archive written by the `ai-assistant` routines. **P0** stands up the
 skeleton: pgvector, Notion ingestion of the **Trending** table, and a semantic `/search`
 endpoint. **P1** adds metadata-filtered search. **P2** adds a RAG `/ask` endpoint —
-grounded Q&A with citations. Evals and tracing come in later phases (see the design spec).
+grounded Q&A with citations. Evals and tracing come in later phases (see [docs/stack-plan.md](docs/stack-plan.md)).
 
 > Not a proxy in front of Notion — it exposes *new* capabilities (semantic search and
 > grounded Q&A) that the pure-reader `github-radar-ui` cannot do.
@@ -98,8 +98,12 @@ src/main/java/com/radar/intel/
   English-centric over a partly Traditional-Chinese corpus, the retriever uses a low similarity
   threshold and bounds context by `topK`.
 
-## Next (from the spec)
+## Next
 
 ~~P1 metadata-filtered search~~ (done) · ~~P2 RAG `/ask` with citations~~ (done) · P3 eval
 harness (precision@k + LLM-as-judge) + CI gate · P4 Langfuse tracing · P5 Blog/Loot ingest +
-"Ask the radar" in the UI.
+an "Ask the radar" page served by this service (github-radar-ui only links to it, so it stays a
+pure Notion reader).
+
+The target stack and the milestone order (M0–M11, each with a checkable done-when) are in
+[docs/stack-plan.md](docs/stack-plan.md).
