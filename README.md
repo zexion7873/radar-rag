@@ -68,6 +68,35 @@ and a similarity `score`. `/ask` returns `{answer, citations}`, where each citat
 mvn -B verify   # unit + slice tests; needs no Docker and no tokens. CI runs the same on every PR.
 ```
 
+## Evals (`evals/`, Python)
+
+A typed Python package (uv, pydantic, httpx, pytest, mypy strict, ruff) that tests the service as a
+black box over HTTP. It serves a frozen copy of the Notion Trending table from a local stub, so an
+eval needs no Notion token and does not move when the table does. Run it against an empty
+`vector_store` (a fresh compose volume, or the one-time drop under Notes): until the sync becomes a
+full refresh (plan M3), `/sync` only upserts, and rows from an earlier live sync would show up.
+
+```bash
+cd evals
+uv sync
+uv run ruff check && uv run ruff format --check && uv run mypy && uv run pytest   # unit tests
+
+# Against a running service: start it with NOTION_TOKEN=dummy NOTION_BASE_URL=http://127.0.0.1:8765,
+# then the tests start the stub on 8765, POST /sync from the fixture, and query /search.
+EVAL_SERVICE_URL=http://localhost:8080 uv run pytest -m service
+
+# Retrieval eval over a golden set (golden_v1.jsonl is M2's open item). The first run writes the
+# baseline with --write-baseline; later runs drop it and fail on any hit@5 hit→miss flip.
+uv run radar-evals --golden golden_v1.jsonl --fixture fixtures/trending.json \
+  --model-id all-MiniLM-L6-v2 --out results/latest.json --baseline results/baseline.json --write-baseline
+
+# Re-capture the fixture (reads Notion; keeps only the columns the service parses).
+NOTION_TOKEN=ntn_... uv run freeze-notion
+```
+
+CI runs the unit tests in `evals` and the live-service tests in `eval-retrieval`, against a
+pgvector service container on the same tag as `docker-compose.yml`.
+
 ## Layout
 
 ```

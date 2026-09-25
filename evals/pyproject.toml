@@ -1,0 +1,50 @@
+[project]
+name = "radar-evals"
+version = "0.1.0"
+description = "Black-box retrieval and answer evals for the radar-rag service, over HTTP"
+requires-python = ">=3.13"
+dependencies = [
+    "httpx>=0.28,<1",
+    "pydantic>=2.11,<3",
+]
+
+[project.scripts]
+freeze-notion = "radar_evals.freeze_notion:main"
+radar-evals = "radar_evals.retrieval:main"
+
+[build-system]
+requires = ["uv_build>=0.8.13,<0.9.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3.1",
+    "pytest>=9.1.1",
+    "ruff>=0.16.9",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+# zh-TW questions are written with full-width punctuation.
+allowed-confusables = ["？", "，", "：", "（", "）"]
+
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]
+files = ["src", "tests"]
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "service: needs a running radar-rag service (EVAL_SERVICE_URL) backed by the Notion stub",
+    "llm: calls a paid LLM; runs only on the labelled eval-llm workflow",
+]
+addopts = "-m 'not service and not llm' --strict-markers"
