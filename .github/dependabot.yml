@@ -18,6 +18,17 @@ updates:
         update-types:
           - minor
           - patch
+  - package-ecosystem: uv
+    directory: "/evals"
+    schedule:
+      interval: weekly
+    groups:
+      minor-and-patch:
+        patterns:
+          - "*"
+        update-types:
+          - minor
+          - patch
   - package-ecosystem: github-actions
     directory: "/"
     schedule:
