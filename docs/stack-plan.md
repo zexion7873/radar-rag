@@ -104,7 +104,7 @@ Changes:
 - Add the `radar.notion.base-url` property (default `https://api.notion.com/v1`), and a NotionClient pagination test against WireMock 3.13.2 serving two pre-split pages.
 - Add a SearchController `@WebMvcTest`: a quote or backslash in a filter returns 400. This guard stays through the upgrade.
 - Add `ci.yml` job `build`: setup-java@v6, Temurin 21, `cache: maven`, `mvn -B verify`.
-- Add `.github/dependabot.yml` for maven and github-actions. Until M6 it ignores every Spring AI update (the bug list and M1's fixes are pinned to 1.0.0 behaviour) and Spring Boot minor and major bumps. Without it, M2's Dependabot criterion can never be met. The Claude review workflow skips PRs authored by Dependabot, which cannot read the Actions secret it needs.
+- Add `.github/dependabot.yml` for maven and github-actions. Until M6 it ignores every Spring AI update (the bug list and M1's fixes are pinned to 1.0.0 behaviour) and Spring Boot minor and major bumps. Without it, M2's Dependabot criterion can never be met.
 
 Done when:
 - `mvn -B verify` prints `BUILD SUCCESS` with `Failures: 0, Errors: 0`, and the `build` job is green on the PR.
@@ -320,6 +320,7 @@ Done when:
 | Cloud Armor / external load balancer / API Gateway | The load balancer alone breaks the $0-10/month budget | Deferred | Abuse gets past Turnstile, or a paid budget exists. |
 | Permanent min-instances 1 | ~$10/month (secondary source, unverified) | Deferred | Live-interview days only: set it to 1 for the day, then revert. |
 | Other hosts | Fly.io: no free tier, ~$5.70-5.92/month for 1 GB ([pricing](https://fly.io/pricing-update/)). Render Free: 0.1 CPU / 512 MB, and Postgres expires after 30 days ([docs](https://render.com/docs/free)). Railway: $10/GB-month RAM ([plans](https://docs.railway.com/pricing/plans)). App Runner: closed to new customers since 2026-04-30 ([AWS](https://docs.aws.amazon.com/apprunner/latest/dg/apprunner-availability-change.html)). Oracle Always Free: halved, and reclaims idle instances ([InfoQ](https://www.infoq.com/news/2026/07/oracle-cloud-free-tier-limits/)). Supabase Free: pauses after 7 days ([docs](https://supabase.com/docs/guides/platform/free-project-pausing)). Cloud SQL: no free tier (unverified). | Deferred | Cloud Run's or Neon's free terms change. |
+| Automated Claude PR review (`claude-code-review.yml`, removed after M0) | It ran on every PR (#4, #5, #6, #10) for about $0.1-0.8 and never posted a review: each run ended with one permission denial and "No buffered inline comments", so its green check reviewed nothing. `claude.yml` (@claude on demand) stays | Deferred | A fixed setup is shown to post findings on a test PR. |
 | JaCoCo gate, PIT, Pact | Coverage numbers on 500 lines are vanity, and the API has no consumers | Deferred | The service grows well past four endpoints, or a second consumer appears. |
 | Queue / async ingestion | ~200 rows once a week | Durable | Ingest exceeds the Cloud Run request timeout. |
 | Multi-arch images | Cloud Run runs amd64 | Deferred | The deploy target becomes ARM. |
