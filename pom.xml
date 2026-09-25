@@ -12,9 +12,9 @@
     </parent>
 
     <groupId>com.radar</groupId>
-    <artifactId>radar-intelligence-service</artifactId>
+    <artifactId>radar-rag</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>radar-intelligence-service</name>
+    <name>radar-rag</name>
     <description>LLM-powered intelligence over the GitHub-radar Notion archive (P0)</description>
 
     <properties>
