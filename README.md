@@ -20,7 +20,8 @@ grounded Q&A with citations. Evals and tracing come in later phases (see [docs/s
 
 ## Prerequisites
 
-- Java 21, Maven
+- Java 21, and Maven running on it: `mvn -v` names the JVM. Homebrew's maven brings the newest
+  JDK, where the Boot 3.4 test stack's Mockito cannot mock interfaces; set `JAVA_HOME` to 21.
 - Docker (for the pgvector Postgres)
 - The **Notion integration token** already shared into the archive tables
 
@@ -60,6 +61,12 @@ curl -X POST localhost:8080/ask \
 `/search` returns each hit's `text`, `metadata` (source/repo/week/category/language/url), and a
 similarity `score`. `/ask` returns `{answer, citations}`, where each citation is a source row
 (`repo` / `url` / `week` / retrieval `score`).
+
+## Test
+
+```bash
+mvn -B verify   # unit + slice tests; needs no Docker and no tokens. CI runs the same on every PR.
+```
 
 ## Layout
 

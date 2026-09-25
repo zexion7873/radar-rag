@@ -31,6 +31,8 @@ spring:
 radar:
   notion:
     token: ${NOTION_TOKEN}
+    # Overridable so tests and the eval harness can point the service at a local Notion stub.
+    base-url: ${NOTION_BASE_URL:https://api.notion.com/v1}
     version: "2025-09-03"                   # the API version that introduced data sources
     # Trending Archive data source (same id as github-radar-ui/lib/config.ts).
     trending-data-source: ${TRENDING_DATA_SOURCE:f67aaa24-d5f2-415c-9358-c7d9d2f9713e}
