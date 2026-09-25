@@ -22,7 +22,9 @@ spring:
     vectorstore:
       pgvector:
         dimensions: 384
-        index-type: HNSW
+        # Exact search: HNSW filters after its approximate scan, so a week-filtered /search could
+        # return < topK rows. An existing HNSW table needs the one-time drop in the README.
+        index-type: NONE
         distance-type: COSINE_DISTANCE
         initialize-schema: true            # creates the vector_store table on first run
 

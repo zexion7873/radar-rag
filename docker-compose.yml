@@ -1,6 +1,8 @@
 services:
   postgres:
-    image: pgvector/pgvector:pg16
+    # The bare pg16 tag floats across pgvector releases; pinned so every local run searches on
+    # a known extension version. A Postgres service container added to CI must use this tag too.
+    image: pgvector/pgvector:0.8.6-pg16
     environment:
       POSTGRES_DB: radar
       POSTGRES_USER: radar

@@ -87,6 +87,12 @@ src/main/java/com/radar/intel/
   `spring-ai-starter-model-transformers`. If you later switch embedding models (Ollama, OpenAI,
   Voyage), keep `spring.ai.vectorstore.pgvector.dimensions` in sync and recreate the
   `vector_store` table (the embedding column is a fixed-width `vector(N)`).
+- **Exact vector search.** `index-type: NONE`: at a few hundred rows an HNSW index buys no speed,
+  and it applies metadata filters after its approximate scan, so a week-filtered `/search` could
+  return fewer than `topK` rows. PgVectorStore never drops an existing index and creates the
+  table only at startup, so a table created under the old HNSW setting needs, once: stop the
+  service, `docker compose exec postgres psql -U radar -d radar -c 'DROP TABLE vector_store'`,
+  start it again, then `POST /sync`.
 - **Idempotent re-sync.** Documents use the repo URL as a stable id, so `POST /sync` upserts
   rather than duplicating.
 - **Spring AI moves fast.** Versions/artifact ids match the reference docs at scaffold time —
