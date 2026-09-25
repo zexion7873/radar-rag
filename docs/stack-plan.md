@@ -72,7 +72,7 @@ Keep the Java 21 / Spring AI / pgvector service. Change it in this order: fix /a
 | Java tests | none | Four classes, written to need only mechanical changes at Boot 4: `@MockitoBean`, explicit `@AutoConfigureMockMvc`, no TestRestTemplate. `@WebMvcTest` still moves package and starter (see M6). (a) TrendingIngestServiceTest. (b) NotionClient pagination against WireMock. (c) AskFlowIT: Testcontainers pgvector, WireMock standing in for Anthropic, and a mocked EmbeddingModel. (d) SearchController `@WebMvcTest`. Tools: WireMock standalone 3.13.2, and Testcontainers overridden to 1.21.4 until the upgrade. | MockRestServiceServer. Lost because 2.0.1 moves Anthropic calls onto the SDK's own HTTP client, so this mock would stop intercepting exactly at the upgrade it is meant to guard. | pre-P3 / P3 (M0, M1, M3) | regression net for D2 | [WireMock](https://repo1.maven.org/maven2/org/wiremock/wiremock-standalone/maven-metadata.xml), [TC #11210](https://github.com/testcontainers/testcontainers-java/issues/11210), [Boot 4.1.1 BOM](https://repo1.maven.org/maven2/org/springframework/boot/spring-boot-dependencies/4.1.1/spring-boot-dependencies-4.1.1.pom), [Boot 4 migration](https://github.com/spring-projects/spring-boot/wiki/Spring-Boot-4.0-Migration-Guide) |
 | CI | Only the two Claude review workflows. | `ci.yml` job `build`: setup-java@v6, Temurin 21, `mvn -B verify`. Job `eval-retrieval`: a `services.postgres` container, the jar, cached model and `~/.djl.ai`, the stub, then `uv sync --locked`, ruff, mypy, pytest, a step-summary diff and a JSON artifact. It needs no secrets, so it also runs on Dependabot PRs. Separately, `eval-llm.yml` runs on the `eval:llm` label or `workflow_dispatch`. It reads the Anthropic key from a repository secret behind an `if: github.actor == github.repository_owner` guard, and never uses `pull_request_target`. A GitHub Environment is not an option while the repo is private, because on GitHub Free environment secrets exist only in public repos. `.github/dependabot.yml` arrives in M0. | LLM runs on push to main (platform lens) and nightly LLM runs. Lost; see C3. | pre-P3 build (M0); P3 evals (M2, M5) | evals | [Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions), [setup-java](https://github.com/actions/setup-java/releases), [service containers](https://docs.github.com/en/actions/tutorials/use-containerized-services/create-postgresql-service-containers), [DJL cache](https://docs.djl.ai/master/docs/development/cache_management.html) |
 | Result tracking | none | P3: a committed `evals/results/baseline.json`. It changes only when the author of a PR runs `--write-baseline` in that same PR. The step summary lists which queries went from hit to miss. P4: the golden set is mirrored to a Langfuse dataset, and LLM runs go through `dataset.run_experiment`. | Langfuse for both gates, or Confident AI. Lost because Langfuse on every PR would put keys into PR CI and spend units on runs with no LLM, and Confident AI would be a second vendor. | P3 (M2) + P4 (M8) | evals, observability | [experiments](https://langfuse.com/docs/evaluation/experiments/experiments-via-sdk), [datasets](https://langfuse.com/docs/evaluation/experiments/datasets), [langfuse PyPI](https://pypi.org/pypi/langfuse/json) |
-| Observability (P4) | None: no actuator, no tracing. | Langfuse Cloud Hobby (50k units per month, 30 days of data), JP region (`jp.cloud.langfuse.com`). On Boot 4.1, `spring-boot-starter-opentelemetry` sends OTLP over HTTP to `/api/public/otel`, with Basic auth and `x-langfuse-ingestion-version: 4`, sampling 1.0. Prompt and completion text needs your own ~30-line `ChatModelCompletionContentObservationFilter` that loops over all generations. The harness injects `traceparent`, so the Java spans nest under each eval item. Keep `http.server.requests` enabled. | Self-hosted Langfuse (stack sized at 4 cores / 16 GiB), Phoenix (does not map gen_ai.*), OpenLIT (self-hosted ClickHouse), Arconia (hides the 30 lines you must be able to explain). | P4 (M8, after the upgrade) | observability | [Langfuse pricing](https://langfuse.com/pricing), [Langfuse OTel](https://langfuse.com/integrations/native/opentelemetry), [Spring AI guide](https://langfuse.com/integrations/frameworks/spring-ai), [Boot tracing](https://docs.spring.io/spring-boot/reference/actuator/tracing.html), [self-host](https://langfuse.com/self-hosting/deployment/docker-compose), [Phoenix #10622](https://github.com/Arize-ai/phoenix/issues/10622) |
+| Observability (P4) | None: no actuator, no tracing. | Langfuse Cloud Hobby (50k units per month, 30 days of data), JP region (`jp.cloud.langfuse.com`). On Boot 4.1, `spring-boot-starter-opentelemetry` sends OTLP over HTTP to `/api/public/otel/v1/traces`, with Basic auth and `x-langfuse-ingestion-version: 4`, sampling 1.0. Prompt and completion text needs your own ~30-line `ChatModelCompletionContentObservationFilter` that loops over all generations. The harness injects `traceparent`, so the Java spans nest under each eval item. Keep `http.server.requests` enabled. | Self-hosted Langfuse (stack sized at 4 cores / 16 GiB), Phoenix (does not map gen_ai.*), OpenLIT (self-hosted ClickHouse), Arconia (hides the 30 lines you must be able to explain). | P4 (M8, after the upgrade) | observability | [Langfuse pricing](https://langfuse.com/pricing), [Langfuse OTel](https://langfuse.com/integrations/native/opentelemetry), [Spring AI guide](https://langfuse.com/integrations/frameworks/spring-ai), [Boot tracing](https://docs.spring.io/spring-boot/reference/actuator/tracing.html), [self-host](https://langfuse.com/self-hosting/deployment/docker-compose), [Phoenix #10622](https://github.com/Arize-ai/phoenix/issues/10622) |
 | Packaging | No Dockerfile. The model downloads at first boot from the unpinned `main` branch; DJL separately fetches ~173 MB of libtorch. | A multi-stage Dockerfile with a layered jar on `eclipse-temurin:25-jre` (glibc, not Alpine). The M4 model is baked in with the same fetch script and a sha256 check, referenced by `file:` URIs, which also skips the ResourceCacheService CVE surface. libtorch is pre-populated and `-Dai.djl.offline=true` is set. An AOT-cache training run uses a profile with no DB contact. Set `-XX:MaxRAMPercentage` to about 55. The transformers module loads the whole ~470 MB model as one on-heap `byte[]` before ONNX Runtime makes a native copy, so the JVM's default 25% heap on a 2 GiB container would OOM at boot. | Buildpacks (the training run contacts the DB; Paketo #581) and Jib (no training run). | deploy prep (M9) | cloud | [ONNX docs](https://docs.spring.io/spring-ai/reference/api/embeddings/onnx.html), [DJL PyTorch](https://docs.djl.ai/master/engines/pytorch/pytorch-engine/index.html), [DJL offline](https://docs.djl.ai/master/docs/demos/development/fatjar/index.html), [transformers 2.0.1 POM](https://repo1.maven.org/maven2/org/springframework/ai/spring-ai-transformers/2.0.1/spring-ai-transformers-2.0.1.pom), [Cloud Run FS](https://docs.cloud.google.com/run/docs/container-contract), [Paketo #581](https://github.com/paketo-buildpacks/spring-boot/issues/581), [Jib #4417](https://github.com/GoogleContainerTools/jib/issues/4417) |
 | Hosting | local only | Cloud Run in asia-east1 (Taiwan): request billing, min 0 / max 1 instances, CPU boost, memory set from M9's measurement. Neon Free in aws-ap-southeast-1 (Singapore), which has pgvector 0.8.0, hstore and uuid-ossp. Deploy through google-github-actions/auth v3 with Workload Identity Federation. The weekly /sync runs from an Actions cron. At 2 GiB, the 360,000 GiB-second free grant is about 50 instance-hours a month, and asia-east1 to Neon Singapore egress is billed (cents). Whether the free tier covers asia-east1 is unverified. | Azure Container Apps + Neon. It has the same free grant and lost only on tie-breakers. It flips if a count of Taiwan job postings favours Azure. Other hosts are in section 4. | deploy (M10), never on 1.0.0 | cloud | [Cloud Run free tier](https://docs.cloud.google.com/free/docs/free-cloud-features), [autoscaling](https://docs.cloud.google.com/run/docs/about-instance-autoscaling), [CPU boost](https://docs.cloud.google.com/run/docs/configuring/services/cpu), [Neon plans](https://neon.com/docs/introduction/plans), [Neon extensions](https://neon.com/docs/extensions/pg-extensions), [Neon regions](https://neon.com/docs/introduction/regions), [ACA billing](https://learn.microsoft.com/en-us/azure/container-apps/billing), [WIF auth](https://github.com/google-github-actions/auth) |
 | Public-demo safety | /sync is an open POST, `include-message: always`, DEBUG logging, no spend caps. | A dedicated Console workspace with a monthly spend limit. An in-app daily dollar cap is deferred; see the do-not-add list. Bucket4j 8.20.0 rate-limits per IP, keyed on the right-most X-Forwarded-For entry. Cloudflare Turnstile verified server-side. A prod profile: no error messages, generic upstream errors, INFO logs, POSTGRES_PASSWORD required. /sync needs a shared secret with a constant-time compare. Answers are rendered as text. No CORS config. | Cloud Armor or API Gateway. Lost because they need an external load balancer, which is over the budget. | deploy (M10) | observability | [workspaces](https://platform.claude.com/docs/en/manage-claude/workspaces), [Bucket4j](https://repo1.maven.org/maven2/com/bucket4j/bucket4j_jdk17-core/maven-metadata.xml), [Turnstile](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/) |
@@ -124,6 +124,8 @@ Changes:
   - `max_tokens` is 16000;
   - upstream 400 maps to 502, 529 maps to 503 after at most 2 attempts, 429 maps per the decision above, and no body echoes the upstream text.
 - Override `testcontainers.version` to 1.21.4, and add `docker-java.properties` `api.version=1.44` if Docker 29 refuses the connection.
+- Add `org.testcontainers:postgresql` and `spring-boot-testcontainers` (test). All ITs share one pgvector container, pinned to `0.8.6-pg16`, so Spring's cached context survives across test classes (PR #4's pattern).
+- Update the README: from here on `mvn -B verify` needs Docker. On macOS, Docker Desktop must expose its default socket (or set `DOCKER_HOST=unix://$HOME/.docker/run/docker.sock`).
 
 Done when:
 - `curl -s -o ask.json -w '%{http_code}\n' -X POST localhost:8080/ask -H 'content-type: application/json' -d '{"q":"最近有哪些 coding agent 相關的 repo？"}'` prints `200`.
@@ -135,13 +137,16 @@ Done when:
 ### M2: Harness, fixture, golden v1 and the retrieval gate (P3, ~3 days, plus labelling)
 Changes:
 - Create the `evals/` uv project, `scripts/freeze_notion.py` (fixture stripped at capture), and the stdlib Notion stub, started as a pytest session fixture.
-- Write the metrics module and its unit tests with expected values worked out by hand. Example: relevant rows at ranks 2 and 4 out of 5, with 3 relevant rows in total, gives P@5 0.4, R@5 0.667, MRR 0.5 and nDCG@5 ≈ 0.498 (binary gains).
+- Write the metrics module and its unit tests with expected values worked out by hand. Example: relevant rows at ranks 2 and 4 out of 5, with 3 relevant rows in total, gives P@5 0.4, R@5 0.667, MRR 0.5 and nDCG@5 ≈ 0.498 (binary gains). The tests also cover one URL returned under two sources, which must not push recall above 1.0 (PR #6 hit this).
 - Write `golden_v1.jsonl` (Decision 2) with pydantic validation, the label-rot test, and a stamp on every result.
+- Each golden item carries `lang` (zh-TW / en) and `script` (cjk-only / mixed); at least 10 of the 20 zh-TW items are cjk-only. On MiniLM (PR #4's CI run), mixed-script zh queries containing "agent", "AI" or "LLM" scored R@5 1.00 and pure-CJK ones 0.00, and 188 of the 190 archive descriptions contain Latin letters. Without cjk-only items, M4 has no room to show a difference.
 - Add an `id` field to `SearchHit` and to `/ask`'s `Citation`. Neither exposes the document id today, so id checks would otherwise need direct Postgres access, which breaks D1's black box.
 - The Notion stub must also answer `GET /data_sources/{id}`. `NotionClient` calls it first and silently falls back to `/databases/{id}` inside `catch (Exception ignored)`.
 - Faithfulness needs the row text as retrieval_context, and `Citation` carries none. The harness makes a parallel `/search` call with the same `q` and `topK: 5`, relying on D1's equivalence.
 - Add `uv` for `evals/` to `dependabot.yml`.
 - Add `ci.yml` job `eval-retrieval`, with env `NOTION_TOKEN=dummy`, an empty Anthropic key, and `radar.notion.base-url` pointing at the stub.
+- `eval-retrieval` fails when any golden item flips from hit to miss at hit@5 against `baseline.json`, unless the same PR rewrites the baseline. Exact search with a pinned model is deterministic, so a flip is real. Baselines are written on the x86 CI runner.
+- Cache the model with actions/cache@v6 keyed on its sha256, and `~/.djl.ai` too (DJL downloads the PyTorch native libraries at the first embed). Give `ci.yml` a `concurrency` block that cancels in-progress runs.
 - Commit the first `baseline.json` while the ids are still url-keyed. This is on purpose: it is the "before" number for M3.
 
 Done when:
@@ -153,7 +158,7 @@ Done when:
 Changes:
 - `TrendingRow` gains `pageId`, and the Document id becomes the page id.
 - /sync runs `delete(source == 'trending')` and then `add` inside one `@Transactional`. That PgVectorStore's JdbcTemplate joins the transaction is unverified; the tests below settle it.
-- Add TrendingIngestServiceTest: two weeks of the same url produce two distinct ids.
+- Add TrendingIngestServiceTest: two weeks of the same url produce two distinct ids. Extract the row-to-Document mapping into a static `toDocument(TrendingRow)` first (PR #4 did this cleanly), so the test needs no Spring context.
 - Add two Java IT assertions (Testcontainers pgvector). They cannot live in the Python gate, because `/sync` returns rows ingested, not the table size:
   - the number of distinct ids equals the number of distinct (url, week) pairs in the fixture, which also catches Notion twins;
   - a re-sync from the fixture minus one row drops the count by exactly 1, so no ghost rows remain.
@@ -172,7 +177,7 @@ Changes:
 
 Done when:
 - Three results JSON files share golden_version and fixture sha256 and differ only in model id.
-- At least 2 more zh-TW answerable queries flip from miss to hit (hit@5) versus control. Recall@5 is fractional per query with multi-row labels, so it cannot express "2 of 20". Every arm reports its English-minus-zh-TW gap.
+- At least 2 more zh-TW answerable queries flip from miss to hit (hit@5) versus control. Recall@5 is fractional per query with multi-row labels, so it cannot express "2 of 20". Every arm reports its English-minus-zh-TW gap, and results split by script; the flips are expected among the cjk-only items.
 - mE5-small ships only if it beats paraphrase-multilingual by at least 2 zh-TW queries on hit@5. Otherwise ship paraphrase-multilingual and delete the decorator.
 - The winner's baseline is committed, and the README's "English-centric embeddings" limitation is replaced by the A/B table.
 
@@ -217,11 +222,16 @@ Done when:
 - `/search` with `topK: 5` returns the same 5 ids as /ask's retrieval on all 60 items, so D1's equivalence still holds.
 
 ### M8: P4 Langfuse tracing (P4, ~1 day)
+Content on spans also works on 1.0.x; P4 waits for the upgrade because of D2's order, not a platform limit.
+
 Changes:
-- Add `spring-boot-starter-opentelemetry` with the OTLP endpoint `https://<region>.cloud.langfuse.com/api/public/otel/v1/traces`, a Basic auth header and `x-langfuse-ingestion-version: 4`. The exact Boot 4.1 property key for headers is unverified.
+- Add `spring-boot-starter-opentelemetry` with the OTLP endpoint `https://<region>.cloud.langfuse.com/api/public/otel/v1/traces`, a Basic auth header and `x-langfuse-ingestion-version: 4`. On Boot 4.1.1 the headers go under `management.opentelemetry.tracing.export.otlp.headers.*`, and the endpoint property takes the full `/v1/traces` path.
 - Set sampling to 1.0.
 - Write the content observation filter.
 - Keep `http.server.requests` on.
+- Without Langfuse keys, tracing is a no-op, because `eval-retrieval` runs keyless. Port PR #5's `LangfuseProperties` record (keys, host, endpoint override) and its exporter bean: a no-op without keys, a WARN when only one is set, Basic auth derived from the two keys. The bean needs a compile-scope `io.opentelemetry:opentelemetry-exporter-otlp`, which the starter brings only at runtime.
+- Set `management.otlp.metrics.export.enabled: false`. The starter also brings `micrometer-registry-otlp`, which otherwise pushes metrics to `localhost:4318` on every run.
+- The harness's `traceparent` carries the sampled flag (`01`). Boot 4.1's default sampler is parent-based, so an unsampled parent drops the Java spans despite probability 1.0.
 - The harness injects `traceparent`, mirrors the golden set to a Langfuse dataset, and calls `dataset.run_experiment(name=f"{sha}-{model}", ...)`. Add `langfuse>=4,<5`.
 
 Done when:
@@ -255,7 +265,13 @@ Done when:
 
 ### M11: P5 Blog/Loot ingest and "Ask the radar" (P5, ~2 days)
 Changes:
-- Blog (Title + Brief + Comment) and Loot (Repo + Intro + Why), each with its own `source` value and a full refresh per source.
+- Blog (Title + Brief + Comment) and Loot (Repo + Asset + Intro + Why; `Asset` names the thing worth taking, confirm it in golden_v2), each with its own `source` value, page-id keys, and a full refresh per source in its own `@Transactional`.
+- All four loot ledgers (claude, copilot, opencode, codex) come from a configured target-to-data-source map, and M2's fixture script freezes them and Blog too. Decide whether `heat:` rows (trending repos with a ruling, written by the loot triage) are embedded: included, each is a second copy of a trending repo.
+- Blog `week` falls back to `Archived` when `Published` is empty.
+- `/sync` returns a total plus per-source counts, and reports a failing source (a new ledger returns 404 until the Notion integration is shared into it) without discarding the others. M2's and M10's checks move to the new shape.
+- golden_v2 labels are keyed (source, url, week): a loot `Link` falls back to the repo URL, so (url, week) alone collides with trending.
+- M7's citation title falls back from repo to the post title for blog rows.
+- Port from PR #6 by hand: the `fetchLoot` / `fetchBlog` property mappings, `LootRow` / `BlogRow` (plus `pageId`, and `archived` for Blog), the shared metadata keys (Type → category, Published → week, title, status), and three of its `IngestMappingTest` cases.
 - `static/index.html`.
 - The github-radar-ui outbound link.
 - `golden_v2` with Blog and Loot items.
@@ -335,3 +351,16 @@ Recommended outright (not put to you):
 - **Langfuse on Boot 4.1 is off the documented road.** Langfuse's Spring AI guide targets Spring AI 1.0.x with `opentelemetry-spring-boot-starter`; this plan uses Boot 4.1's `spring-boot-starter-opentelemetry`. M8's done-when is the test, and D1's flip-when covers a failure.
 - **Startup memory:** both multilingual models load as one ~470 MB on-heap array plus a native copy. M9's `--memory=2g` boot test settles the size.
 - **D1's first flip-when:** nothing in this plan measures it; it is tracked outside this repo.
+
+## 7. Earlier P3-P5 PRs
+
+PRs #4 (P3), #5 (P4) and #6 (P5) were opened on 2026-07-10, before this plan, as a stack: #5 targets #4's
+branch and #6 targets #5's. None can merge. #4's Java in-process harness conflicts with D1, D4 and D5,
+and #5 and #6 sit on top of it. They are closed; their branches `feat/p3-eval-harness`,
+`feat/p4-langfuse-tracing` and `feat/p5-blog-loot-ingest` stay as reference until M11 lands. Deleting a
+base branch first would auto-close the PR stacked on it.
+
+What each milestone takes from them is written into M1, M2, M3, M8 and M11 above. The rest is discarded:
+the Java eval classes, `corpus.json` and `golden.json` (a synthetic corpus whose repos are almost all
+absent from the real archive, with url-only labels), `application-eval.yml`, #4's `ci.yml`, the three
+README sections, and #6's loot week-collapse and url-keyed ids.
