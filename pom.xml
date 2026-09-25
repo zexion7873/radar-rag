@@ -81,6 +81,14 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Real-HTTP stand-in for Notion and later Anthropic; MockRestServiceServer stops
+             intercepting once Spring AI 2.x moves Anthropic calls onto the SDK's own client. -->
+        <dependency>
+            <groupId>org.wiremock</groupId>
+            <artifactId>wiremock-standalone</artifactId>
+            <version>3.13.2</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

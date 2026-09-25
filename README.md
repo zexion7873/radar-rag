@@ -4,7 +4,7 @@ A standalone Java / Spring Boot service that adds LLM-powered intelligence on to
 GitHub-radar Notion archive written by the `ai-assistant` routines. **P0** stands up the
 skeleton: pgvector, Notion ingestion of the **Trending** table, and a semantic `/search`
 endpoint. **P1** adds metadata-filtered search. **P2** adds a RAG `/ask` endpoint —
-grounded Q&A with citations. Evals and tracing come in later phases (see the design spec).
+grounded Q&A with citations. Evals and tracing come in later phases (see [docs/stack-plan.md](docs/stack-plan.md)).
 
 > Not a proxy in front of Notion — it exposes *new* capabilities (semantic search and
 > grounded Q&A) that the pure-reader `github-radar-ui` cannot do.
@@ -20,7 +20,8 @@ grounded Q&A with citations. Evals and tracing come in later phases (see the des
 
 ## Prerequisites
 
-- Java 21, Maven
+- Java 21, and Maven running on it: `mvn -v` names the JVM. Homebrew's maven brings the newest
+  JDK, where the Boot 3.4 test stack's Mockito cannot mock interfaces; set `JAVA_HOME` to 21.
 - Docker (for the pgvector Postgres)
 - The **Notion integration token** already shared into the archive tables
 
@@ -61,6 +62,12 @@ curl -X POST localhost:8080/ask \
 similarity `score`. `/ask` returns `{answer, citations}`, where each citation is a source row
 (`repo` / `url` / `week` / retrieval `score`).
 
+## Test
+
+```bash
+mvn -B verify   # unit + slice tests; needs no Docker and no tokens. CI runs the same on every PR.
+```
+
 ## Layout
 
 ```
@@ -87,6 +94,12 @@ src/main/java/com/radar/intel/
   `spring-ai-starter-model-transformers`. If you later switch embedding models (Ollama, OpenAI,
   Voyage), keep `spring.ai.vectorstore.pgvector.dimensions` in sync and recreate the
   `vector_store` table (the embedding column is a fixed-width `vector(N)`).
+- **Exact vector search.** `index-type: NONE`: at a few hundred rows an HNSW index buys no speed,
+  and it applies metadata filters after its approximate scan, so a week-filtered `/search` could
+  return fewer than `topK` rows. PgVectorStore never drops an existing index and creates the
+  table only at startup, so a table created under the old HNSW setting needs, once: stop the
+  service, `docker compose exec postgres psql -U radar -d radar -c 'DROP TABLE vector_store'`,
+  start it again, then `POST /sync`.
 - **Idempotent re-sync.** Documents use the repo URL as a stable id, so `POST /sync` upserts
   rather than duplicating.
 - **Spring AI moves fast.** Versions/artifact ids match the reference docs at scaffold time —
@@ -98,8 +111,12 @@ src/main/java/com/radar/intel/
   English-centric over a partly Traditional-Chinese corpus, the retriever uses a low similarity
   threshold and bounds context by `topK`.
 
-## Next (from the spec)
+## Next
 
 ~~P1 metadata-filtered search~~ (done) · ~~P2 RAG `/ask` with citations~~ (done) · P3 eval
 harness (precision@k + LLM-as-judge) + CI gate · P4 Langfuse tracing · P5 Blog/Loot ingest +
-"Ask the radar" in the UI.
+an "Ask the radar" page served by this service (github-radar-ui only links to it, so it stays a
+pure Notion reader).
+
+The target stack and the milestone order (M0–M11, each with a checkable done-when) are in
+[docs/stack-plan.md](docs/stack-plan.md).

@@ -22,7 +22,7 @@ public class NotionClient {
     public NotionClient(NotionProperties props) {
         this.props = props;
         this.http = RestClient.builder()
-                .baseUrl("https://api.notion.com/v1")
+                .baseUrl(props.baseUrl())
                 .defaultHeader("Authorization", "Bearer " + props.token())
                 .defaultHeader("Notion-Version", props.version())
                 .build();

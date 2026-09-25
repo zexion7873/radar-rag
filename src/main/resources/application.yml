@@ -22,13 +22,17 @@ spring:
     vectorstore:
       pgvector:
         dimensions: 384
-        index-type: HNSW
+        # Exact search: HNSW filters after its approximate scan, so a week-filtered /search could
+        # return < topK rows. An existing HNSW table needs the one-time drop in the README.
+        index-type: NONE
         distance-type: COSINE_DISTANCE
         initialize-schema: true            # creates the vector_store table on first run
 
 radar:
   notion:
     token: ${NOTION_TOKEN}
+    # Overridable so tests and the eval harness can point the service at a local Notion stub.
+    base-url: ${NOTION_BASE_URL:https://api.notion.com/v1}
     version: "2025-09-03"                   # the API version that introduced data sources
     # Trending Archive data source (same id as github-radar-ui/lib/config.ts).
     trending-data-source: ${TRENDING_DATA_SOURCE:f67aaa24-d5f2-415c-9358-c7d9d2f9713e}
