@@ -1,6 +1,6 @@
 spring:
   application:
-    name: radar-intelligence-service
+    name: radar-rag
   datasource:
     url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/radar}
     username: ${POSTGRES_USER:radar}
