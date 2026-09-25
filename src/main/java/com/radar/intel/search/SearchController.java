@@ -37,7 +37,7 @@ public class SearchController {
                               Double minStars) {
     }
 
-    public record SearchHit(String text, Map<String, Object> metadata, Double score) {
+    public record SearchHit(String id, String text, Map<String, Object> metadata, Double score) {
     }
 
     /** Semantic search over the embedded radar archive, optionally filtered by metadata. */
@@ -49,7 +49,7 @@ public class SearchController {
                 SearchRequest.builder().query(req.q()).topK(k)
                         .filterExpression(toFilter(req)).build());
         return hits.stream()
-                .map(d -> new SearchHit(d.getText(), d.getMetadata(), d.getScore()))
+                .map(d -> new SearchHit(d.getId(), d.getText(), d.getMetadata(), d.getScore()))
                 .toList();
     }
 

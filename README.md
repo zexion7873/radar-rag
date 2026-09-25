@@ -58,9 +58,9 @@ curl -X POST localhost:8080/ask \
   -d '{"q":"which trending repos are about agent skills, and what do they do?"}'
 ```
 
-`/search` returns each hit's `text`, `metadata` (source/repo/week/category/language/url), and a
-similarity `score`. `/ask` returns `{answer, citations}`, where each citation is a source row
-(`repo` / `url` / `week` / retrieval `score`).
+`/search` returns each hit's document `id`, `text`, `metadata` (source/repo/week/category/language/url),
+and a similarity `score`. `/ask` returns `{answer, citations}`, where each citation is a source row
+(`id` / `repo` / `url` / `week` / retrieval `score`).
 
 ## Test
 

@@ -6,6 +6,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
+import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
@@ -15,13 +16,17 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(SearchController.class)
@@ -58,6 +63,18 @@ class SearchControllerTest {
         FilterExpressionBuilder b = new FilterExpressionBuilder();
         assertThat(sent.getValue().getFilterExpression())
                 .isEqualTo(b.and(b.eq("language", "Python"), b.eq("week", "2026-09-21")).build());
+    }
+
+    // The eval harness identifies rows by this id; dropping it would break its id checks silently.
+    @Test
+    void hitsCarryTheDocumentId() throws Exception {
+        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(
+                Document.builder().id("doc-1").text("t").metadata(Map.of("source", "trending")).score(0.5).build()));
+        mvc.perform(post("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(JSON.writeValueAsString(Map.of("q", "agents"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value("doc-1"));
     }
 
     @Test

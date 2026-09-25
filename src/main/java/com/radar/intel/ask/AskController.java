@@ -48,7 +48,7 @@ public class AskController {
     public record AskRequest(String q) {
     }
 
-    public record Citation(String repo, String url, String week, Double score) {
+    public record Citation(String id, String repo, String url, String week, Double score) {
     }
 
     public record AskResponse(String answer, List<Citation> citations) {
@@ -78,7 +78,7 @@ public class AskController {
         return ((List<Document>) list).stream()
                 .map(d -> {
                     Map<String, Object> md = d.getMetadata();
-                    return new Citation(str(md.get("repo")), str(md.get("url")),
+                    return new Citation(d.getId(), str(md.get("repo")), str(md.get("url")),
                             str(md.get("week")), d.getScore());
                 })
                 .toList();
