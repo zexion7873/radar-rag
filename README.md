@@ -158,6 +158,19 @@ MiniLM's English WordPiece vocabulary turns 76% of the corpus's CJK characters i
 multilingual models close the English-minus-Chinese hit@5 gap from 0.476 to 0.048. mE5 ranks the
 first hit higher (MRR) but finds one fewer zh-TW item, so paraphrase ships.
 
+**Answer quality** (`/ask` on `claude-opus-5-5`, judged by `claude-sonnet-5` through DeepEval; two
+runs on one commit, all 62 items): no errors, empty answers or repos named outside the citations.
+
+| metric | items | run 1 | run 2 |
+|---|---:|---:|---:|
+| Faithfulness | 42 answerable | 0.992 | 0.994 |
+| AnswerRelevancy | 42 answerable | 0.934 | 0.933 |
+| Attribution (GEval) | 42 answerable | 0.969 | 0.955 |
+| Abstention (GEval) | 10 no-answer + 10 adversarial | 0.890 | 0.890 |
+
+The means move by at most 0.014 between runs, single items by up to 0.42, so changes are compared
+on means. A run costs about $2.5.
+
 ## Notes / decisions
 
 - **Embeddings are local & keyless.** In-process ONNX (`paraphrase-multilingual-MiniLM-L12-v2`,
