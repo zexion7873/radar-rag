@@ -216,8 +216,9 @@ means. A run costs about $3.3.
 ## Notes / decisions
 
 - **Embeddings are local & keyless.** In-process ONNX (`paraphrase-multilingual-MiniLM-L12-v2`,
-  384-dim, maxLength 128) via `spring-ai-starter-model-transformers`, chosen by the A/B under
-  Results. After switching to another 384-d model, `POST /sync` re-embeds every row; a model with
+  384-dim, maxLength 128) through `OnnxEmbeddingModel`: ONNX Runtime plus the DJL tokenizer, with
+  the mean pooling in Java, summed in PyTorch's order so the vectors stay bit-identical to Spring AI's
+  transformers module (which needs PyTorch for that pooling alone). Chosen by the A/B under Results. After switching to another 384-d model, `POST /sync` re-embeds every row; a model with
   other dimensions also needs `spring.ai.vectorstore.pgvector.dimensions` changed and the
   `vector_store` table recreated (the embedding column is a fixed-width `vector(N)`).
 - **Exact vector search.** `index-type: NONE`: at a few hundred rows an HNSW index buys no speed,

@@ -76,9 +76,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       # Host networking: the image reaches the Postgres service and the harness's Notion stub on localhost.
+      # Cloud Run's 2 GiB with no swap, so a boot that outgrows it fails here first.
       - name: Start the image with Notion pointed at the stub's port
         run: |
-          docker run -d --name radar --network host --memory=2g \
+          docker run -d --name radar --network host --memory=2g --memory-swap=2g \
             -e NOTION_TOKEN=dummy -e NOTION_BASE_URL=http://127.0.0.1:8765 radar-rag:ci
           curl -s --retry 90 --retry-connrefused --retry-delay 2 -o /dev/null http://localhost:8080/
           docker logs radar 2>&1 | grep "Started RadarIntelligenceApplication"
