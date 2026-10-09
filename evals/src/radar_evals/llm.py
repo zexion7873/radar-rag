@@ -136,6 +136,7 @@ class ItemResult(BaseModel):
     generator_model: str | None = None
     generator_cost: float = 0.0
     metrics: dict[str, MetricResult] = {}
+    trace_id: str | None = None
 
 
 class RunResult(BaseModel):
@@ -152,41 +153,51 @@ class RunResult(BaseModel):
     generator_cost: float
     judge_cost: float
     failures: list[str]
+    langfuse_run_url: str | None = None
+
+
+def ask_one(
+    item: golden.GoldenItem,
+    client: RadarClient,
+    aliases: dict[str, str],
+    headers: dict[str, str] | None = None,
+) -> tuple[ItemResult, list[str] | None]:
+    """One answer plus its retrieval context; /search with the same q and k=5 returns the rows
+    /ask read (D1), which the judge needs because citations carry no row text."""
+    base = ItemResult(id=item.id, kind=item.kind, lang=item.lang, q=item.q)
+    try:
+        resp = client.ask(item.q, headers)
+    except httpx.HTTPStatusError as e:
+        return base.model_copy(update={"error": f"HTTP {e.response.status_code}"}), None
+    hits = client.search(item.q, TOP_K)
+    sources = {s.id for s in resp.sources}
+    if {h.id for h in hits} != sources:
+        raise RuntimeError(f"{item.id}: /search and /ask retrieved different rows")
+    result = base.model_copy(
+        update={
+            "answer": resp.answer,
+            "cited": sorted({c.repo for c in resp.citations if c.repo}),
+            "unsourced": unsourced_repos(resp, aliases),
+            "uncited": uncited_repos(resp, aliases),
+            "stray_citations": [c.id for c in resp.citations if c.id not in sources],
+            "citation_precision": citation_precision(resp, item.gains),
+            "generator_model": resp.usage.model,
+            "generator_cost": generator_cost(resp),
+        }
+    )
+    return result, [h.text for h in hits]
 
 
 def ask_items(
     items: list[golden.GoldenItem], client: RadarClient, aliases: dict[str, str]
 ) -> tuple[list[ItemResult], dict[str, list[str]]]:
-    """Answers plus each item's retrieval context; /search with the same q and k=5 returns the
-    rows /ask read (D1), which the judge needs because citations carry no row text."""
     results: list[ItemResult] = []
     contexts: dict[str, list[str]] = {}
     for item in items:
-        base = ItemResult(id=item.id, kind=item.kind, lang=item.lang, q=item.q)
-        try:
-            resp = client.ask(item.q)
-        except httpx.HTTPStatusError as e:
-            results.append(base.model_copy(update={"error": f"HTTP {e.response.status_code}"}))
-            continue
-        hits = client.search(item.q, TOP_K)
-        sources = {s.id for s in resp.sources}
-        if {h.id for h in hits} != sources:
-            raise RuntimeError(f"{item.id}: /search and /ask retrieved different rows")
-        contexts[item.id] = [h.text for h in hits]
-        results.append(
-            base.model_copy(
-                update={
-                    "answer": resp.answer,
-                    "cited": sorted({c.repo for c in resp.citations if c.repo}),
-                    "unsourced": unsourced_repos(resp, aliases),
-                    "uncited": uncited_repos(resp, aliases),
-                    "stray_citations": [c.id for c in resp.citations if c.id not in sources],
-                    "citation_precision": citation_precision(resp, item.gains),
-                    "generator_model": resp.usage.model,
-                    "generator_cost": generator_cost(resp),
-                }
-            )
-        )
+        result, context = ask_one(item, client, aliases)
+        results.append(result)
+        if context is not None:
+            contexts[item.id] = context
     return results, contexts
 
 
@@ -310,6 +321,8 @@ def summary(result: RunResult) -> str:
             f"{result.citation_precision:.3f} |"
         )
     uncited = sum(1 for r in result.items if r.uncited)
+    if result.langfuse_run_url:
+        lines += ["", f"Langfuse experiment: {result.langfuse_run_url}"]
     lines += [
         "",
         f"Answers naming a retrieved repo without citing it: {uncited} (not gated).",
@@ -347,6 +360,14 @@ def main(argv: list[str] | None = None) -> int:
     fixture = NotionFixture.model_validate_json(args.fixture.read_text(encoding="utf-8"))
     aliases = repo_aliases(fixture)
 
+    git_sha = _git_sha()
+    langfuse = None
+    if os.environ.get("LANGFUSE_PUBLIC_KEY") and os.environ.get("LANGFUSE_SECRET_KEY"):
+        from langfuse import Langfuse
+
+        langfuse = Langfuse()
+
+    run_url = None
     # /ask can take minutes on a hard question; the client's 300 s timeout covers it.
     with NotionStub(fixture, port=args.stub_port), RadarClient(args.service_url) as client:
         expected = sum(1 for p in fixture.pages if p.embeddable)
@@ -354,9 +375,40 @@ def main(argv: list[str] | None = None) -> int:
         if ingested != expected:
             print(f"/sync ingested {ingested} rows, the fixture has {expected}", file=sys.stderr)
             return 1
-        answered, contexts = ask_items(items, client, aliases)
+        if langfuse is None:
+            answered, contexts = ask_items(items, client, aliases)
+        else:
+            from radar_evals import tracing
+
+            asked: dict[str, tuple[ItemResult, list[str] | None]] = {}
+
+            def ask(item: golden.GoldenItem, headers: dict[str, str]) -> str | None:
+                asked[item.id] = ask_one(item, client, aliases, headers)
+                return asked[item.id][0].answer or asked[item.id][0].error
+
+            trace_ids, run_url = tracing.run_experiment(
+                langfuse, f"llm-eval {git_sha[:7]}", items, ask
+            )
+            answered = [
+                asked[i.id][0].model_copy(update={"trace_id": trace_ids.get(i.id)}) for i in items
+            ]
+            contexts = {i.id: c for i in items if (c := asked[i.id][1]) is not None}
 
     results = asyncio.run(judge_items(answered, contexts))
+    if langfuse is not None:
+        tracing.report_scores(
+            langfuse,
+            {r.id: r.trace_id for r in results if r.trace_id},
+            {
+                r.id: {n: (m.score, m.reason) for n, m in r.metrics.items()}
+                | (
+                    {"citation_precision": (r.citation_precision, None)}
+                    if r.citation_precision is not None
+                    else {}
+                )
+                for r in results
+            },
+        )
     metric_means = means(results)
     precisions = [r.citation_precision for r in results if r.citation_precision is not None]
     result = RunResult(
@@ -364,7 +416,7 @@ def main(argv: list[str] | None = None) -> int:
         golden_sha256=_sha256(args.golden),
         fixture_sha256=_sha256(args.fixture),
         judge_model=JUDGE_MODEL,
-        git_sha=_git_sha(),
+        git_sha=git_sha,
         floor=FLOOR,
         items=results,
         means=metric_means,
@@ -373,6 +425,7 @@ def main(argv: list[str] | None = None) -> int:
         generator_cost=sum(r.generator_cost for r in results),
         judge_cost=sum(m.cost for r in results for m in r.metrics.values()),
         failures=gate_failures(results, metric_means),
+        langfuse_run_url=run_url,
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(result.model_dump_json(indent=1) + "\n", encoding="utf-8")

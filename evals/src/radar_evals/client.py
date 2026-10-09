@@ -32,8 +32,8 @@ class RadarClient:
         resp.raise_for_status()
         return _HITS.validate_python(resp.json())
 
-    def ask(self, q: str) -> AskResponse:
-        resp = self._http.post("/ask", json={"q": q})
+    def ask(self, q: str, headers: dict[str, str] | None = None) -> AskResponse:
+        resp = self._http.post("/ask", json={"q": q}, headers=headers)
         resp.raise_for_status()
         return AskResponse.model_validate(resp.json())
 
