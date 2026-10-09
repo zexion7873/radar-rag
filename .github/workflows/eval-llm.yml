@@ -1,6 +1,6 @@
 name: LLM eval
 
-# Paid: every run calls /ask on Opus 5.5 and a Sonnet 5 judge for each golden item. It runs only when
+# Paid: every run calls /ask on Opus 5.5 and a Sonnet 5.5 judge for each golden item. It runs only when
 # asked: the eval:llm label on a PR, or a manual dispatch. Never switch this to pull_request_target.
 on:
   pull_request:
