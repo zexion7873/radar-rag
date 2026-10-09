@@ -1,4 +1,4 @@
-"""The service as the harness sees it: two HTTP endpoints, validated on the way in."""
+"""The service as the harness sees it: its HTTP endpoints, validated on the way in."""
 
 from types import TracebackType
 from typing import Self
@@ -6,7 +6,7 @@ from typing import Self
 import httpx
 from pydantic import TypeAdapter
 
-from radar_evals.models import SearchHit, SyncResponse
+from radar_evals.models import AskResponse, SearchHit, SyncResponse
 
 _HITS = TypeAdapter(list[SearchHit])
 
@@ -31,6 +31,11 @@ class RadarClient:
         resp = self._http.post("/search", json={"q": q, "topK": top_k})
         resp.raise_for_status()
         return _HITS.validate_python(resp.json())
+
+    def ask(self, q: str) -> AskResponse:
+        resp = self._http.post("/ask", json={"q": q})
+        resp.raise_for_status()
+        return AskResponse.model_validate(resp.json())
 
     def close(self) -> None:
         self._http.close()

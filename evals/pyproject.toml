@@ -4,6 +4,8 @@ version = "0.1.0"
 description = "Black-box retrieval and answer evals for the radar-rag service, over HTTP"
 requires-python = ">=3.13"
 dependencies = [
+    "anthropic>=1.12,<2",
+    "deepeval>=4.2.8,<5",
     "httpx>=0.28,<1",
     "pydantic>=2.11,<3",
 ]
@@ -11,6 +13,7 @@ dependencies = [
 [project.scripts]
 freeze-notion = "radar_evals.freeze_notion:main"
 radar-evals = "radar_evals.retrieval:main"
+radar-evals-llm = "radar_evals.llm:main"
 
 [build-system]
 requires = ["uv_build>=0.8.13,<0.13.0"]
@@ -47,4 +50,5 @@ markers = [
     "service: needs a running radar-rag service (EVAL_SERVICE_URL) backed by the Notion stub",
     "llm: calls a paid LLM; runs only on the labelled eval-llm workflow",
 ]
-addopts = "-m 'not service and not llm' --strict-markers"
+# deepeval's pytest plugin is for its own test runner; the harness calls metrics directly.
+addopts = "-m 'not service and not llm' --strict-markers -p no:deepeval"

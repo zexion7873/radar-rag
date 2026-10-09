@@ -66,8 +66,9 @@ curl -X POST localhost:8080/ask \
 ```
 
 `/search` returns each hit's document `id`, `text`, `metadata` (source/repo/week/category/language/url),
-and a similarity `score`. `/ask` returns `{answer, citations}`, where each citation is a source row
-(`id` / `repo` / `url` / `week` / retrieval `score`).
+and a similarity `score`. `/ask` returns `{answer, citations, usage}`, where each citation is a source
+row (`id` / `repo` / `url` / `week` / retrieval `score`) and `usage` is the call's `model`,
+`inputTokens` and `outputTokens` (thinking included).
 
 ## Test
 
@@ -100,12 +101,20 @@ EVAL_SERVICE_URL=http://localhost:8080 uv run pytest -m service
 uv run radar-evals --golden golden_v1.jsonl --fixture fixtures/trending.json \
   --model-id paraphrase-multilingual-MiniLM-L12-v2 --out results/latest.json --baseline results/baseline.json --write-baseline
 
+# LLM eval (paid, ~$2 per full run): /ask on every golden item, two code checks (no empty answer,
+# no repo named outside the citations), then DeepEval metrics judged by claude-sonnet-5. The
+# service and this command both need ANTHROPIC_API_KEY.
+uv run radar-evals-llm --golden golden_v1.jsonl --fixture fixtures/trending.json --out results/llm-latest.json
+
 # Re-capture the fixture (reads Notion; keeps only the columns the service parses).
 NOTION_TOKEN=ntn_... uv run freeze-notion
 ```
 
 CI runs the unit tests in `evals` and the live-service tests in `eval-retrieval`, against a
-pgvector service container on the same tag as `docker-compose.yml`.
+pgvector service container on the same tag as `docker-compose.yml`. The LLM eval runs in
+`eval-llm.yml` only when the repo owner adds the `eval:llm` label to a PR or dispatches it; it reads
+the key from the `ANTHROPIC_API_KEY` repository secret. It fails on any `/ask` error, empty answer or
+uncited repo, and when a metric's mean is below 0.7.
 
 ## Layout
 

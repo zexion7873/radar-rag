@@ -1,0 +1,160 @@
+import json
+from typing import Any
+
+import httpx
+import pytest
+
+from radar_evals import golden, llm
+from radar_evals.client import RadarClient
+from radar_evals.models import AskResponse, FrozenPage, NotionFixture
+
+REPOS = [
+    "microsoft/markitdown",
+    "openai/codex",
+    "anthropics/skills",
+    "vercel-labs/skills",
+    "AgriciDaniel/claude-obsidian",
+    "comfyanonymous/ComfyUI",
+]
+
+
+def _page(repo: str) -> FrozenPage:
+    return FrozenPage(
+        id=repo, properties={"Repo": {"type": "title", "title": [{"plain_text": repo}]}}
+    )
+
+
+FIXTURE = NotionFixture(
+    data_source_id="ds", captured_at="2026-10-09", pages=[_page(r) for r in REPOS]
+)
+ALIASES = llm.repo_aliases(FIXTURE)
+
+
+def test_aliases_keep_full_names_and_only_distinctive_unique_bare_names() -> None:
+    assert ALIASES == {
+        "microsoft/markitdown": "microsoft/markitdown",
+        "openai/codex": "openai/codex",
+        "anthropics/skills": "anthropics/skills",
+        "vercel-labs/skills": "vercel-labs/skills",
+        "agricidaniel/claude-obsidian": "agricidaniel/claude-obsidian",
+        "comfyanonymous/comfyui": "comfyanonymous/comfyui",
+        "claude-obsidian": "agricidaniel/claude-obsidian",
+        "comfyui": "comfyanonymous/comfyui",
+    }
+
+
+@pytest.mark.parametrize(
+    ("answer", "expected"),
+    [
+        ("可以用ComfyUI來做", {"comfyanonymous/comfyui"}),
+        ("看 microsoft/markitdown。", {"microsoft/markitdown"}),
+        ("https://github.com/openai/codex", {"openai/codex"}),
+        ("`claude-obsidian` 跟 Obsidian 整合", {"agricidaniel/claude-obsidian"}),
+        ("codex 和 skills 都是普通的字", set()),
+        ("claude-obsidian-x 是別的專案", set()),
+        ("CI/CD and/or input/output", set()),
+    ],
+)
+def test_mentions(answer: str, expected: set[str]) -> None:
+    assert llm.mentioned_repos(answer, ALIASES) == expected
+
+
+def _ask(answer: str, cited: list[str], model: str = "claude-opus-5-5") -> dict[str, Any]:
+    return {
+        "answer": answer,
+        "citations": [{"id": f"id-{r}", "repo": r, "url": None, "week": None} for r in cited],
+        "usage": {"model": model, "inputTokens": 1000, "outputTokens": 500},
+    }
+
+
+def test_uncited_compares_repo_names_case_insensitively() -> None:
+    resp = AskResponse.model_validate(
+        _ask("ComfyUI 和 microsoft/markitdown", ["comfyanonymous/ComfyUI"])
+    )
+    assert llm.uncited_repos(resp, ALIASES) == ["microsoft/markitdown"]
+
+
+def test_generator_cost_uses_opus_5_5_prices() -> None:
+    # 1000 x $4/MTok + 500 x $20/MTok
+    assert llm.generator_cost(AskResponse.model_validate(_ask("a", []))) == pytest.approx(0.014)
+
+
+def test_generator_cost_refuses_an_unpriced_model() -> None:
+    with pytest.raises(ValueError, match="no price"):
+        llm.generator_cost(AskResponse.model_validate(_ask("a", [], model="claude-opus-9")))
+
+
+def _result(id: str, **scores: float) -> llm.ItemResult:
+    return llm.ItemResult(
+        id=id,
+        kind="answerable",
+        lang="zh-TW",
+        q="q",
+        answer="a",
+        metrics={n: llm.MetricResult(score=s, reason=None, cost=0.0) for n, s in scores.items()},
+    )
+
+
+def test_means_average_only_items_that_carry_the_metric() -> None:
+    results = [_result("a", faithfulness=1.0, abstention=0.2), _result("b", faithfulness=0.5)]
+    assert llm.means(results) == {"abstention": 0.2, "faithfulness": 0.75}
+
+
+def test_gate_fails_on_errors_empty_answers_uncited_repos_and_low_means() -> None:
+    results = [
+        llm.ItemResult(id="e", kind="answerable", lang="en", q="q", error="HTTP 502"),
+        llm.ItemResult(id="b", kind="answerable", lang="en", q="q", answer="  "),
+        llm.ItemResult(id="u", kind="answerable", lang="en", q="q", answer="x", uncited=["a/b"]),
+        _result("ok"),
+    ]
+    assert llm.gate_failures(results, {"faithfulness": 0.69, "attribution": 0.7}) == [
+        "e: /ask HTTP 502",
+        "b: empty answer",
+        "u: uncited a/b",
+        "faithfulness mean 0.690 < 0.7",
+    ]
+
+
+def _service(asks: dict[str, httpx.Response], search_ids: dict[str, list[str]]) -> RadarClient:
+    def handle(request: httpx.Request) -> httpx.Response:
+        q = json.loads(request.content)["q"]
+        if request.url.path == "/ask":
+            return asks[q]
+        hits = [
+            {"id": i, "text": f"row {i}", "metadata": {"source": "trending"}, "score": 0.5}
+            for i in search_ids[q]
+        ]
+        return httpx.Response(200, json=hits)
+
+    return RadarClient("http://svc", transport=httpx.MockTransport(handle))
+
+
+ITEMS = [
+    golden.GoldenItem(id="n1", q="音樂", lang="zh-TW", kind="no-answer"),
+    golden.GoldenItem(id="n2", q="加密貨幣", lang="zh-TW", kind="no-answer"),
+]
+
+
+def test_ask_items_records_http_errors_and_keeps_the_rows_ask_read() -> None:
+    client = _service(
+        {
+            "音樂": httpx.Response(200, json=_ask("沒有相關的", ["openai/codex"])),
+            "加密貨幣": httpx.Response(502, json={"error": "llm declined the request"}),
+        },
+        {"音樂": ["id-openai/codex"]},
+    )
+    results, contexts = llm.ask_items(ITEMS, client, ALIASES)
+    assert [(r.id, r.error, r.answer) for r in results] == [
+        ("n1", None, "沒有相關的"),
+        ("n2", "HTTP 502", None),
+    ]
+    assert results[0].generator_cost == pytest.approx(0.014)
+    assert contexts == {"n1": ["row id-openai/codex"]}
+
+
+def test_ask_items_refuses_when_search_and_ask_retrieve_different_rows() -> None:
+    client = _service(
+        {"音樂": httpx.Response(200, json=_ask("x", ["openai/codex"]))}, {"音樂": ["other"]}
+    )
+    with pytest.raises(RuntimeError, match="different rows"):
+        llm.ask_items(ITEMS[:1], client, ALIASES)
