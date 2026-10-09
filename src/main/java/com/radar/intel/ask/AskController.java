@@ -3,6 +3,8 @@ package com.radar.intel.ask;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.ChatClientResponse;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
 import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
@@ -15,6 +17,8 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * P2: grounded Q&A over the radar archive. Retrieve relevant rows from pgvector,
@@ -65,8 +69,26 @@ public class AskController {
                 .call()
                 .chatClientResponse();
 
-        String answer = resp.chatResponse().getResult().getOutput().getText();
-        return new AskResponse(answer, citations(resp));
+        List<Generation> generations = resp.chatResponse().getResults();
+        // A refusal comes back as HTTP 200 with no text; without this it reads as an empty answer.
+        if (generations.stream().anyMatch(g -> "refusal".equals(g.getMetadata().getFinishReason()))) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "llm declined the request");
+        }
+        return new AskResponse(answerText(generations), citations(resp));
+    }
+
+    /**
+     * Joins the text blocks. Spring AI 1.0.0 turns each thinking block into its own Generation, marked
+     * by a "signature" (or, redacted, "data") metadata key; Opus 5.5 always thinks, so the first
+     * Generation is usually a thinking block with empty text.
+     */
+    private static String answerText(List<Generation> generations) {
+        return generations.stream()
+                .map(Generation::getOutput)
+                .filter(m -> !m.getMetadata().containsKey("signature") && !m.getMetadata().containsKey("data"))
+                .map(AssistantMessage::getText)
+                .filter(Objects::nonNull)
+                .collect(Collectors.joining());
     }
 
     @SuppressWarnings("unchecked")
