@@ -4,12 +4,6 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
-    # Framework moves wait for the eval-gated migration (docs/stack-plan.md M6, which deletes these);
-    # Spring AI is held entirely because M1's fixes are pinned to 1.0.0 behaviour.
-    ignore:
-      - dependency-name: "org.springframework.boot:*"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
-      - dependency-name: "org.springframework.ai:*"
     groups:
       # Majors fall through to individual PRs so each gets a human read.
       minor-and-patch:

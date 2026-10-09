@@ -29,17 +29,14 @@ spring:
     # so /sync and /search stay usable without an Anthropic key.
     anthropic:
       api-key: ${ANTHROPIC_API_KEY:}
+      # The anthropic-java SDK retries 408/409/429/5xx itself (default 2 retries); one retry keeps a
+      # 529 from holding /ask, and ApiErrorHandler then answers 503.
+      max-retries: 1
       chat:
-        options:
-          # Opus 5.5 always thinks and rejects sampling parameters; AnthropicConfig builds the
-          # chat model from model + max-tokens only. Thinking tokens count against max-tokens.
-          model: ${ANTHROPIC_MODEL:claude-opus-5-5}
-          max-tokens: 16000
-    # The 1.0.0 default (10 attempts, 2s x5 backoff capped at 3 min) holds one /ask for ~20 min on
-    # a 529. 429 is listed so a rate limit is retried and surfaces as 503, like an overload.
-    retry:
-      max-attempts: 2
-      on-http-codes: 429
+        # Opus 5.5 always thinks and rejects sampling parameters; thinking tokens count against
+        # max-tokens. AskController sets the effort.
+        model: ${ANTHROPIC_MODEL:claude-opus-5-5}
+        max-tokens: 16000
     vectorstore:
       pgvector:
         dimensions: 384

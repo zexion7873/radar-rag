@@ -1,6 +1,6 @@
 package com.radar.intel.notion;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 
 /**
  * Typed extractors for Notion property nodes. Each property carries its own "type"
@@ -14,20 +14,20 @@ final class NotionProps {
     /** title and rich_text both store their runs as an array under their type key. */
     static String text(JsonNode props, String name) {
         JsonNode p = props.path(name);
-        JsonNode runs = p.path(p.path("type").asText());
+        JsonNode runs = p.path(p.path("type").asString());
         if (!runs.isArray()) {
             return "";
         }
         StringBuilder sb = new StringBuilder();
         for (JsonNode run : runs) {
-            sb.append(run.path("plain_text").asText(""));
+            sb.append(run.path("plain_text").asString(""));
         }
         return sb.toString();
     }
 
     static String select(JsonNode props, String name) {
         JsonNode sel = props.path(name).path("select");
-        return sel.hasNonNull("name") ? sel.get("name").asText() : null;
+        return sel.hasNonNull("name") ? sel.get("name").asString() : null;
     }
 
     static Double number(JsonNode props, String name) {
@@ -37,11 +37,11 @@ final class NotionProps {
 
     static String dateStart(JsonNode props, String name) {
         JsonNode d = props.path(name).path("date");
-        return d.hasNonNull("start") ? d.get("start").asText() : null;
+        return d.hasNonNull("start") ? d.get("start").asString() : null;
     }
 
     static String url(JsonNode props, String name) {
         JsonNode u = props.path(name).path("url");
-        return u.isTextual() ? u.asText() : null;
+        return u.isString() ? u.asString() : null;
     }
 }

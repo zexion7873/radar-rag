@@ -2,8 +2,10 @@ package com.radar.intel;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.ai.retry.NonTransientAiException;
-import org.springframework.ai.retry.TransientAiException;
+import com.anthropic.errors.AnthropicIoException;
+import com.anthropic.errors.AnthropicServiceException;
+import com.anthropic.errors.InternalServerException;
+import com.anthropic.errors.RateLimitException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -15,8 +17,8 @@ import java.util.Map;
 
 /**
  * Maps upstream failures to gateway statuses. Notion causes go in the JSON body (Spring's opaque
- * 500 hid a Notion 401 during the P0 bring-up). LLM causes are only logged: Spring AI 1.0.0 builds
- * their message as "HTTP code - upstream body", which must not reach /ask callers.
+ * 500 hid a Notion 401 during the P0 bring-up). LLM causes are only logged: the anthropic-java SDK's
+ * exception messages carry the upstream body, which must not reach /ask callers.
  */
 @RestControllerAdvice
 class ApiErrorHandler {
@@ -39,17 +41,17 @@ class ApiErrorHandler {
     }
 
     /** LLM call failed with a client error (bad request, missing/invalid ANTHROPIC_API_KEY). */
-    @ExceptionHandler(NonTransientAiException.class)
+    @ExceptionHandler(AnthropicServiceException.class)
     @ResponseStatus(HttpStatus.BAD_GATEWAY)
-    Map<String, Object> llmClientError(NonTransientAiException e) {
+    Map<String, Object> llmClientError(AnthropicServiceException e) {
         log.warn("LLM call failed", e);
         return Map.of("error", "llm upstream error");
     }
 
-    /** LLM call still failed after its retry (rate limit, overload, upstream 5xx). */
-    @ExceptionHandler(TransientAiException.class)
+    /** LLM call still failed after the SDK's retry (rate limit, overload, upstream 5xx, network). */
+    @ExceptionHandler({RateLimitException.class, InternalServerException.class, AnthropicIoException.class})
     @ResponseStatus(HttpStatus.SERVICE_UNAVAILABLE)
-    Map<String, Object> llmTransient(TransientAiException e) {
+    Map<String, Object> llmTransient(RuntimeException e) {
         log.warn("LLM call failed after retry", e);
         return Map.of("error", "llm temporarily unavailable");
     }
