@@ -46,7 +46,23 @@ spring:
         distance-type: COSINE_DISTANCE
         initialize-schema: true            # creates the vector_store table on first run
 
+management:
+  tracing:
+    sampling:
+      # Every request: a single-user service, and a sampled-out /ask is a missing Langfuse trace.
+      probability: 1.0
+  otlp:
+    metrics:
+      export:
+        # The OpenTelemetry starter brings an OTLP metrics registry that pushes to localhost:4318.
+        enabled: false
+
 radar:
+  langfuse:
+    # Without both keys LangfuseTracingConfig exports nothing.
+    public-key: ${LANGFUSE_PUBLIC_KEY:}
+    secret-key: ${LANGFUSE_SECRET_KEY:}
+    base-url: ${LANGFUSE_BASE_URL:https://jp.cloud.langfuse.com}
   notion:
     token: ${NOTION_TOKEN}
     # Overridable so tests and the eval harness can point the service at a local Notion stub.
