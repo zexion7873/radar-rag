@@ -24,7 +24,7 @@ request into Langfuse (see [docs/stack-plan.md](docs/stack-plan.md)).
 
 ## Prerequisites
 
-- Java 21 or newer (CI builds on Temurin 21)
+- Java 25 or newer (CI builds on Temurin 25)
 - Docker (for the pgvector Postgres)
 - The **Notion integration token** already shared into the archive tables
 
