@@ -71,6 +71,23 @@ retrieved rows (`id` / `repo` / `url` / `week` / retrieval `score`); `citations`
 answer cites, each with the passages it quoted (`citedText`); `usage` is the call's `model`,
 `inputTokens` and `outputTokens` (thinking included).
 
+### In a container
+
+The image fetches the model itself and carries everything the service loads, libtorch included, so
+it downloads nothing at runtime. CI's retrieval gate runs this image.
+
+```bash
+docker build --platform linux/amd64 -t radar-rag .
+docker run --rm -p 127.0.0.1:8080:8080 --memory=2g \
+  -e POSTGRES_URL=jdbc:postgresql://host.docker.internal:5432/radar \
+  -e NOTION_TOKEN -e ANTHROPIC_API_KEY radar-rag
+```
+
+Size it at 2 GiB: the model is read as one on-heap array before ONNX Runtime copies it natively, so
+the heap is set to 55% of the container (`-XX:MaxRAMPercentage=55`). The image starts from an AOT
+cache made by a training run at build time, inside the image, because the cache only loads on the
+JVM that trained it.
+
 ## Test
 
 ```bash

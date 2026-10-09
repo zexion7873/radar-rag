@@ -1,0 +1,6 @@
+# Allowlist: the build fetches the model itself, and .env must never reach the daemon.
+*
+!pom.xml
+!src/main
+!scripts/fetch-models.sh
+!docker
