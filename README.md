@@ -16,8 +16,8 @@ grounded Q&A with citations. Evals and tracing come in later phases (see [docs/s
 - `POST /search` — semantic search over the embedded rows, optionally filtered by metadata
   (`source` / `category` / `language` / `week` exact match, `stars_per_week` ≥ `minStars`).
 - `POST /ask` — ask a question in natural language; the service retrieves the relevant radar
-  rows from pgvector, has **Claude** answer from them, and returns the answer plus the source
-  rows as **citations**. Needs `ANTHROPIC_API_KEY`; `/sync` and `/search` do not. Runs on
+  rows from pgvector, sends them to **Claude** as citable documents, and returns the answer plus
+  the rows it actually cites as **citations**. Needs `ANTHROPIC_API_KEY`; `/sync` and `/search` do not. Runs on
   `claude-opus-5-5`. A model refusal returns 502; an Anthropic failure returns 502 (client error,
   e.g. a bad key) or 503 (rate limit or overload, after one retry), without the upstream body.
 
@@ -65,8 +65,9 @@ curl -X POST localhost:8080/ask \
 ```
 
 `/search` returns each hit's document `id`, `text`, `metadata` (source/repo/week/category/language/url),
-and a similarity `score`. `/ask` returns `{answer, citations, usage}`, where each citation is a source
-row (`id` / `repo` / `url` / `week` / retrieval `score`) and `usage` is the call's `model`,
+and a similarity `score`. `/ask` returns `{answer, citations, sources, usage}`. `sources` are the 5
+retrieved rows (`id` / `repo` / `url` / `week` / retrieval `score`); `citations` are the sources the
+answer cites, each with the passages it quoted (`citedText`); `usage` is the call's `model`,
 `inputTokens` and `outputTokens` (thinking included).
 
 ## Test
@@ -100,9 +101,10 @@ EVAL_SERVICE_URL=http://localhost:8080 uv run pytest -m service
 uv run radar-evals --golden golden_v1.jsonl --fixture fixtures/trending.json \
   --model-id paraphrase-multilingual-MiniLM-L12-v2 --out results/latest.json --baseline results/baseline.json --write-baseline
 
-# LLM eval (paid, ~$2.5 per full run): /ask on every golden item, two code checks (no empty answer,
-# no repo named outside the citations), then DeepEval metrics judged by claude-sonnet-5. The
-# service and this command both need ANTHROPIC_API_KEY.
+# LLM eval (paid, ~$3 per full run): /ask on every golden item, code checks (no empty answer, no
+# repo named outside the citations, no citation outside the retrieved rows), citation precision
+# against the golden labels, then DeepEval metrics judged by claude-sonnet-5. The service and
+# this command both need ANTHROPIC_API_KEY.
 uv run radar-evals-llm --golden golden_v1.jsonl --fixture fixtures/trending.json --out results/llm-latest.json
 
 # Re-capture the fixture (reads Notion; keeps only the columns the service parses).
@@ -112,8 +114,8 @@ NOTION_TOKEN=ntn_... uv run freeze-notion
 CI runs the unit tests in `evals` and the live-service tests in `eval-retrieval`, against a
 pgvector service container on the same tag as `docker-compose.yml`. The LLM eval runs in
 `eval-llm.yml` only when the repo owner adds the `eval:llm` label to a PR or dispatches it; it reads
-the key from the `ANTHROPIC_API_KEY` repository secret. It fails on any `/ask` error, empty answer or
-uncited repo, and when a metric's mean is below 0.7.
+the key from the `ANTHROPIC_API_KEY` repository secret. It fails on any `/ask` error, empty answer,
+uncited repo or citation outside the retrieved rows, and when a metric's mean is below 0.7.
 
 ## Layout
 
@@ -131,7 +133,7 @@ src/main/java/com/radar/intel/
 ├── search/
 │   └── SearchController.java           # POST /search
 ├── ask/
-│   └── AskController.java              # POST /ask — RetrievalAugmentationAdvisor + Claude, with citations
+│   └── AskController.java              # POST /ask — retrieve, Claude with citation documents, cited rows
 └── ApiErrorHandler.java                # surfaces upstream (Notion / Anthropic) failure causes
 ```
 
@@ -189,8 +191,8 @@ on means. A run costs about $2.5.
 - **Spring AI moves fast.** Versions/artifact ids match the reference docs at scaffold time —
   verify against `start.spring.io` / the current reference when you build.
 - **RAG is grounded, not filtered.** `/ask` retrieves from the same pgvector store `/search` uses
-  (`RetrievalAugmentationAdvisor` + `VectorStoreDocumentRetriever`) and returns the retrieved rows
-  as citations. It takes only a question — no metadata-filter fields — so it has no SQL-filter
+  (`VectorStoreDocumentRetriever`), sends each row as an Anthropic citation document titled
+  "repo week", and returns only the rows Claude cites. It takes only a question — no metadata-filter fields — so it has no SQL-filter
   input surface (unlike `/search`, which validates its filter values). The retriever keeps every
   candidate (similarity threshold 0) and bounds the context by `topK`.
 
