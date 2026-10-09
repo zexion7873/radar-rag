@@ -101,7 +101,7 @@ EVAL_SERVICE_URL=http://localhost:8080 uv run pytest -m service
 uv run radar-evals --golden golden_v1.jsonl --fixture fixtures/trending.json \
   --model-id paraphrase-multilingual-MiniLM-L12-v2 --out results/latest.json --baseline results/baseline.json --write-baseline
 
-# LLM eval (paid, ~$2 per full run): /ask on every golden item, two code checks (no empty answer,
+# LLM eval (paid, ~$2.5 per full run): /ask on every golden item, two code checks (no empty answer,
 # no repo named outside the citations), then DeepEval metrics judged by claude-sonnet-5. The
 # service and this command both need ANTHROPIC_API_KEY.
 uv run radar-evals-llm --golden golden_v1.jsonl --fixture fixtures/trending.json --out results/llm-latest.json

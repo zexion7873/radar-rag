@@ -184,7 +184,9 @@ async def judge_items(
         # Metrics keep score, reason and cost on the instance, so each measurement gets its own.
         match name:
             case "faithfulness":
-                return FaithfulnessMetric(model=judge, penalize_ambiguous_claims=True)
+                # Only contradicted claims count against the answer. Penalising unverifiable ones
+                # also hits "nothing on the radar does X", which the /ask prompt asks for.
+                return FaithfulnessMetric(model=judge)
             case "answer_relevancy":
                 return AnswerRelevancyMetric(model=judge)
             case "attribution":
