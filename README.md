@@ -1,18 +1,26 @@
-# Radar Intelligence Service
+<div align="center">
+
+# 📡 Radar RAG
 
 [![CI](https://github.com/zexion7873/radar-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/zexion7873/radar-rag/actions/workflows/ci.yml)
 
-A standalone Java / Spring Boot service that adds LLM-powered intelligence on top of the
-GitHub-radar Notion archive written by the `ai-assistant` routines. **P0** stands up the
-skeleton: pgvector, Notion ingestion of the **Trending** table, and a semantic `/search`
-endpoint. **P1** adds metadata-filtered search. **P2** adds a RAG `/ask` endpoint —
-grounded Q&A with citations. **P3** adds a Python eval harness with CI gates, and **P4** traces every
-request into Langfuse (see [docs/stack-plan.md](docs/stack-plan.md)).
+<img src="docs/assets/social-card.png" width="640" alt="Radar RAG's social card: the radar mark, the name Radar RAG, and the line: Ask the radar. Get the citations.">
 
-> Not a proxy in front of Notion — it exposes *new* capabilities (semantic search and
-> grounded Q&A) that the pure-reader `github-radar-ui` cannot do.
+**Ask the GitHub Radar archive a question, in Chinese or English, and get an answer grounded
+in the weekly trending rows, with citations back to the rows it used.**
 
-## How it fits together
+[![License: MIT](https://img.shields.io/github/license/zexion7873/radar-rag?style=flat)](LICENSE)
+[![Java 25](https://img.shields.io/badge/Java-25-orange?style=flat)](#-prerequisites)
+[![Evals: gated in CI](https://img.shields.io/badge/evals-gated%20in%20CI-brightgreen?style=flat)](#-results)
+
+No embedding API. No vector database service. No PyTorch. One JVM, one pgvector table, and a Python
+harness that gates every pull request.
+
+</div>
+
+---
+
+## 🧭 How it fits together
 
 ```mermaid
 flowchart LR
@@ -28,7 +36,19 @@ flowchart LR
   claude -.->|OTLP traces| langfuse[(Langfuse)]
 ```
 
-## What P0–P2 gives you
+---
+
+## 🌐 What it gives you
+
+A standalone Java / Spring Boot service that adds LLM-powered intelligence on top of the
+GitHub-radar Notion archive written by the `ai-assistant` routines. **P0** stands up the
+skeleton: pgvector, Notion ingestion of the **Trending** table, and a semantic `/search`
+endpoint. **P1** adds metadata-filtered search. **P2** adds a RAG `/ask` endpoint —
+grounded Q&A with citations. **P3** adds a Python eval harness with CI gates, and **P4** traces every
+request into Langfuse (see [docs/stack-plan.md](docs/stack-plan.md)).
+
+> Not a proxy in front of Notion — it exposes *new* capabilities (semantic search and
+> grounded Q&A) that the pure-reader `github-radar-ui` cannot do.
 
 - `POST /sync` — pull the Trending Archive from Notion and replace its rows in pgvector: one
   document per Notion row (one repo, one week), keyed by the Notion page id.
@@ -40,7 +60,9 @@ flowchart LR
   `claude-opus-5-5`. A model refusal returns 502; an Anthropic failure returns 502 (client error,
   e.g. a bad key) or 503 (rate limit or overload, after one retry), without the upstream body.
 
-## Prerequisites
+---
+
+## 📋 Prerequisites
 
 - Java 25 or newer (CI builds on Temurin 25)
 - Docker (for the pgvector Postgres)
@@ -50,7 +72,9 @@ Embeddings run **locally in-process** (ONNX `paraphrase-multilingual-MiniLM-L12-
 API key. `scripts/fetch-models.sh` downloads the model (~480 MB) once, at a pinned Hugging Face
 revision with a sha256 check; the service loads it from `models/` and will not start without it.
 
-## Run
+---
+
+## 🏃 Run
 
 ```bash
 # 0. Fetch the embedding model (once; re-runs skip files that already match)
@@ -92,7 +116,7 @@ answer cites, each with the passages it quoted (`citedText`); `usage` is the cal
 The OpenAPI spec is at `/v3/api-docs` and Swagger UI at `/swagger-ui.html`, both generated from the
 controllers.
 
-### In a container
+### 🐳 In a container
 
 The image fetches the model itself and carries everything the service loads, so it downloads nothing
 at runtime. CI's retrieval gate runs this image. Compose builds and runs it beside Postgres, reading
@@ -108,7 +132,9 @@ The container gets 2 GiB and no swap, as on Cloud Run: ONNX Runtime holds the mo
 an AOT cache made by a training run at build time, inside the image, because the cache only loads on
 the JVM that trained it.
 
-## Test
+---
+
+## 🧪 Test
 
 ```bash
 mvn -B verify   # unit + slice tests, then AskFlowIT; no tokens. CI runs the same on every PR.
@@ -118,7 +144,9 @@ mvn -B verify   # unit + slice tests, then AskFlowIT; no tokens. CI runs the sam
 On macOS, Docker Desktop must expose its default socket, or set
 `DOCKER_HOST=unix://$HOME/.docker/run/docker.sock`.
 
-## Evals (`evals/`, Python)
+---
+
+## 📏 Evals (`evals/`, Python)
 
 A typed Python package (uv, pydantic, httpx, pytest, mypy strict, ruff) that tests the service as a
 black box over HTTP. It serves a frozen copy of the Notion Trending table from a local stub, so an
@@ -156,7 +184,9 @@ the key from the `ANTHROPIC_API_KEY` repository secret, and with the `LANGFUSE_P
 `LANGFUSE_SECRET_KEY` secrets each run is also a Langfuse experiment. It fails on any `/ask` error, empty answer,
 repo named or cited outside the retrieved rows, and when a metric's mean is below 0.7.
 
-## Tracing (Langfuse)
+---
+
+## 🔭 Tracing (Langfuse)
 
 With `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` set (and `LANGFUSE_BASE_URL` for a region other
 than Japan), the service sends every request's spans to Langfuse over OTLP: the HTTP request, the
@@ -168,7 +198,9 @@ dataset `golden_v1`, runs it as an experiment, passes `traceparent` to `/ask` so
 nest under each item, and attaches the judge's scores and citation precision to each item. Such a
 run needs the full golden set: a subset run against the fuller dataset is refused.
 
-## Layout
+---
+
+## 🗂️ Layout
 
 ```
 src/main/java/com/radar/intel/
@@ -181,6 +213,10 @@ src/main/java/com/radar/intel/
 ├── ingest/
 │   ├── TrendingIngestService.java      # Notion rows -> Documents; /sync replaces the trending rows
 │   └── IngestController.java           # POST /sync
+├── embedding/
+│   ├── EmbeddingProperties.java        # radar.embedding.* config (model and tokenizer paths)
+│   ├── EmbeddingConfig.java            # the EmbeddingModel bean
+│   └── OnnxEmbeddingModel.java         # ONNX Runtime + DJL tokenizer, mean pooling in Java
 ├── search/
 │   └── SearchController.java           # POST /search
 ├── ask/
@@ -192,7 +228,9 @@ src/main/java/com/radar/intel/
 └── ApiErrorHandler.java                # surfaces upstream (Notion / Anthropic) failure causes
 ```
 
-## Results
+---
+
+## 📊 Results
 
 All numbers come from the CI runner over the 62-item golden set: hit@5, recall@5 and MRR at the
 (url, week) level, on the 42 answerable items unless the column says otherwise.
@@ -230,7 +268,9 @@ The judge agrees with a blind human grade on 11 of 12 items, in each of two hand
 means move by at most 0.011 between runs and single items by up to 0.27, so changes are compared on
 means. A run costs about $3.3.
 
-## Notes / decisions
+---
+
+## 🧠 Notes / decisions
 
 - **Embeddings are local & keyless.** In-process ONNX (`paraphrase-multilingual-MiniLM-L12-v2`,
   384-dim, maxLength 128) through `OnnxEmbeddingModel`: ONNX Runtime plus the DJL tokenizer, with
@@ -255,7 +295,9 @@ means. A run costs about $3.3.
   metadata-filter fields — so it has no SQL-filter input surface (unlike `/search`, which validates its filter values). The retriever keeps every
   candidate (similarity threshold 0) and bounds the context by `topK`.
 
-## Known limitations
+---
+
+## ⚠️ Known limitations
 
 - **Not deployed yet, and not hardened for it.** `/sync` has no authentication, nothing rate-limits
   `/ask`, Notion errors come back with Notion's body, and Swagger UI is on. That is fine on loopback,
@@ -269,7 +311,9 @@ means. A run costs about $3.3.
 - **amd64 image, 2 GiB.** The image targets Cloud Run's architecture, and ONNX Runtime keeps ~1.1 GB
   of the model in native memory.
 
-## Next
+---
+
+## 🗺️ Next
 
 ~~P1 metadata-filtered search~~ (done) · ~~P2 RAG `/ask` with citations~~ (done) · ~~P3 eval
 harness (retrieval metrics + LLM-as-judge) + CI gates~~ (done) · ~~P4 Langfuse tracing~~ (done) · P5 Blog/Loot ingest +
@@ -279,6 +323,8 @@ pure Notion reader).
 The target stack and the milestone order (M0–M11, each with a checkable done-when) are in
 [docs/stack-plan.md](docs/stack-plan.md).
 
-## License
+---
+
+## ⚖️ License
 
 [MIT](LICENSE).
