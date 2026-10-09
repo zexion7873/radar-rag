@@ -159,18 +159,21 @@ MiniLM's English WordPiece vocabulary turns 76% of the corpus's CJK characters i
 multilingual models close the English-minus-Chinese hit@5 gap from 0.476 to 0.048. mE5 ranks the
 first hit higher (MRR) but finds one fewer zh-TW item, so paraphrase ships.
 
-**Answer quality** (`/ask` on `claude-opus-5-5`, judged by `claude-sonnet-5` through DeepEval; two
-runs on one commit, all 62 items): no errors, empty answers or repos named outside the retrieved rows.
+**Answer quality** (`/ask` on `claude-opus-5-5` with native citations, judged by
+`claude-sonnet-5-5` through DeepEval; two runs on one commit, all 62 items): no errors, empty
+answers, or repos named or cited outside the retrieved rows.
 
 | metric | items | run 1 | run 2 |
 |---|---:|---:|---:|
-| Faithfulness | 42 answerable | 0.992 | 0.994 |
-| AnswerRelevancy | 42 answerable | 0.934 | 0.933 |
-| Attribution (GEval) | 42 answerable | 0.969 | 0.955 |
-| Abstention (GEval) | 10 no-answer + 10 adversarial | 0.890 | 0.890 |
+| Faithfulness | 42 answerable | 1.000 | 0.998 |
+| AnswerRelevancy | 42 answerable | 0.904 | 0.915 |
+| Attribution (GEval) | 42 answerable | 0.943 | 0.945 |
+| Abstention (GEval) | 10 no-answer + 10 adversarial | 0.870 | 0.860 |
+| Citation precision | items with labels and citations | 0.640 | 0.637 |
 
-The means move by at most 0.014 between runs, single items by up to 0.42, so changes are compared
-on means. A run costs about $2.5.
+The judge agrees with a blind human grade on 11 of 12 items, in each of two hand-graded sets. The
+means move by at most 0.011 between runs and single items by up to 0.27, so changes are compared on
+means. A run costs about $3.3.
 
 ## Notes / decisions
 
@@ -192,14 +195,14 @@ on means. A run costs about $2.5.
   verify against `start.spring.io` / the current reference when you build.
 - **RAG is grounded, not filtered.** `/ask` retrieves from the same pgvector store `/search` uses
   (`VectorStoreDocumentRetriever`), sends each row as an Anthropic citation document titled
-  "repo week", and returns only the rows Claude cites. It takes only a question — no metadata-filter fields — so it has no SQL-filter
-  input surface (unlike `/search`, which validates its filter values). The retriever keeps every
+  "repo week", and returns only the rows Claude cites. It takes only a question — no
+  metadata-filter fields — so it has no SQL-filter input surface (unlike `/search`, which validates its filter values). The retriever keeps every
   candidate (similarity threshold 0) and bounds the context by `topK`.
 
 ## Next
 
-~~P1 metadata-filtered search~~ (done) · ~~P2 RAG `/ask` with citations~~ (done) · P3 eval
-harness (precision@k + LLM-as-judge) + CI gate · P4 Langfuse tracing · P5 Blog/Loot ingest +
+~~P1 metadata-filtered search~~ (done) · ~~P2 RAG `/ask` with citations~~ (done) · ~~P3 eval
+harness (retrieval metrics + LLM-as-judge) + CI gates~~ (done) · P4 Langfuse tracing · P5 Blog/Loot ingest +
 an "Ask the radar" page served by this service (github-radar-ui only links to it, so it stays a
 pure Notion reader).
 
