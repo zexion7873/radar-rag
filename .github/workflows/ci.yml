@@ -63,31 +63,25 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-java@v6
-        with:
-          distribution: temurin
-          java-version: "25"
-          cache: maven
       - uses: astral-sh/setup-uv@v10.2.0
         with:
           working-directory: evals
-      # DJL downloads its PyTorch natives at the first embed.
-      - uses: actions/cache@v6
+      # The gate runs the image that ships. Layers, including the ~480 MB model, come from the GHA cache.
+      - uses: docker/setup-buildx-action@v4.4.1
+      - uses: docker/build-push-action@v7.4.0
         with:
-          path: ~/.djl.ai
-          key: djl-${{ hashFiles('pom.xml') }}
-      # The embedding model (~480 MB), pinned and sha256-checked by the script.
-      - uses: actions/cache@v6
-        with:
-          path: models
-          key: models-${{ hashFiles('scripts/fetch-models.sh') }}
-      - run: scripts/fetch-models.sh
-      - run: mvn -B -q package -DskipTests
-      - name: Start the service with Notion pointed at the stub's port
+          context: .
+          load: true
+          tags: radar-rag:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      # Host networking: the image reaches the Postgres service and the harness's Notion stub on localhost.
+      - name: Start the image with Notion pointed at the stub's port
         run: |
-          NOTION_TOKEN=dummy NOTION_BASE_URL=http://127.0.0.1:8765 \
-            nohup java -jar target/radar-rag-0.0.1-SNAPSHOT.jar > service.log 2>&1 &
+          docker run -d --name radar --network host --memory=2g \
+            -e NOTION_TOKEN=dummy -e NOTION_BASE_URL=http://127.0.0.1:8765 radar-rag:ci
           curl -s --retry 90 --retry-connrefused --retry-delay 2 -o /dev/null http://localhost:8080/
+          docker logs radar 2>&1 | grep "Started RadarIntelligenceApplication"
       - name: Sync from the frozen fixture and query the live service
         working-directory: evals
         env:
@@ -121,4 +115,4 @@ jobs:
           path: evals/results/
           if-no-files-found: ignore
       - if: failure()
-        run: tail -n 200 service.log
+        run: docker logs radar 2>&1 | tail -n 200
