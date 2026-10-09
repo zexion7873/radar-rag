@@ -24,10 +24,12 @@ from radar_evals.models import AskResponse, NotionFixture, RowKey
 from radar_evals.notion_stub import NotionStub
 from radar_evals.retrieval import TOP_K, _git_sha, _sha256
 
-JUDGE_MODEL = "claude-sonnet-5"
+JUDGE_MODEL = "claude-sonnet-5-5"
 FLOOR = 0.7
 # USD per token, from https://platform.claude.com/docs/en/about-claude/pricing
 GENERATOR_PRICES: dict[str, tuple[float, float]] = {"claude-opus-5-5": (4.00e-6, 20.00e-6)}
+# DeepEval 4.2.8's registry has no price for the judge; without this its reported cost is wrong.
+JUDGE_PRICE = (2.00e-6, 10.00e-6)
 
 type MetricName = Literal["faithfulness", "answer_relevancy", "attribution", "abstention"]
 
@@ -200,7 +202,9 @@ async def judge_items(
     from deepeval.models import AnthropicModel
     from deepeval.test_case import LLMTestCase, SingleTurnParams
 
-    judge = AnthropicModel(model=JUDGE_MODEL)
+    judge = AnthropicModel(
+        model=JUDGE_MODEL, cost_per_input_token=JUDGE_PRICE[0], cost_per_output_token=JUDGE_PRICE[1]
+    )
     params = [
         SingleTurnParams.INPUT,
         SingleTurnParams.ACTUAL_OUTPUT,

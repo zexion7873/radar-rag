@@ -103,7 +103,7 @@ uv run radar-evals --golden golden_v1.jsonl --fixture fixtures/trending.json \
 
 # LLM eval (paid, ~$3 per full run): /ask on every golden item, code checks (no empty answer, no
 # repo named or cited outside the retrieved rows), citation precision
-# against the golden labels, then DeepEval metrics judged by claude-sonnet-5. The service and
+# against the golden labels, then DeepEval metrics judged by claude-sonnet-5-5. The service and
 # this command both need ANTHROPIC_API_KEY.
 uv run radar-evals-llm --golden golden_v1.jsonl --fixture fixtures/trending.json --out results/llm-latest.json
 
