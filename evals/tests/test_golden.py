@@ -92,3 +92,17 @@ def test_rotten_labels_are_the_ones_missing_from_the_fixture() -> None:
     assert golden.rotten_labels(items, fixture) == [
         ("zh-2", ("https://github.com/a/one", "2026-09-14"))
     ]
+
+
+GOLDEN_V1 = Path(__file__).resolve().parents[1] / "golden_v1.jsonl"
+FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "trending.json"
+
+
+def test_golden_v1_labels_all_exist_in_the_fixture() -> None:
+    fixture = NotionFixture.model_validate_json(FIXTURE.read_text(encoding="utf-8"))
+    assert golden.rotten_labels(golden.load(GOLDEN_V1), fixture) == []
+
+
+def test_golden_v1_has_enough_cjk_only_items_for_the_embedding_ab() -> None:
+    zh = [i for i in golden.load(GOLDEN_V1) if i.kind == "answerable" and i.lang == "zh-TW"]
+    assert sum(i.script == "cjk-only" for i in zh) >= 10
