@@ -254,6 +254,7 @@ Done when:
 - If input and output stay null even with the filter, D1's flip-when "Langfuse spans null on Boot 4.1" has fired.
 
 ### M9: Java 25 and the deployable image (deploy prep, ~1.5 days)
+**Status: in progress.** Java 25: `mvn verify` is green on Temurin 25 and the jar serves `/search` on JDK 25. JDK 24+ warns when onnxruntime calls `System.load` (JEP 472); the image passes `--enable-native-access=ALL-UNNAMED` before a release turns the warning into a block.
 Changes:
 - Bump Java 25 on its own first, and get the gates green.
 - Build the Dockerfile with `SERVER_ADDRESS=0.0.0.0`: the service binds loopback by default, so without it the offline curl test below gets no answer. Model from the M4 script, libtorch pre-populated or pulled in via `pytorch-native-cpu` + `pytorch-jni` matching DJL 0.36.0, `-Dai.djl.offline=true`, and an AOT-cache training run.
