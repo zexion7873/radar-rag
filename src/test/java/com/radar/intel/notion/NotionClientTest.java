@@ -41,9 +41,9 @@ class NotionClientTest {
         List<TrendingRow> rows = client(wm).fetchTrending();
 
         assertThat(rows).containsExactly(
-                new TrendingRow("a/one", "2026-09-14", 1234.0, "Python", "agents",
+                new TrendingRow("page-a/one", "a/one", "2026-09-14", 1234.0, "Python", "agents",
                         "https://github.com/a/one", "desc a/one", "comment a/one"),
-                new TrendingRow("b/two", "2026-09-21", 1234.0, "Python", "agents",
+                new TrendingRow("page-b/two", "b/two", "2026-09-21", 1234.0, "Python", "agents",
                         "https://github.com/b/two", "desc b/two", "comment b/two"));
         verify(2, postRequestedFor(urlEqualTo("/data_sources/" + DS + "/query"))
                 .withHeader("Authorization", equalTo("Bearer test-token"))
@@ -82,7 +82,7 @@ class NotionClientTest {
 
     private static String row(String repo, String week) {
         return """
-                {"properties": {
+                {"id": "page-%1$s", "properties": {
                   "Repo": {"type": "title", "title": [{"plain_text": "%1$s"}]},
                   "Week": {"type": "date", "date": {"start": "%2$s"}},
                   "Stars/wk": {"type": "number", "number": 1234},

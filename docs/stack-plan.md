@@ -161,6 +161,7 @@ Done when:
 - `eval-retrieval` is green on a PR, the step summary shows the baseline-vs-PR table, and it is also green on the next Dependabot PR, which proves it needs no secrets.
 
 ### M3: Bug 1 fixed, with a measured before/after (P3, ~0.5 day)
+**Status: done (2026-10-09).** After a fixture sync, `count(*) | count(distinct url)` went from `111|111` to `190|111`. Answerable items on MiniLM, M2 baseline → M3 (`eval-retrieval`, CI run 37885256732): R@5 0.126 → 0.166, P@5 0.148 → 0.200, nDCG@5 0.151 → 0.210, MRR 0.329 → 0.352, hit@5 0.500 → 0.476. These are the README's before/after pair. Five items flipped hit → miss (q004-en, q006, q007-en, q015-en, q018); in each, other weeks of one repo filled the top 5 and pushed out a relevant row that had sat at rank 4 or 5. In 44 of the 62 items the top 5 repeats a repo. That is the data for the open per-repo collapse question (section 5, decided through M4). The full refresh needed no migration: the first `/sync` deleted the url-keyed rows. PgVectorStore's JdbcTemplate joins the `@Transactional` sync; TrendingSyncIT's rollback case fails without it.
 Changes:
 - `TrendingRow` gains `pageId`, and the Document id becomes the page id.
 - /sync runs `delete(source == 'trending')` and then `add` inside one `@Transactional`. That PgVectorStore's JdbcTemplate joins the transaction is unverified; the tests below settle it.
@@ -317,7 +318,7 @@ Done when:
 | opentelemetry-spring-boot-starter / OTel Java agent | Boot's own OTLP export covers the Micrometer observations; the starter has a documented JDBC conflict ([guide](https://langfuse.com/integrations/frameworks/spring-ai)) | Deferred | Spans are needed from libraries Micrometer does not observe. |
 | respx / pytest-httpx | `httpx.MockTransport` is built in | Durable | — |
 | ty type checker | Still Beta 0.0.x; Pydantic support pending ([PyPI](https://pypi.org/project/ty/)) | Deferred | A stable release with first-class Pydantic support. |
-| Kubernetes / GKE / Helm | One stateless service with max-instances 1 | Deferred | A posting you apply to requires Kubernetes evidence. Prefer a README section first. |
+| Kubernetes / GKE / Helm | One stateless service with max-instances 1; a managed cluster bills node or pod resources around the clock where Cloud Run scales to zero | Deferred | A posting you apply to requires Kubernetes evidence. Then, after M9's image exists: manifests (Deployment with probes, Service, ConfigMap/Secret, pgvector as a StatefulSet) deployed to kind in a CI job on every PR, with a `/sync` + `/search` smoke test, about half a day to a day at $0. Cloud Run stays the public demo. A real GKE cluster only if a posting asks for one. |
 | Terraform / IaC | Two resources | Deferred | Taiwan job-posting counts show Terraform widely required. Then a ~50-line module. |
 | GraalVM native image | onnxruntime and DJL are JNI-heavy, with no proven reachability metadata | Deferred | Cold start is still over ~10 s after the AOT cache and CPU boost, and it visibly hurts the demo. |
 | In-app daily dollar cap (a Postgres row) | The workspace monthly limit, Turnstile and a per-IP bucket on max-instances 1 already bound spend. The cap adds token x price bookkeeping that must track pricing | Deferred | The workspace monthly limit is hit before month end. |
