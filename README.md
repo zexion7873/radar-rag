@@ -76,20 +76,19 @@ controllers.
 
 ### In a container
 
-The image fetches the model itself and carries everything the service loads, libtorch included, so
-it downloads nothing at runtime. CI's retrieval gate runs this image.
+The image fetches the model itself and carries everything the service loads, so it downloads nothing
+at runtime. CI's retrieval gate runs this image. Compose builds and runs it beside Postgres, reading
+`.env` (quoted values included):
 
 ```bash
-docker build --platform linux/amd64 -t radar-rag .
-docker run --rm -p 127.0.0.1:8080:8080 --memory=2g \
-  -e POSTGRES_URL=jdbc:postgresql://host.docker.internal:5432/radar \
-  -e NOTION_TOKEN -e ANTHROPIC_API_KEY radar-rag
+docker compose --profile app up --build
 ```
 
-Size it at 2 GiB: the model is read as one on-heap array before ONNX Runtime copies it natively, so
-the heap is set to 55% of the container (`-XX:MaxRAMPercentage=55`). The image starts from an AOT
-cache made by a training run at build time, inside the image, because the cache only loads on the
-JVM that trained it.
+Without `--profile app`, `docker compose up -d` starts Postgres alone, for `mvn spring-boot:run`.
+The container gets 2 GiB and no swap, as on Cloud Run: ONNX Runtime holds the model natively
+(~1.1 GB) and the JVM about 0.3 GB, so a boot needing more fails locally first. The image starts from
+an AOT cache made by a training run at build time, inside the image, because the cache only loads on
+the JVM that trained it.
 
 ## Test
 

@@ -12,6 +12,30 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "radar", "-d", "radar"]
+      interval: 2s
+      retries: 15
+
+  # The shipped image, only with --profile app, so a plain `up -d` stays the DB for `mvn spring-boot:run`.
+  app:
+    profiles: [app]
+    build: .
+    platform: linux/amd64       # the arch Cloud Run runs, so local runs test what ships
+    ports:
+      - "127.0.0.1:8080:8080"   # loopback only: /ask spends Anthropic credit
+    # Cloud Run's size, and no swap, as on Cloud Run: Docker otherwise lends as much swap again,
+    # which once hid a boot that needed ~3 GiB.
+    mem_limit: 2g
+    memswap_limit: 2g
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      POSTGRES_URL: jdbc:postgresql://postgres:5432/radar
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   pgdata:
