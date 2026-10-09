@@ -41,14 +41,14 @@ flowchart LR
 ## 🌐 What it gives you
 
 A standalone Java / Spring Boot service that adds LLM-powered intelligence on top of the
-GitHub-radar Notion archive written by the `ai-assistant` routines. **P0** stands up the
+[GitHub Radar](https://whyisthistrending.vercel.app) Notion archive written by the `ai-assistant` routines. **P0** stands up the
 skeleton: pgvector, Notion ingestion of the **Trending** table, and a semantic `/search`
 endpoint. **P1** adds metadata-filtered search. **P2** adds a RAG `/ask` endpoint —
 grounded Q&A with citations. **P3** adds a Python eval harness with CI gates, and **P4** traces every
 request into Langfuse (see [docs/stack-plan.md](docs/stack-plan.md)).
 
 > Not a proxy in front of Notion — it exposes *new* capabilities (semantic search and
-> grounded Q&A) that the pure-reader `github-radar-ui` cannot do.
+> grounded Q&A) that the pure-reader [`github-radar-ui`](https://github.com/zexion7873/github-radar-ui) cannot do.
 
 - `POST /sync` — pull the Trending Archive from Notion and replace its rows in pgvector: one
   document per Notion row (one repo, one week), keyed by the Notion page id.
@@ -317,7 +317,7 @@ means. A run costs about $3.3.
 
 ~~P1 metadata-filtered search~~ (done) · ~~P2 RAG `/ask` with citations~~ (done) · ~~P3 eval
 harness (retrieval metrics + LLM-as-judge) + CI gates~~ (done) · ~~P4 Langfuse tracing~~ (done) · P5 Blog/Loot ingest +
-an "Ask the radar" page served by this service (github-radar-ui only links to it, so it stays a
+an "Ask the radar" page served by this service ([github-radar-ui](https://github.com/zexion7873/github-radar-ui) only links to it, so it stays a
 pure Notion reader).
 
 The target stack and the milestone order (M0–M11, each with a checkable done-when) are in
