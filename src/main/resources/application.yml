@@ -6,25 +6,6 @@ spring:
     username: ${POSTGRES_USER:radar}
     password: ${POSTGRES_PASSWORD:radar}
   ai:
-    # Local in-process ONNX embeddings: paraphrase-multilingual-MiniLM-L12-v2 (384-d, mean pooling),
-    # the M4 A/B winner. scripts/fetch-models.sh puts it in models/ at a pinned Hugging Face revision,
-    # sha256-checked; the eval gate reads any rank change under a moving model as a regression.
-    model:
-      embedding: transformers
-    embedding:
-      transformer:
-        onnx:
-          model-uri: file:models/paraphrase/model.onnx
-        tokenizer:
-          uri: file:models/paraphrase/tokenizer.json
-          options:
-            "[padding]": "true"
-            "[truncation]": "true"
-            # The model's own max_seq_length; 1 of the 190 fixture rows is longer.
-            "[maxLength]": "128"
-        # file: URIs need no download cache.
-        cache:
-          enabled: false
     # P2: Claude generates the grounded /ask answers. Empty key still boots (only /ask calls fail),
     # so /sync and /search stay usable without an Anthropic key.
     anthropic:
@@ -58,6 +39,12 @@ management:
         enabled: false
 
 radar:
+  # Local in-process ONNX embeddings: paraphrase-multilingual-MiniLM-L12-v2 (384-d, mean pooling), the
+  # M4 A/B winner. scripts/fetch-models.sh puts it in models/ at a pinned Hugging Face revision,
+  # sha256-checked; the eval gate reads any rank change under a moving model as a regression.
+  embedding:
+    model: models/paraphrase/model.onnx
+    tokenizer: models/paraphrase/tokenizer.json
   langfuse:
     # Without both keys LangfuseTracingConfig exports nothing.
     public-key: ${LANGFUSE_PUBLIC_KEY:}

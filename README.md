@@ -76,20 +76,19 @@ controllers.
 
 ### In a container
 
-The image fetches the model itself and carries everything the service loads, libtorch included, so
-it downloads nothing at runtime. CI's retrieval gate runs this image.
+The image fetches the model itself and carries everything the service loads, so it downloads nothing
+at runtime. CI's retrieval gate runs this image. Compose builds and runs it beside Postgres, reading
+`.env` (quoted values included):
 
 ```bash
-docker build --platform linux/amd64 -t radar-rag .
-docker run --rm -p 127.0.0.1:8080:8080 --memory=2g \
-  -e POSTGRES_URL=jdbc:postgresql://host.docker.internal:5432/radar \
-  -e NOTION_TOKEN -e ANTHROPIC_API_KEY radar-rag
+docker compose --profile app up --build
 ```
 
-Size it at 2 GiB: the model is read as one on-heap array before ONNX Runtime copies it natively, so
-the heap is set to 55% of the container (`-XX:MaxRAMPercentage=55`). The image starts from an AOT
-cache made by a training run at build time, inside the image, because the cache only loads on the
-JVM that trained it.
+Without `--profile app`, `docker compose up -d` starts Postgres alone, for `mvn spring-boot:run`.
+The container gets 2 GiB and no swap, as on Cloud Run: ONNX Runtime holds the model natively
+(~1.1 GB) and the JVM about 0.3 GB, so a boot needing more fails locally first. The image starts from
+an AOT cache made by a training run at build time, inside the image, because the cache only loads on
+the JVM that trained it.
 
 ## Test
 
@@ -216,8 +215,9 @@ means. A run costs about $3.3.
 ## Notes / decisions
 
 - **Embeddings are local & keyless.** In-process ONNX (`paraphrase-multilingual-MiniLM-L12-v2`,
-  384-dim, maxLength 128) via `spring-ai-starter-model-transformers`, chosen by the A/B under
-  Results. After switching to another 384-d model, `POST /sync` re-embeds every row; a model with
+  384-dim, maxLength 128) through `OnnxEmbeddingModel`: ONNX Runtime plus the DJL tokenizer, with
+  the mean pooling in Java, summed in PyTorch's order so the vectors stay bit-identical to Spring AI's
+  transformers module (which needs PyTorch for that pooling alone). Chosen by the A/B under Results. After switching to another 384-d model, `POST /sync` re-embeds every row; a model with
   other dimensions also needs `spring.ai.vectorstore.pgvector.dimensions` changed and the
   `vector_store` table recreated (the embedding column is a fixed-width `vector(N)`).
 - **Exact vector search.** `index-type: NONE`: at a few hundred rows an HNSW index buys no speed,

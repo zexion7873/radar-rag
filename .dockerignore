@@ -3,4 +3,3 @@
 !pom.xml
 !src/main
 !scripts/fetch-models.sh
-!docker
