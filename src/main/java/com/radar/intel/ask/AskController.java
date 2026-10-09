@@ -4,6 +4,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.ChatClientResponse;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.metadata.ChatResponseMetadata;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
@@ -55,7 +56,11 @@ public class AskController {
     public record Citation(String id, String repo, String url, String week, Double score) {
     }
 
-    public record AskResponse(String answer, List<Citation> citations) {
+    /** Token counts of the model call; output tokens include thinking. */
+    public record Usage(String model, Integer inputTokens, Integer outputTokens) {
+    }
+
+    public record AskResponse(String answer, List<Citation> citations, Usage usage) {
     }
 
     @PostMapping("/ask")
@@ -74,7 +79,9 @@ public class AskController {
         if (generations.stream().anyMatch(g -> "refusal".equals(g.getMetadata().getFinishReason()))) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "llm declined the request");
         }
-        return new AskResponse(answerText(generations), citations(resp));
+        ChatResponseMetadata md = resp.chatResponse().getMetadata();
+        Usage usage = new Usage(md.getModel(), md.getUsage().getPromptTokens(), md.getUsage().getCompletionTokens());
+        return new AskResponse(answerText(generations), citations(resp), usage);
     }
 
     /**

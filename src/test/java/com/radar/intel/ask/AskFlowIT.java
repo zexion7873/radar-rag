@@ -114,7 +114,10 @@ class AskFlowIT {
 
         ask().andExpect(status().isOk())
                 .andExpect(jsonPath("$.answer").value("Grounded answer."))
-                .andExpect(jsonPath("$.citations.length()").value(5));
+                .andExpect(jsonPath("$.citations.length()").value(5))
+                .andExpect(jsonPath("$.usage.model").value("claude-opus-5-5"))
+                .andExpect(jsonPath("$.usage.inputTokens").value(10))
+                .andExpect(jsonPath("$.usage.outputTokens").value(5));
 
         JsonNode sent = JSON.readTree(onlyRequest().getBodyAsString());
         assertThat(sent.has("temperature")).isFalse();
