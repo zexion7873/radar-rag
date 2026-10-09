@@ -38,6 +38,10 @@ jobs:
           --health-retries 10
     env:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      # Both the service and the harness read these; without the secrets the run stays keyless.
+      LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+      LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+      LANGFUSE_BASE_URL: https://jp.cloud.langfuse.com
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-java@v6

@@ -4,7 +4,8 @@ A standalone Java / Spring Boot service that adds LLM-powered intelligence on to
 GitHub-radar Notion archive written by the `ai-assistant` routines. **P0** stands up the
 skeleton: pgvector, Notion ingestion of the **Trending** table, and a semantic `/search`
 endpoint. **P1** adds metadata-filtered search. **P2** adds a RAG `/ask` endpoint —
-grounded Q&A with citations. Evals and tracing come in later phases (see [docs/stack-plan.md](docs/stack-plan.md)).
+grounded Q&A with citations. **P3** adds a Python eval harness with CI gates, and **P4** traces every
+request into Langfuse (see [docs/stack-plan.md](docs/stack-plan.md)).
 
 > Not a proxy in front of Notion — it exposes *new* capabilities (semantic search and
 > grounded Q&A) that the pure-reader `github-radar-ui` cannot do.
@@ -114,8 +115,21 @@ NOTION_TOKEN=ntn_... uv run freeze-notion
 CI runs the unit tests in `evals` and the live-service tests in `eval-retrieval`, against a
 pgvector service container on the same tag as `docker-compose.yml`. The LLM eval runs in
 `eval-llm.yml` only when the repo owner adds the `eval:llm` label to a PR or dispatches it; it reads
-the key from the `ANTHROPIC_API_KEY` repository secret. It fails on any `/ask` error, empty answer,
+the key from the `ANTHROPIC_API_KEY` repository secret, and with the `LANGFUSE_PUBLIC_KEY` /
+`LANGFUSE_SECRET_KEY` secrets each run is also a Langfuse experiment. It fails on any `/ask` error, empty answer,
 repo named or cited outside the retrieved rows, and when a metric's mean is below 0.7.
+
+## Tracing (Langfuse)
+
+With `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` set (and `LANGFUSE_BASE_URL` for a region other
+than Japan), the service sends every request's spans to Langfuse over OTLP: the HTTP request, the
+vector search, the chat client and the Claude call, which Langfuse shows as a generation with its
+prompt, answer, token usage and cost. Without both keys nothing leaves the process.
+
+When the same keys are set for `radar-evals-llm`, the run mirrors the golden set to the Langfuse
+dataset `golden_v1`, runs it as an experiment, passes `traceparent` to `/ask` so the service's spans
+nest under each item, and attaches the judge's scores and citation precision to each item. Such a
+run needs the full golden set: a subset run against the fuller dataset is refused.
 
 ## Layout
 
@@ -134,6 +148,10 @@ src/main/java/com/radar/intel/
 │   └── SearchController.java           # POST /search
 ├── ask/
 │   └── AskController.java              # POST /ask — retrieve, Claude with citation documents, cited rows
+├── tracing/
+│   ├── LangfuseProperties.java         # radar.langfuse.* config
+│   ├── LangfuseTracingConfig.java      # OTLP span exporter to Langfuse; a no-op without keys
+│   └── ChatContentObservationFilter.java  # prompt and answer onto the chat model span
 └── ApiErrorHandler.java                # surfaces upstream (Notion / Anthropic) failure causes
 ```
 
@@ -202,7 +220,7 @@ means. A run costs about $3.3.
 ## Next
 
 ~~P1 metadata-filtered search~~ (done) · ~~P2 RAG `/ask` with citations~~ (done) · ~~P3 eval
-harness (retrieval metrics + LLM-as-judge) + CI gates~~ (done) · P4 Langfuse tracing · P5 Blog/Loot ingest +
+harness (retrieval metrics + LLM-as-judge) + CI gates~~ (done) · ~~P4 Langfuse tracing~~ (done) · P5 Blog/Loot ingest +
 an "Ask the radar" page served by this service (github-radar-ui only links to it, so it stays a
 pure Notion reader).
 
