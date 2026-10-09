@@ -44,16 +44,6 @@ jobs:
       - run: uv run pytest
 
   eval-retrieval:
-    name: eval-retrieval (${{ matrix.arm.name }})
-    # M4's A/B: every arm scores the same golden set and fixture on this runner. Only the shipped
-    # arm is gated against the baseline; the others only report.
-    strategy:
-      fail-fast: false
-      matrix:
-        arm:
-          - { name: minilm, profile: "", model: all-MiniLM-L6-v2, gate: true }
-          - { name: paraphrase, profile: paraphrase, model: paraphrase-multilingual-MiniLM-L12-v2, gate: false }
-          - { name: e5, profile: e5, model: multilingual-e5-small, gate: false }
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
@@ -81,24 +71,21 @@ jobs:
       - uses: astral-sh/setup-uv@v10.2.0
         with:
           working-directory: evals
-      # The pinned ONNX model (application.yml) and DJL's PyTorch natives download on first use.
+      # DJL downloads its PyTorch natives at the first embed.
       - uses: actions/cache@v6
         with:
-          path: |
-            ~/.djl.ai
-            /tmp/spring-ai-onnx-generative
-          key: onnx-djl-${{ hashFiles('pom.xml', 'src/main/resources/application.yml') }}
-      - if: matrix.arm.profile != ''
-        uses: actions/cache@v6
+          path: ~/.djl.ai
+          key: djl-${{ hashFiles('pom.xml') }}
+      # The embedding model (~480 MB), pinned and sha256-checked by the script.
+      - uses: actions/cache@v6
         with:
           path: models
-          key: models-${{ matrix.arm.profile }}-${{ hashFiles('scripts/fetch-models.sh') }}
-      - if: matrix.arm.profile != ''
-        run: scripts/fetch-models.sh ${{ matrix.arm.profile }}
+          key: models-${{ hashFiles('scripts/fetch-models.sh') }}
+      - run: scripts/fetch-models.sh
       - run: mvn -B -q package -DskipTests
       - name: Start the service with Notion pointed at the stub's port
         run: |
-          NOTION_TOKEN=dummy NOTION_BASE_URL=http://127.0.0.1:8765 SPRING_PROFILES_ACTIVE=${{ matrix.arm.profile }} \
+          NOTION_TOKEN=dummy NOTION_BASE_URL=http://127.0.0.1:8765 \
             nohup java -jar target/radar-rag-0.0.1-SNAPSHOT.jar > service.log 2>&1 &
           curl -s --retry 90 --retry-connrefused --retry-delay 2 -o /dev/null http://localhost:8080/
       - name: Sync from the frozen fixture and query the live service
@@ -117,13 +104,9 @@ jobs:
           EVAL_SERVICE_URL: http://localhost:8080
           EVAL_NOTION_STUB_PORT: "8765"
         run: |
-          args=(--golden golden_v1.jsonl --fixture fixtures/trending.json --model-id ${{ matrix.arm.model }}
-                --out results/latest.json)
-          if [ "${{ matrix.arm.gate }}" != true ]; then
-            uv run radar-evals "${args[@]}"
-            exit 0
-          fi
-          args+=(--baseline results/baseline.json)
+          args=(--golden golden_v1.jsonl --fixture fixtures/trending.json
+                --model-id paraphrase-multilingual-MiniLM-L12-v2
+                --out results/latest.json --baseline results/baseline.json)
           if [ -f results/baseline.json ]; then
             uv run radar-evals "${args[@]}"
           else
@@ -134,7 +117,7 @@ jobs:
       - if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: retrieval-eval-${{ matrix.arm.name }}
+          name: retrieval-eval
           path: evals/results/
           if-no-files-found: ignore
       - if: failure()

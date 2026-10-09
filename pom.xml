@@ -59,7 +59,8 @@
             <artifactId>spring-ai-starter-vector-store-pgvector</artifactId>
         </dependency>
 
-        <!-- Spring AI: local in-process ONNX embeddings (all-MiniLM-L6-v2, 384-dim).
+        <!-- Spring AI: local in-process ONNX embeddings (paraphrase-multilingual-MiniLM-L12-v2,
+             384-dim; scripts/fetch-models.sh fetches it).
              No API key, no external server — runs inside the JVM. Anthropic has no
              embeddings API and there's no OpenAI key, so we embed locally. -->
         <dependency>

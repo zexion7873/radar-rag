@@ -28,12 +28,16 @@ grounded Q&A with citations. Evals and tracing come in later phases (see [docs/s
 - Docker (for the pgvector Postgres)
 - The **Notion integration token** already shared into the archive tables
 
-Embeddings run **locally in-process** (ONNX `all-MiniLM-L6-v2`, 384-dim) — no API key.
-First boot downloads an ~80MB model, then everything runs inside the JVM.
+Embeddings run **locally in-process** (ONNX `paraphrase-multilingual-MiniLM-L12-v2`, 384-dim) — no
+API key. `scripts/fetch-models.sh` downloads the model (~480 MB) once, at a pinned Hugging Face
+revision with a sha256 check; the service loads it from `models/` and will not start without it.
 
 ## Run
 
 ```bash
+# 0. Fetch the embedding model (once; re-runs skip files that already match)
+scripts/fetch-models.sh
+
 # 1. Start pgvector Postgres (creates the vector/hstore/uuid-ossp extensions via init.sql)
 docker compose up -d
 
@@ -94,7 +98,7 @@ EVAL_SERVICE_URL=http://localhost:8080 uv run pytest -m service
 # Retrieval eval over the golden set (golden_v1.jsonl, 62 items). The first run writes the
 # baseline with --write-baseline; later runs drop it and fail on any hit@5 hit→miss flip.
 uv run radar-evals --golden golden_v1.jsonl --fixture fixtures/trending.json \
-  --model-id all-MiniLM-L6-v2 --out results/latest.json --baseline results/baseline.json --write-baseline
+  --model-id paraphrase-multilingual-MiniLM-L12-v2 --out results/latest.json --baseline results/baseline.json --write-baseline
 
 # Re-capture the fixture (reads Notion; keeps only the columns the service parses).
 NOTION_TOKEN=ntn_... uv run freeze-notion
@@ -123,12 +127,35 @@ src/main/java/com/radar/intel/
 └── ApiErrorHandler.java                # surfaces upstream (Notion / Anthropic) failure causes
 ```
 
+## Results
+
+All numbers come from the CI runner over the 62-item golden set: hit@5, recall@5 and MRR at the
+(url, week) level, on the 42 answerable items unless the column says otherwise.
+
+**Bug 1, one row per repo per week** (MiniLM, ids keyed by Notion page id instead of repo url):
+a fixture sync stores 190 rows instead of 111, and recall@5 rises from 0.126 to 0.166.
+
+**Embedding A/B** (decided by a rule fixed before any run: a multilingual model ships only if it
+turns at least 2 more zh-TW items into hits than the control, and mE5 only if it beats paraphrase
+by at least 2):
+
+| Model | hit@5 | R@5 | MRR | zh-TW hit@5 | pure-CJK hit@5 | English hit@5 |
+|---|---:|---:|---:|---:|---:|---:|
+| all-MiniLM-L6-v2 (before) | 0.476 | 0.166 | 0.352 | 0.238 (5/21) | 0.273 | 0.714 |
+| **paraphrase-multilingual-MiniLM-L12-v2** (shipped) | **0.786** | **0.404** | 0.633 | **0.762 (16/21)** | **0.818** | **0.810** |
+| multilingual-e5-small | 0.738 | 0.355 | **0.649** | 0.714 (15/21) | 0.636 | 0.762 |
+
+MiniLM's English WordPiece vocabulary turns 76% of the corpus's CJK characters into `[UNK]`; both
+multilingual models close the English-minus-Chinese hit@5 gap from 0.476 to 0.048. mE5 ranks the
+first hit higher (MRR) but finds one fewer zh-TW item, so paraphrase ships.
+
 ## Notes / decisions
 
-- **Embeddings are local & keyless.** In-process ONNX (`all-MiniLM-L6-v2`, 384-dim) via
-  `spring-ai-starter-model-transformers`. If you later switch embedding models (Ollama, OpenAI,
-  Voyage), keep `spring.ai.vectorstore.pgvector.dimensions` in sync and recreate the
-  `vector_store` table (the embedding column is a fixed-width `vector(N)`).
+- **Embeddings are local & keyless.** In-process ONNX (`paraphrase-multilingual-MiniLM-L12-v2`,
+  384-dim, maxLength 128) via `spring-ai-starter-model-transformers`, chosen by the A/B under
+  Results. After switching to another 384-d model, `POST /sync` re-embeds every row; a model with
+  other dimensions also needs `spring.ai.vectorstore.pgvector.dimensions` changed and the
+  `vector_store` table recreated (the embedding column is a fixed-width `vector(N)`).
 - **Exact vector search.** `index-type: NONE`: at a few hundred rows an HNSW index buys no speed,
   and it applies metadata filters after its approximate scan, so a week-filtered `/search` could
   return fewer than `topK` rows. PgVectorStore never drops an existing index and creates the
@@ -143,9 +170,8 @@ src/main/java/com/radar/intel/
 - **RAG is grounded, not filtered.** `/ask` retrieves from the same pgvector store `/search` uses
   (`RetrievalAugmentationAdvisor` + `VectorStoreDocumentRetriever`) and returns the retrieved rows
   as citations. It takes only a question — no metadata-filter fields — so it has no SQL-filter
-  input surface (unlike `/search`, which validates its filter values). Because the embeddings are
-  English-centric over a partly Traditional-Chinese corpus, the retriever uses a low similarity
-  threshold and bounds context by `topK`.
+  input surface (unlike `/search`, which validates its filter values). The retriever keeps every
+  candidate (similarity threshold 0) and bounds the context by `topK`.
 
 ## Next
 
