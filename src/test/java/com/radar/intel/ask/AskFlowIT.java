@@ -26,6 +26,7 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -111,7 +112,8 @@ class AskFlowIT {
 
         ask().andExpect(status().isOk())
                 .andExpect(jsonPath("$.answer").value("Grounded answer."))
-                .andExpect(jsonPath("$.citations.length()").value(5))
+                .andExpect(jsonPath("$.citations.length()").value(0))
+                .andExpect(jsonPath("$.sources.length()").value(5))
                 .andExpect(jsonPath("$.usage.model").value("claude-opus-5-5"))
                 .andExpect(jsonPath("$.usage.inputTokens").value(10))
                 .andExpect(jsonPath("$.usage.outputTokens").value(5));
@@ -121,6 +123,47 @@ class AskFlowIT {
         assertThat(sent.path("max_tokens").asInt()).isEqualTo(16000);
         assertThat(sent.path("model").asString()).isEqualTo("claude-opus-5-5");
         assertThat(sent.path("output_config").path("effort").asString()).isEqualTo("medium");
+    }
+
+    @Test
+    void returnsOnlyTheCitedRowsMappedByDocumentIndex() throws Exception {
+        stubMessages(200, """
+                {"id":"msg_3","type":"message","role":"assistant","model":"claude-opus-5-5",
+                 "content":[{"type":"text","text":"Try it.","citations":[
+                     {"type":"char_location","cited_text":"first","document_index":2,
+                      "document_title":"t","start_char_index":0,"end_char_index":5},
+                     {"type":"char_location","cited_text":"second","document_index":0,
+                      "document_title":"t","start_char_index":0,"end_char_index":6},
+                     {"type":"char_location","cited_text":"third","document_index":2,
+                      "document_title":"t","start_char_index":6,"end_char_index":11}]}],
+                 "stop_reason":"end_turn","usage":{"input_tokens":10,"output_tokens":5}}""");
+
+        String body = ask().andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+
+        // Every retrieved row goes out as a citable document titled "repo week".
+        List<JsonNode> documents = new ArrayList<>();
+        JSON.readTree(onlyRequest().getBodyAsString()).path("messages").get(0).path("content")
+                .forEach(block -> {
+                    if ("document".equals(block.path("type").asString())) {
+                        documents.add(block);
+                    }
+                });
+        assertThat(documents).hasSize(5)
+                .allSatisfy(d -> {
+                    assertThat(d.path("citations").path("enabled").asBoolean()).isTrue();
+                    assertThat(d.path("title").asString()).endsWith(" 2026-09-21");
+                });
+
+        JsonNode citations = JSON.readTree(body).path("citations");
+        assertThat(citations).hasSize(2);
+        assertThat(citations.get(0).path("repo").asString() + " 2026-09-21")
+                .isEqualTo(documents.get(2).path("title").asString());
+        assertThat(citations.get(0).path("citedText")).extracting(JsonNode::asString)
+                .containsExactly("first", "third");
+        assertThat(citations.get(1).path("repo").asString() + " 2026-09-21")
+                .isEqualTo(documents.get(0).path("title").asString());
+        assertThat(citations.get(1).path("citedText")).extracting(JsonNode::asString)
+                .containsExactly("second");
     }
 
     @Test

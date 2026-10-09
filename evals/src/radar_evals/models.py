@@ -39,7 +39,9 @@ class SyncResponse(BaseModel):
     ingested: int
 
 
-class Citation(BaseModel):
+class Source(BaseModel):
+    """A row /ask retrieved and sent to the model."""
+
     model_config = ConfigDict(frozen=True)
 
     id: str
@@ -47,6 +49,20 @@ class Citation(BaseModel):
     url: str | None = None
     week: str | None = None
     score: float | None = None
+
+    @property
+    def key(self) -> RowKey | None:
+        if self.url is None or self.week is None:
+            return None
+        return (self.url, self.week)
+
+
+class Citation(Source):
+    """A retrieved row the answer cites, with the passages cited from it."""
+
+    model_config = ConfigDict(frozen=True, populate_by_name=True)
+
+    cited_text: list[str] = Field(alias="citedText")
 
 
 class AskUsage(BaseModel):
@@ -64,6 +80,7 @@ class AskResponse(BaseModel):
 
     answer: str
     citations: list[Citation]
+    sources: list[Source]
     usage: AskUsage
 
 

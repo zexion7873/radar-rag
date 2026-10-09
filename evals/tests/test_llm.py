@@ -59,10 +59,21 @@ def test_mentions(answer: str, expected: set[str]) -> None:
     assert llm.mentioned_repos(answer, ALIASES) == expected
 
 
-def _ask(answer: str, cited: list[str], model: str = "claude-opus-5-5") -> dict[str, Any]:
+def _row(repo: str, week: str | None = None) -> dict[str, Any]:
+    url = f"https://github.com/{repo}" if week else None
+    return {"id": f"id-{repo}", "repo": repo, "url": url, "week": week, "score": 0.5}
+
+
+def _ask(
+    answer: str,
+    cited: list[str],
+    model: str = "claude-opus-5-5",
+    retrieved: list[str] | None = None,
+) -> dict[str, Any]:
     return {
         "answer": answer,
-        "citations": [{"id": f"id-{r}", "repo": r, "url": None, "week": None} for r in cited],
+        "citations": [_row(r) | {"citedText": ["t"]} for r in cited],
+        "sources": [_row(r) for r in (cited if retrieved is None else retrieved)],
         "usage": {"model": model, "inputTokens": 1000, "outputTokens": 500},
     }
 
@@ -72,6 +83,23 @@ def test_uncited_compares_repo_names_case_insensitively() -> None:
         _ask("ComfyUI 和 microsoft/markitdown", ["comfyanonymous/ComfyUI"])
     )
     assert llm.uncited_repos(resp, ALIASES) == ["microsoft/markitdown"]
+
+
+def test_citation_precision_is_the_labelled_share_of_cited_rows() -> None:
+    week = "2026-09-21"
+    resp = AskResponse.model_validate(
+        _ask("a", [])
+        | {
+            "citations": [
+                _row("a/x", week) | {"citedText": ["t"]},
+                _row("b/y", week) | {"citedText": ["t"]},
+            ]
+        }
+    )
+    gains = {("https://github.com/a/x", week): 2, ("https://github.com/c/z", week): 1}
+    assert llm.citation_precision(resp, gains) == 0.5
+    assert llm.citation_precision(resp, {}) is None
+    assert llm.citation_precision(AskResponse.model_validate(_ask("a", [])), gains) is None
 
 
 def test_generator_cost_uses_opus_5_5_prices() -> None:
@@ -150,6 +178,20 @@ def test_ask_items_records_http_errors_and_keeps_the_rows_ask_read() -> None:
     ]
     assert results[0].generator_cost == pytest.approx(0.014)
     assert contexts == {"n1": ["row id-openai/codex"]}
+
+
+def test_ask_items_flags_citations_outside_the_retrieved_rows() -> None:
+    client = _service(
+        {
+            "音樂": httpx.Response(
+                200, json=_ask("x", ["openai/codex", "x/other"], retrieved=["openai/codex"])
+            )
+        },
+        {"音樂": ["id-openai/codex"]},
+    )
+    results, _ = llm.ask_items(ITEMS[:1], client, ALIASES)
+    assert results[0].stray_citations == ["id-x/other"]
+    assert llm.gate_failures(results, {}) == ["n1: cites rows it did not retrieve: id-x/other"]
 
 
 def test_ask_items_refuses_when_search_and_ask_retrieve_different_rows() -> None:

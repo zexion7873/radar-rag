@@ -19,7 +19,7 @@ from pydantic import BaseModel
 
 from radar_evals import golden
 from radar_evals.client import RadarClient
-from radar_evals.models import AskResponse, NotionFixture
+from radar_evals.models import AskResponse, NotionFixture, RowKey
 from radar_evals.notion_stub import NotionStub
 from radar_evals.retrieval import TOP_K, _git_sha, _sha256
 
@@ -84,6 +84,14 @@ def uncited_repos(resp: AskResponse, aliases: dict[str, str]) -> list[str]:
     return sorted(mentioned_repos(resp.answer, aliases) - cited)
 
 
+def citation_precision(resp: AskResponse, gains: dict[RowKey, int]) -> float | None:
+    """Share of cited rows the golden set labels relevant; None if nothing is cited or labelled."""
+    cited = {k for c in resp.citations if (k := c.key) is not None}
+    if not cited or not gains:
+        return None
+    return len(cited & gains.keys()) / len(cited)
+
+
 def generator_cost(resp: AskResponse) -> float:
     if resp.usage.model not in GENERATOR_PRICES:
         raise ValueError(f"no price for generator model {resp.usage.model!r}; add it")
@@ -106,6 +114,9 @@ class ItemResult(BaseModel):
     answer: str | None = None
     cited: list[str] = []
     uncited: list[str] = []
+    # Citation ids /ask returned that are not among the rows it retrieved; must stay empty.
+    stray_citations: list[str] = []
+    citation_precision: float | None = None
     generator_model: str | None = None
     generator_cost: float = 0.0
     metrics: dict[str, MetricResult] = {}
@@ -120,6 +131,8 @@ class RunResult(BaseModel):
     floor: float
     items: list[ItemResult]
     means: dict[str, float]
+    citation_precision: float | None
+    citation_precision_n: int
     generator_cost: float
     judge_cost: float
     failures: list[str]
@@ -140,7 +153,8 @@ def ask_items(
             results.append(base.model_copy(update={"error": f"HTTP {e.response.status_code}"}))
             continue
         hits = client.search(item.q, TOP_K)
-        if {h.id for h in hits} != {c.id for c in resp.citations}:
+        sources = {s.id for s in resp.sources}
+        if {h.id for h in hits} != sources:
             raise RuntimeError(f"{item.id}: /search and /ask retrieved different rows")
         contexts[item.id] = [h.text for h in hits]
         results.append(
@@ -149,6 +163,8 @@ def ask_items(
                     "answer": resp.answer,
                     "cited": sorted({c.repo for c in resp.citations if c.repo}),
                     "uncited": uncited_repos(resp, aliases),
+                    "stray_citations": [c.id for c in resp.citations if c.id not in sources],
+                    "citation_precision": citation_precision(resp, item.gains),
                     "generator_model": resp.usage.model,
                     "generator_cost": generator_cost(resp),
                 }
@@ -233,12 +249,21 @@ def means(results: list[ItemResult]) -> dict[str, float]:
     return {name: sum(s) / len(s) for name, s in sorted(by_metric.items())}
 
 
+def mean_or_none(values: list[float]) -> float | None:
+    return sum(values) / len(values) if values else None
+
+
 def gate_failures(results: list[ItemResult], metric_means: dict[str, float]) -> list[str]:
     out = [f"{r.id}: /ask {r.error}" for r in results if r.error]
     out += [
         f"{r.id}: empty answer" for r in results if r.answer is not None and not r.answer.strip()
     ]
     out += [f"{r.id}: uncited {', '.join(r.uncited)}" for r in results if r.uncited]
+    out += [
+        f"{r.id}: cites rows it did not retrieve: {', '.join(r.stray_citations)}"
+        for r in results
+        if r.stray_citations
+    ]
     out += [
         f"{name} mean {mean:.3f} < {FLOOR}" for name, mean in metric_means.items() if mean < FLOOR
     ]
@@ -256,6 +281,11 @@ def summary(result: RunResult) -> str:
     for name, mean in result.means.items():
         n = sum(1 for r in result.items if name in r.metrics)
         lines.append(f"| {name} | {n} | {mean:.3f} |")
+    if result.citation_precision is not None:
+        lines.append(
+            f"| citation precision | {result.citation_precision_n} | "
+            f"{result.citation_precision:.3f} |"
+        )
     lines += [
         "",
         f"Cost: generator ${result.generator_cost:.2f} + judge ${result.judge_cost:.2f} "
@@ -300,6 +330,7 @@ def main(argv: list[str] | None = None) -> int:
 
     results = asyncio.run(judge_items(answered, contexts))
     metric_means = means(results)
+    precisions = [r.citation_precision for r in results if r.citation_precision is not None]
     result = RunResult(
         golden_file=args.golden.name,
         golden_sha256=_sha256(args.golden),
@@ -309,6 +340,8 @@ def main(argv: list[str] | None = None) -> int:
         floor=FLOOR,
         items=results,
         means=metric_means,
+        citation_precision=mean_or_none(precisions),
+        citation_precision_n=len(precisions),
         generator_cost=sum(r.generator_cost for r in results),
         judge_cost=sum(m.cost for r in results for m in r.metrics.values()),
         failures=gate_failures(results, metric_means),
