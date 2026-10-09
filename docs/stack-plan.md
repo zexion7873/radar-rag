@@ -111,6 +111,8 @@ Done when:
 - After `/sync`, `docker compose exec postgres psql -U radar -d radar -tAc "select indexname from pg_indexes where tablename='vector_store'"` prints only `vector_store_pkey`.
 
 ### M1: /ask works on 1.0.0, with a first live Opus 5.5 call (pre-P3, ~1 day)
+**Status: done (2026-10-09).** The live call returned 200 in 4.2 s with a grounded answer and 5 citations, so D1's Opus 5.5 flip-when did not fire. Decided here: 429 joins `on-http-codes` (retried once, then 503), and a refusal (HTTP 200, `stop_reason: refusal`, no text) returns 502 instead of an empty answer. Testcontainers 1.21.4 talks to Docker 29 without `docker-java.properties`. AskFlowIT's WireMock needs `http2PlainDisabled`: the JDK client's h2c upgrade on a POST otherwise dies with RST_STREAM. Not reachable on 1.0.0, because `AnthropicChatOptions` has neither: an explicit effort (Opus 5.5 runs at its default, `medium`) and server-side refusal fallbacks. Both return at M6.
+
 Changes:
 - You create a Console workspace `radar-eval` with a monthly spend limit (Decision 1) and put its key in the local `.env`. The Default Workspace cannot carry limits.
 - Bug 2: your own `AnthropicChatModel` bean whose default options have no temperature. Delete `temperature: 0.2` from the YAML.
@@ -204,6 +206,7 @@ Changes:
 - starter-web becomes starter-webmvc, Jackson 3 (`tools.jackson`), and the flattened `spring.ai.anthropic.chat.*` properties.
 - ApiErrorHandler catches `com.anthropic.errors.*`, which 2.0.1 no longer translates.
 - Set `.effort(OutputConfig.Effort.MEDIUM)` explicitly. Opus 5.5 already defaults to medium, and 1.0.0 has no effort control at all.
+- Add server-side refusal fallbacks (`fallbacks: "default"` with the `server-side-fallback-2026-07-01` beta) if 2.0.1 can send them; M1's 502-on-refusal stays as the path when a fallback also refuses.
 - Re-check retry: on 2.0.1 the Anthropic calls go through the anthropic-java SDK, whose own `maxRetries` (default 2) sits under Spring AI's retry.
 - Testcontainers 2.0.5 and JUnit 6 now come from the Boot BOM, so drop the M1 override.
 - Add `spring-boot-starter-webmvc-test` (test scope) and move `@WebMvcTest` imports to `org.springframework.boot.webmvc.test.autoconfigure`.
@@ -347,7 +350,7 @@ Recommended outright (not put to you):
 
 ## 6. Risks and unknowns
 
-- **Can 1.0.0 parse an Opus 5.5 response?** Untested, because no key exists yet. M1 settles it, and a failure fires a D1 flip-when.
+- **Can 1.0.0 parse an Opus 5.5 response?** Yes: M1's live call parsed a thinking-plus-text response (2026-10-09).
 - **Tokenizer loading:** that DJL can load the XLM-R-family `tokenizer.json` is unverified, and both multilingual arms use that tokenizer family. If it fails, there is no config-only fallback; the next step is an Ollama sidecar.
 - **Deploy sizing:** mE5-small's fp32 model (~470 MB) likely needs 2 GiB on Cloud Run, which halves the free GiB-seconds. Images of ~1 GB exceed Artifact Registry's 0.5 GB free tier; the cost is small but unverified.
 - **Cost estimates:** LLM-gate cost, Langfuse units per run (~900) and the $0.33 worst case per /ask are all estimates. Replace them with measured usage after M5 and M8.
