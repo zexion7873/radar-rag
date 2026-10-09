@@ -92,5 +92,28 @@ jobs:
         run: |
           uv sync --locked
           uv run pytest -m service
+      # Baselines come from this x86 runner, never a dev machine. With none committed the step writes
+      # one for upload and still fails, so a deleted baseline cannot silently turn the gate off.
+      - name: Retrieval eval over golden_v1, gated on hit@5 flips against the baseline
+        working-directory: evals
+        env:
+          EVAL_SERVICE_URL: http://localhost:8080
+          EVAL_NOTION_STUB_PORT: "8765"
+        run: |
+          args=(--golden golden_v1.jsonl --fixture fixtures/trending.json --model-id all-MiniLM-L6-v2
+                --out results/latest.json --baseline results/baseline.json)
+          if [ -f results/baseline.json ]; then
+            uv run radar-evals "${args[@]}"
+          else
+            uv run radar-evals "${args[@]}" --write-baseline
+            echo "::error::No results/baseline.json committed; commit the one in the retrieval-eval artifact."
+            exit 1
+          fi
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: retrieval-eval
+          path: evals/results/
+          if-no-files-found: ignore
       - if: failure()
         run: tail -n 200 service.log
