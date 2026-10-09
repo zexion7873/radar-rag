@@ -59,6 +59,9 @@ radar:
     trending-data-source: ${TRENDING_DATA_SOURCE:f67aaa24-d5f2-415c-9358-c7d9d2f9713e}
 
 server:
+  # Loopback by default: /ask spends Anthropic credit and none of the endpoints authenticate, so a
+  # dev run must not be reachable from the LAN. A container sets SERVER_ADDRESS=0.0.0.0 (M9/M10).
+  address: ${SERVER_ADDRESS:127.0.0.1}
   error:
     # Internal service: surface the validation reason (e.g. "q is required") in the JSON body,
     # matching ApiErrorHandler's expose-the-cause stance. Don't enable on a public-facing app.
