@@ -78,9 +78,25 @@ def _ask(
     }
 
 
+def test_unsourced_and_uncited_split_named_repos_by_retrieval_and_citation() -> None:
+    resp = AskResponse.model_validate(
+        _ask(
+            "ComfyUI 和 microsoft/markitdown，openai/codex 無關",
+            ["comfyanonymous/ComfyUI"],
+            retrieved=["comfyanonymous/ComfyUI", "openai/codex"],
+        )
+    )
+    assert llm.unsourced_repos(resp, ALIASES) == ["microsoft/markitdown"]
+    assert llm.uncited_repos(resp, ALIASES) == ["openai/codex"]
+
+
 def test_uncited_compares_repo_names_case_insensitively() -> None:
     resp = AskResponse.model_validate(
-        _ask("ComfyUI 和 microsoft/markitdown", ["comfyanonymous/ComfyUI"])
+        _ask(
+            "ComfyUI 和 microsoft/markitdown",
+            ["comfyanonymous/ComfyUI"],
+            retrieved=["comfyanonymous/ComfyUI", "microsoft/markitdown"],
+        )
     )
     assert llm.uncited_repos(resp, ALIASES) == ["microsoft/markitdown"]
 
@@ -132,13 +148,13 @@ def test_gate_fails_on_errors_empty_answers_uncited_repos_and_low_means() -> Non
     results = [
         llm.ItemResult(id="e", kind="answerable", lang="en", q="q", error="HTTP 502"),
         llm.ItemResult(id="b", kind="answerable", lang="en", q="q", answer="  "),
-        llm.ItemResult(id="u", kind="answerable", lang="en", q="q", answer="x", uncited=["a/b"]),
+        llm.ItemResult(id="u", kind="answerable", lang="en", q="q", answer="x", unsourced=["a/b"]),
         _result("ok"),
     ]
     assert llm.gate_failures(results, {"faithfulness": 0.69, "attribution": 0.7}) == [
         "e: /ask HTTP 502",
         "b: empty answer",
-        "u: uncited a/b",
+        "u: names repos it did not retrieve: a/b",
         "faithfulness mean 0.690 < 0.7",
     ]
 
