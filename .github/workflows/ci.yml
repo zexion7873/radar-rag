@@ -45,7 +45,7 @@ jobs:
 
   eval-retrieval:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     services:
       postgres:
         # Same tag as docker-compose.yml, so CI searches on the local pgvector version.
@@ -71,13 +71,17 @@ jobs:
       - uses: astral-sh/setup-uv@v10.2.0
         with:
           working-directory: evals
-      # The pinned ONNX model (application.yml) and DJL's PyTorch natives download on first use.
+      # DJL downloads its PyTorch natives at the first embed.
       - uses: actions/cache@v6
         with:
-          path: |
-            ~/.djl.ai
-            /tmp/spring-ai-onnx-generative
-          key: onnx-djl-${{ hashFiles('pom.xml', 'src/main/resources/application.yml') }}
+          path: ~/.djl.ai
+          key: djl-${{ hashFiles('pom.xml') }}
+      # The embedding model (~480 MB), pinned and sha256-checked by the script.
+      - uses: actions/cache@v6
+        with:
+          path: models
+          key: models-${{ hashFiles('scripts/fetch-models.sh') }}
+      - run: scripts/fetch-models.sh
       - run: mvn -B -q package -DskipTests
       - name: Start the service with Notion pointed at the stub's port
         run: |
@@ -100,7 +104,8 @@ jobs:
           EVAL_SERVICE_URL: http://localhost:8080
           EVAL_NOTION_STUB_PORT: "8765"
         run: |
-          args=(--golden golden_v1.jsonl --fixture fixtures/trending.json --model-id all-MiniLM-L6-v2
+          args=(--golden golden_v1.jsonl --fixture fixtures/trending.json
+                --model-id paraphrase-multilingual-MiniLM-L12-v2
                 --out results/latest.json --baseline results/baseline.json)
           if [ -f results/baseline.json ]; then
             uv run radar-evals "${args[@]}"

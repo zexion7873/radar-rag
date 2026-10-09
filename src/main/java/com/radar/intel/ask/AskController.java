@@ -38,8 +38,8 @@ public class AskController {
 
     public AskController(ChatClient.Builder chatClientBuilder, VectorStore vectorStore) {
         this.chatClient = chatClientBuilder.defaultSystem(SYSTEM).build();
-        // Embeddings are English-centric over a partly Traditional-Chinese corpus, so real matches
-        // score low (~0.2-0.35); a low threshold keeps them and topK bounds the context window.
+        // Threshold 0 keeps every candidate; topK alone bounds the context window, and /search with
+        // topK 5 stays exactly this retrieval (the eval harness relies on that).
         this.ragAdvisor = RetrievalAugmentationAdvisor.builder()
                 .documentRetriever(VectorStoreDocumentRetriever.builder()
                         .vectorStore(vectorStore)
