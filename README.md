@@ -85,7 +85,7 @@ uv run ruff check && uv run ruff format --check && uv run mypy && uv run pytest 
 # then the tests start the stub on 8765, POST /sync from the fixture, and query /search.
 EVAL_SERVICE_URL=http://localhost:8080 uv run pytest -m service
 
-# Retrieval eval over a golden set (golden_v1.jsonl is M2's open item). The first run writes the
+# Retrieval eval over the golden set (golden_v1.jsonl, 62 items). The first run writes the
 # baseline with --write-baseline; later runs drop it and fail on any hit@5 hit→miss flip.
 uv run radar-evals --golden golden_v1.jsonl --fixture fixtures/trending.json \
   --model-id all-MiniLM-L6-v2 --out results/latest.json --baseline results/baseline.json --write-baseline
