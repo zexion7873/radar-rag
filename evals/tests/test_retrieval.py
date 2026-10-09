@@ -94,6 +94,24 @@ def test_aggregate_means_per_language_and_script() -> None:
     assert agg["script:latin"]["n"] == 1
 
 
+def test_aggregate_keeps_adversarial_items_out_of_language_and_script_groups() -> None:
+    trap = golden.GoldenItem(
+        id="adv-1",
+        q="資料庫",
+        lang="zh-TW",
+        kind="adversarial",
+        labels=(golden.Label(**_label(A)),),
+    )
+    answers = ANSWERS | {"資料庫": [A]}
+    with RadarClient("http://svc", transport=FakeService(answers, 2).transport()) as client:
+        agg = retrieval.aggregate(retrieval.run_items([*ITEMS, trap], client))
+    assert agg["all"]["n"] == 3
+    assert agg["kind:answerable"]["n"] == 2
+    assert agg["kind:adversarial"]["n"] == 1 and agg["kind:adversarial"]["hit"] == 1.0
+    assert agg["lang:zh-TW"]["n"] == 1
+    assert agg["script:cjk-only"]["n"] == 1
+
+
 def _write_inputs(tmp_path: Path, items: list[golden.GoldenItem]) -> tuple[Path, Path]:
     pages = [
         FrozenPage(

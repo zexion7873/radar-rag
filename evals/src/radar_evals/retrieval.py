@@ -89,12 +89,19 @@ def run_items(items: list[golden.GoldenItem], client: RadarClient) -> list[ItemR
 
 
 def aggregate(results: Iterable[ItemResult]) -> dict[str, dict[str, float]]:
-    """Mean row-level scores per group; items without labels have no retrieval score."""
+    """Mean row-level scores per group; items without labels have no retrieval score.
+
+    Language and script groups hold answerable items only, so a labelled adversarial item cannot
+    move the zh-TW/English comparison.
+    """
     groups: dict[str, list[Scores]] = {}
     for r in results:
         if r.row is None:
             continue
-        for group in ("all", f"lang:{r.lang}", f"script:{r.script}"):
+        names = ["all", f"kind:{r.kind}"]
+        if r.kind == "answerable":
+            names += [f"lang:{r.lang}", f"script:{r.script}"]
+        for group in names:
             groups.setdefault(group, []).append(r.row)
     out: dict[str, dict[str, float]] = {}
     for group, scores in sorted(groups.items()):
