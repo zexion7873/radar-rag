@@ -11,7 +11,8 @@ grounded Q&A with citations. Evals and tracing come in later phases (see [docs/s
 
 ## What P0–P2 gives you
 
-- `POST /sync` — pull the Trending Archive from Notion, embed each row into pgvector (upsert).
+- `POST /sync` — pull the Trending Archive from Notion and replace its rows in pgvector: one
+  document per Notion row (one repo, one week), keyed by the Notion page id.
 - `POST /search` — semantic search over the embedded rows, optionally filtered by metadata
   (`source` / `category` / `language` / `week` exact match, `stars_per_week` ≥ `minStars`).
 - `POST /ask` — ask a question in natural language; the service retrieves the relevant radar
@@ -78,9 +79,8 @@ On macOS, Docker Desktop must expose its default socket, or set
 
 A typed Python package (uv, pydantic, httpx, pytest, mypy strict, ruff) that tests the service as a
 black box over HTTP. It serves a frozen copy of the Notion Trending table from a local stub, so an
-eval needs no Notion token and does not move when the table does. Run it against an empty
-`vector_store` (a fresh compose volume, or the one-time drop under Notes): until the sync becomes a
-full refresh (plan M3), `/sync` only upserts, and rows from an earlier live sync would show up.
+eval needs no Notion token and does not move when the table does. `/sync` replaces every trending
+row, so rows from an earlier live sync do not leak into an eval.
 
 ```bash
 cd evals
@@ -114,7 +114,7 @@ src/main/java/com/radar/intel/
 │   ├── NotionProps.java                # typed property extractors
 │   └── TrendingRow.java
 ├── ingest/
-│   ├── TrendingIngestService.java      # Notion rows -> Document -> vectorStore.add (upsert by URL)
+│   ├── TrendingIngestService.java      # Notion rows -> Documents; /sync replaces the trending rows
 │   └── IngestController.java           # POST /sync
 ├── search/
 │   └── SearchController.java           # POST /search
@@ -135,8 +135,9 @@ src/main/java/com/radar/intel/
   table only at startup, so a table created under the old HNSW setting needs, once: stop the
   service, `docker compose exec postgres psql -U radar -d radar -c 'DROP TABLE vector_store'`,
   start it again, then `POST /sync`.
-- **Idempotent re-sync.** Documents use the repo URL as a stable id, so `POST /sync` upserts
-  rather than duplicating.
+- **Full-refresh re-sync.** `POST /sync` deletes the trending rows and adds the table's current
+  rows in one transaction, so a row deleted in Notion does not linger and a failed embed leaves the
+  old rows in place. Ids are Notion page ids: the table has one row per repo per week.
 - **Spring AI moves fast.** Versions/artifact ids match the reference docs at scaffold time —
   verify against `start.spring.io` / the current reference when you build.
 - **RAG is grounded, not filtered.** `/ask` retrieves from the same pgvector store `/search` uses

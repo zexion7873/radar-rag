@@ -35,6 +35,7 @@ public class NotionClient {
         for (JsonNode page : queryAll(dataSourceId)) {
             JsonNode p = page.path("properties");
             rows.add(new TrendingRow(
+                    page.path("id").asText(),
                     NotionProps.text(p, "Repo"),
                     NotionProps.dateStart(p, "Week"),
                     NotionProps.number(p, "Stars/wk"),
