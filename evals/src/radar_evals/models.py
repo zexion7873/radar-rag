@@ -3,7 +3,7 @@
 import unicodedata
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 # The (url, week) pair a relevance label and a retrieved row are matched on.
 type RowKey = tuple[str, str]
@@ -37,6 +37,34 @@ class SearchHit(BaseModel):
 
 class SyncResponse(BaseModel):
     ingested: int
+
+
+class Citation(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    id: str
+    repo: str | None = None
+    url: str | None = None
+    week: str | None = None
+    score: float | None = None
+
+
+class AskUsage(BaseModel):
+    """Output tokens include thinking."""
+
+    model_config = ConfigDict(frozen=True, populate_by_name=True)
+
+    model: str
+    input_tokens: int = Field(alias="inputTokens")
+    output_tokens: int = Field(alias="outputTokens")
+
+
+class AskResponse(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    answer: str
+    citations: list[Citation]
+    usage: AskUsage
 
 
 class FrozenPage(BaseModel):
