@@ -102,7 +102,7 @@ uv run radar-evals --golden golden_v1.jsonl --fixture fixtures/trending.json \
   --model-id paraphrase-multilingual-MiniLM-L12-v2 --out results/latest.json --baseline results/baseline.json --write-baseline
 
 # LLM eval (paid, ~$3 per full run): /ask on every golden item, code checks (no empty answer, no
-# repo named outside the citations, no citation outside the retrieved rows), citation precision
+# repo named or cited outside the retrieved rows), citation precision
 # against the golden labels, then DeepEval metrics judged by claude-sonnet-5. The service and
 # this command both need ANTHROPIC_API_KEY.
 uv run radar-evals-llm --golden golden_v1.jsonl --fixture fixtures/trending.json --out results/llm-latest.json
@@ -115,7 +115,7 @@ CI runs the unit tests in `evals` and the live-service tests in `eval-retrieval`
 pgvector service container on the same tag as `docker-compose.yml`. The LLM eval runs in
 `eval-llm.yml` only when the repo owner adds the `eval:llm` label to a PR or dispatches it; it reads
 the key from the `ANTHROPIC_API_KEY` repository secret. It fails on any `/ask` error, empty answer,
-uncited repo or citation outside the retrieved rows, and when a metric's mean is below 0.7.
+repo named or cited outside the retrieved rows, and when a metric's mean is below 0.7.
 
 ## Layout
 
@@ -160,7 +160,7 @@ multilingual models close the English-minus-Chinese hit@5 gap from 0.476 to 0.04
 first hit higher (MRR) but finds one fewer zh-TW item, so paraphrase ships.
 
 **Answer quality** (`/ask` on `claude-opus-5-5`, judged by `claude-sonnet-5` through DeepEval; two
-runs on one commit, all 62 items): no errors, empty answers or repos named outside the citations.
+runs on one commit, all 62 items): no errors, empty answers or repos named outside the retrieved rows.
 
 | metric | items | run 1 | run 2 |
 |---|---:|---:|---:|

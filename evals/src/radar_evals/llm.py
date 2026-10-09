@@ -1,8 +1,9 @@
 """LLM eval: run the golden set through /ask, check each answer in code, score it with a judge.
 
-The gate fails on any /ask error, empty answer or uncited repo mention, and when a metric's mean
-falls below FLOOR. Judge scores are noisy, so the floor is a coarse tripwire; the run-to-run noise
-band recorded in docs/stack-plan.md (M5) is what later changes are judged against.
+The gate fails on any /ask error, empty answer, repo named outside the retrieved rows or citation
+outside them, and when a metric's mean falls below FLOOR. Judge scores are noisy, so the floor is a
+coarse tripwire; the run-to-run noise band recorded in docs/stack-plan.md is what later changes are
+judged against.
 """
 
 import argparse
@@ -79,9 +80,17 @@ def mentioned_repos(answer: str, aliases: dict[str, str]) -> set[str]:
     return found
 
 
+def unsourced_repos(resp: AskResponse, aliases: dict[str, str]) -> list[str]:
+    """Repos the answer names that /ask never retrieved: knowledge from outside the radar."""
+    sourced = {s.repo.lower() for s in resp.sources if s.repo}
+    return sorted(mentioned_repos(resp.answer, aliases) - sourced)
+
+
 def uncited_repos(resp: AskResponse, aliases: dict[str, str]) -> list[str]:
+    """Retrieved repos the answer names without citing, e.g. "the rest are unrelated: X, Y"."""
+    sourced = {s.repo.lower() for s in resp.sources if s.repo}
     cited = {c.repo.lower() for c in resp.citations if c.repo}
-    return sorted(mentioned_repos(resp.answer, aliases) - cited)
+    return sorted((mentioned_repos(resp.answer, aliases) & sourced) - cited)
 
 
 def citation_precision(resp: AskResponse, gains: dict[RowKey, int]) -> float | None:
@@ -113,6 +122,7 @@ class ItemResult(BaseModel):
     error: str | None = None
     answer: str | None = None
     cited: list[str] = []
+    unsourced: list[str] = []
     uncited: list[str] = []
     # Citation ids /ask returned that are not among the rows it retrieved; must stay empty.
     stray_citations: list[str] = []
@@ -162,6 +172,7 @@ def ask_items(
                 update={
                     "answer": resp.answer,
                     "cited": sorted({c.repo for c in resp.citations if c.repo}),
+                    "unsourced": unsourced_repos(resp, aliases),
                     "uncited": uncited_repos(resp, aliases),
                     "stray_citations": [c.id for c in resp.citations if c.id not in sources],
                     "citation_precision": citation_precision(resp, item.gains),
@@ -258,7 +269,11 @@ def gate_failures(results: list[ItemResult], metric_means: dict[str, float]) -> 
     out += [
         f"{r.id}: empty answer" for r in results if r.answer is not None and not r.answer.strip()
     ]
-    out += [f"{r.id}: uncited {', '.join(r.uncited)}" for r in results if r.uncited]
+    out += [
+        f"{r.id}: names repos it did not retrieve: {', '.join(r.unsourced)}"
+        for r in results
+        if r.unsourced
+    ]
     out += [
         f"{r.id}: cites rows it did not retrieve: {', '.join(r.stray_citations)}"
         for r in results
@@ -286,7 +301,10 @@ def summary(result: RunResult) -> str:
             f"| citation precision | {result.citation_precision_n} | "
             f"{result.citation_precision:.3f} |"
         )
+    uncited = sum(1 for r in result.items if r.uncited)
     lines += [
+        "",
+        f"Answers naming a retrieved repo without citing it: {uncited} (not gated).",
         "",
         f"Cost: generator ${result.generator_cost:.2f} + judge ${result.judge_cost:.2f} "
         f"= ${result.generator_cost + result.judge_cost:.2f}",
@@ -296,7 +314,9 @@ def summary(result: RunResult) -> str:
         lines.append(f"**{len(result.failures)} failure(s)**:")
         lines += [f"- {f}" for f in result.failures]
     else:
-        lines.append("Gate passed: no errors, empty answers or uncited repos; every mean ≥ floor.")
+        lines.append(
+            "Gate passed: no errors, empty answers or unretrieved repos; every mean ≥ floor."
+        )
     return "\n".join(lines) + "\n"
 
 
