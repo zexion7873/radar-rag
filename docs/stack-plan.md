@@ -271,6 +271,7 @@ Changes:
 - Everything in the Hosting and Public-demo safety rows.
 - A separate `radar-demo` workspace with its own spend limit.
 - Effort set to low on the public /ask path.
+- Decide whether the prod profile serves Swagger UI (`springdoc.swagger-ui.enabled`): its Try-it-out button is a one-click way to spend on /ask, so it stays off unless the rate limit and Turnstile cover it.
 
 Done when:
 - `curl -i -X POST $URL/sync` without the secret returns `401`; with it, `200 {"ingested": N}`.

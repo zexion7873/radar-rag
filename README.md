@@ -71,6 +71,9 @@ retrieved rows (`id` / `repo` / `url` / `week` / retrieval `score`); `citations`
 answer cites, each with the passages it quoted (`citedText`); `usage` is the call's `model`,
 `inputTokens` and `outputTokens` (thinking included).
 
+The OpenAPI spec is at `/v3/api-docs` and Swagger UI at `/swagger-ui.html`, both generated from the
+controllers.
+
 ### In a container
 
 The image fetches the model itself and carries everything the service loads, libtorch included, so
