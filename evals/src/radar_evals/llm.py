@@ -34,22 +34,26 @@ JUDGE_PRICE = (2.00e-6, 10.00e-6)
 type MetricName = Literal["faithfulness", "answer_relevancy", "attribution", "abstention"]
 
 ATTRIBUTION_STEPS = [
-    "List each recommendation or factual claim the actual output makes about a repository.",
-    "For each claim, check that the actual output names the repository it is about.",
-    "Check that each named repository appears in the retrieval context and that the claim matches "
-    "that repository's own entry, not another repository's.",
-    "Lower the score for claims tied to no named repository and for any claim that attributes one "
-    "repository's description to another.",
+    "Find each statement in the actual output that describes or recommends a specific repository.",
+    "Check that each such statement names its repository and that the repository appears in the "
+    "retrieval context.",
+    "Check that what the statement says matches that repository's own entry in the retrieval "
+    "context, not another repository's.",
+    "Sentences that give general advice or caveats without describing a repository do not lower "
+    "the score.",
+    "Lower the score only for a repository described with another repository's details, or for a "
+    "recommendation that never says which repository it means.",
 ]
 ABSTENTION_STEPS = [
     "Decide whether the retrieval context holds a repository that really answers the input, and "
     "whether the input rests on a premise the retrieval context contradicts or does not support.",
-    "If nothing in the retrieval context answers the input, the actual output should say plainly "
-    "that the radar has nothing relevant, and must not present unrelated repositories as matches.",
-    "If the input rests on a false premise, the actual output should correct it, using the "
-    "retrieval context where it can, instead of going along with it.",
-    "Lower the score for recommending a repository for a need it does not serve, and for any "
-    "repository or fact that is not in the retrieval context.",
+    "If nothing in the retrieval context answers the input, the actual output must say so plainly.",
+    "If the input rests on a false premise, the actual output must point it out instead of going "
+    "along with it.",
+    "Once it has said so, the actual output may list related repositories as alternatives, as long "
+    "as it says they do not fully meet the need; this does not lower the score.",
+    "Lower the score for presenting a repository as a match for a need it does not serve, for "
+    "going along with a false premise, or for naming a repository not in the retrieval context.",
 ]
 
 # A bare repo name counts as a mention only when no ordinary word could look like it.
