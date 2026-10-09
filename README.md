@@ -16,7 +16,9 @@ grounded Q&A with citations. Evals and tracing come in later phases (see [docs/s
   (`source` / `category` / `language` / `week` exact match, `stars_per_week` ≥ `minStars`).
 - `POST /ask` — ask a question in natural language; the service retrieves the relevant radar
   rows from pgvector, has **Claude** answer from them, and returns the answer plus the source
-  rows as **citations**. Needs `ANTHROPIC_API_KEY`; `/sync` and `/search` do not.
+  rows as **citations**. Needs `ANTHROPIC_API_KEY`; `/sync` and `/search` do not. Runs on
+  `claude-opus-5-5`. A model refusal returns 502; an Anthropic failure returns 502 (client error,
+  e.g. a bad key) or 503 (rate limit or overload, after one retry), without the upstream body.
 
 ## Prerequisites
 
@@ -65,8 +67,12 @@ and a similarity `score`. `/ask` returns `{answer, citations}`, where each citat
 ## Test
 
 ```bash
-mvn -B verify   # unit + slice tests; needs no Docker and no tokens. CI runs the same on every PR.
+mvn -B verify   # unit + slice tests, then AskFlowIT; no tokens. CI runs the same on every PR.
 ```
+
+`AskFlowIT` starts a pgvector container through Testcontainers, so `verify` needs a running Docker.
+On macOS, Docker Desktop must expose its default socket, or set
+`DOCKER_HOST=unix://$HOME/.docker/run/docker.sock`.
 
 ## Evals (`evals/`, Python)
 
