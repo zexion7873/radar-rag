@@ -1,6 +1,6 @@
 package com.radar.intel.notion;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -35,7 +35,7 @@ public class NotionClient {
         for (JsonNode page : queryAll(dataSourceId)) {
             JsonNode p = page.path("properties");
             rows.add(new TrendingRow(
-                    page.path("id").asText(),
+                    page.path("id").asString(),
                     NotionProps.text(p, "Repo"),
                     NotionProps.dateStart(p, "Week"),
                     NotionProps.number(p, "Stars/wk"),
@@ -58,14 +58,14 @@ public class NotionClient {
             JsonNode ds = http.get().uri("/data_sources/{id}", uuid)
                     .retrieve().body(JsonNode.class);
             if (ds != null && ds.hasNonNull("id")) {
-                return ds.get("id").asText();
+                return ds.get("id").asString();
             }
         } catch (Exception ignored) {
             // fall through to database resolution
         }
         JsonNode db = http.get().uri("/databases/{id}", uuid)
                 .retrieve().body(JsonNode.class);
-        return db.path("data_sources").path(0).path("id").asText(uuid);
+        return db.path("data_sources").path(0).path("id").asString(uuid);
     }
 
     private List<JsonNode> queryAll(String dataSourceId) {
@@ -80,7 +80,7 @@ public class NotionClient {
                     .retrieve().body(JsonNode.class);
             resp.path("results").forEach(out::add);
             cursor = resp.path("has_more").asBoolean(false)
-                    ? resp.path("next_cursor").asText(null)
+                    ? resp.path("next_cursor").asString(null)
                     : null;
         } while (cursor != null);
         return out;

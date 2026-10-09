@@ -1,7 +1,7 @@
 package com.radar.intel.ask;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.github.tomakehurst.wiremock.verification.LoggedRequest;
@@ -13,7 +13,7 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.MediaType;
@@ -23,7 +23,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
-import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import java.util.List;
@@ -55,12 +55,10 @@ class AskFlowIT {
     // One container for the JVM: Spring caches this context across test classes, and a
     // per-class container would be stopped underneath it.
     @ServiceConnection
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(
+    static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer(
             DockerImageName.parse("pgvector/pgvector:0.8.6-pg16").asCompatibleSubstituteFor("postgres"));
 
-    // Without http2PlainDisabled, the JDK client's h2c upgrade on a POST dies with RST_STREAM.
-    static final WireMockServer ANTHROPIC =
-            new WireMockServer(wireMockConfig().dynamicPort().http2PlainDisabled(true));
+    static final WireMockServer ANTHROPIC = new WireMockServer(wireMockConfig().dynamicPort());
 
     static {
         POSTGRES.start();
@@ -74,7 +72,6 @@ class AskFlowIT {
     static void properties(DynamicPropertyRegistry registry) {
         registry.add("spring.ai.anthropic.base-url", ANTHROPIC::baseUrl);
         registry.add("spring.ai.anthropic.api-key", () -> "test-key");
-        registry.add("spring.ai.retry.backoff.initial-interval", () -> "10ms");
         registry.add("radar.notion.token", () -> "unused");
     }
 
@@ -122,6 +119,8 @@ class AskFlowIT {
         JsonNode sent = JSON.readTree(onlyRequest().getBodyAsString());
         assertThat(sent.has("temperature")).isFalse();
         assertThat(sent.path("max_tokens").asInt()).isEqualTo(16000);
+        assertThat(sent.path("model").asString()).isEqualTo("claude-opus-5-5");
+        assertThat(sent.path("output_config").path("effort").asString()).isEqualTo("medium");
     }
 
     @Test

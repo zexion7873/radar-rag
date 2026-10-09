@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.13</version>
+        <version>4.1.1</version>
         <relativePath/>
     </parent>
 
@@ -19,11 +19,7 @@
 
     <properties>
         <java.version>21</java.version>
-        <!-- Spring AI moves fast; bump to the latest GA when you scaffold. -->
-        <spring-ai.version>1.0.0</spring-ai.version>
-        <!-- Boot 3.4 manages 1.20.x, whose docker-java speaks API 1.32; Docker 29+ (minimum API
-             1.40) rejects it with an opaque 400. -->
-        <testcontainers.version>1.21.4</testcontainers.version>
+        <spring-ai.version>2.0.1</spring-ai.version>
     </properties>
 
     <dependencyManagement>
@@ -41,7 +37,7 @@
     <dependencies>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -85,6 +81,11 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!-- Real-HTTP stand-in for Notion and later Anthropic; MockRestServiceServer stops
              intercepting once Spring AI 2.x moves Anthropic calls onto the SDK's own client. -->
         <dependency>
@@ -100,7 +101,7 @@
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
-            <artifactId>postgresql</artifactId>
+            <artifactId>testcontainers-postgresql</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

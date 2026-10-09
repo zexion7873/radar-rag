@@ -23,8 +23,7 @@ grounded Q&A with citations. Evals and tracing come in later phases (see [docs/s
 
 ## Prerequisites
 
-- Java 21, and Maven running on it: `mvn -v` names the JVM. Homebrew's maven brings the newest
-  JDK, where the Boot 3.4 test stack's Mockito cannot mock interfaces; set `JAVA_HOME` to 21.
+- Java 21 or newer (CI builds on Temurin 21)
 - Docker (for the pgvector Postgres)
 - The **Notion integration token** already shared into the archive tables
 

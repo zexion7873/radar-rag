@@ -1,5 +1,7 @@
 package com.radar.intel.ask;
 
+import com.anthropic.models.messages.OutputConfig;
+import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.ChatClientResponse;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
@@ -38,7 +40,10 @@ public class AskController {
     private final Advisor ragAdvisor;
 
     public AskController(ChatClient.Builder chatClientBuilder, VectorStore vectorStore) {
-        this.chatClient = chatClientBuilder.defaultSystem(SYSTEM).build();
+        // Opus 5.5 defaults to medium already; pinned so a model default change cannot move cost or quality.
+        this.chatClient = chatClientBuilder.defaultSystem(SYSTEM)
+                .defaultOptions(AnthropicChatOptions.builder().effort(OutputConfig.Effort.MEDIUM))
+                .build();
         // Threshold 0 keeps every candidate; topK alone bounds the context window, and /search with
         // topK 5 stays exactly this retrieval (the eval harness relies on that).
         this.ragAdvisor = RetrievalAugmentationAdvisor.builder()
@@ -76,7 +81,10 @@ public class AskController {
 
         List<Generation> generations = resp.chatResponse().getResults();
         // A refusal comes back as HTTP 200 with no text; without this it reads as an empty answer.
-        if (generations.stream().anyMatch(g -> "refusal".equals(g.getMetadata().getFinishReason()))) {
+        // Spring AI 2.0.1 turns a response with empty content into no Generation at all, so a refusal
+        // that stops before any text has no finish reason to read.
+        if (generations.isEmpty()
+                || generations.stream().anyMatch(g -> "refusal".equals(g.getMetadata().getFinishReason()))) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "llm declined the request");
         }
         ChatResponseMetadata md = resp.chatResponse().getMetadata();
