@@ -1,4 +1,6 @@
-# Radar Intelligence Service (P0–P2)
+# Radar Intelligence Service
+
+[![CI](https://github.com/zexion7873/radar-rag/actions/workflows/ci.yml/badge.svg)](https://github.com/zexion7873/radar-rag/actions/workflows/ci.yml)
 
 A standalone Java / Spring Boot service that adds LLM-powered intelligence on top of the
 GitHub-radar Notion archive written by the `ai-assistant` routines. **P0** stands up the
@@ -9,6 +11,22 @@ request into Langfuse (see [docs/stack-plan.md](docs/stack-plan.md)).
 
 > Not a proxy in front of Notion — it exposes *new* capabilities (semantic search and
 > grounded Q&A) that the pure-reader `github-radar-ui` cannot do.
+
+## How it fits together
+
+```mermaid
+flowchart LR
+  notion[(Notion<br/>Trending Archive)] -->|POST /sync| ingest[Ingest]
+  ingest -->|embed| onnx[OnnxEmbeddingModel<br/>multilingual, in-process]
+  onnx --> pg[(pgvector)]
+  user([caller]) -->|POST /search| pg
+  user -->|POST /ask| retrieve[Retrieve top 5]
+  retrieve --> pg
+  retrieve -->|rows as citable documents| claude[Claude Opus 5.5]
+  claude -->|answer + citations| user
+  evals[Python eval harness<br/>CI gates] -.->|HTTP, black box| user
+  claude -.->|OTLP traces| langfuse[(Langfuse)]
+```
 
 ## What P0–P2 gives you
 
@@ -236,6 +254,20 @@ means. A run costs about $3.3.
   "repo week", and returns only the rows Claude cites. It takes only a question — no
   metadata-filter fields — so it has no SQL-filter input surface (unlike `/search`, which validates its filter values). The retriever keeps every
   candidate (similarity threshold 0) and bounds the context by `topK`.
+
+## Known limitations
+
+- **Not deployed yet, and not hardened for it.** `/sync` has no authentication, nothing rate-limits
+  `/ask`, Notion errors come back with Notion's body, and Swagger UI is on. That is fine on loopback,
+  which is the default bind; the public demo and its protections are milestone M10.
+- **One source.** Only the Trending Archive is ingested; Blog and Loot are P5.
+- **Small, hand-labelled golden set.** 62 items. The retrieval gate catches any flipped hit, but the
+  LLM metrics move by up to ~0.03 between identical runs, so only a drop beyond that reads as a
+  regression.
+- **Exact vector search.** Right for a few hundred rows; it scans every row, so a much larger archive
+  needs an index and a filter strategy first.
+- **amd64 image, 2 GiB.** The image targets Cloud Run's architecture, and ONNX Runtime keeps ~1.1 GB
+  of the model in native memory.
 
 ## Next
 

@@ -1,0 +1,61 @@
+name: Bug report
+description: An endpoint errors, returns something wrong, or the service will not start
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One question decides where a report goes, and it is worth answering
+        before you write anything:
+
+        - **Is the data wrong, or what the service does with it?** The rows are
+          written upstream by separate routines; this service embeds, searches
+          and answers over them. A wrong row is still worth reporting, but say
+          so, because the fix lives elsewhere.
+
+  - type: dropdown
+    id: endpoint
+    attributes:
+      label: Where it happens
+      options:
+        - POST /search
+        - POST /ask
+        - POST /sync
+        - Startup (local run, container or compose)
+        - The eval harness
+        - Something else
+    validations:
+      required: true
+
+  - type: textarea
+    id: request
+    attributes:
+      label: The request, and what came back
+      description: The curl command or request body, and the status and response body. Remove any keys or tokens first.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected instead
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Commit and how you ran it
+      description: The `main` commit, and whether it was `mvn spring-boot:run`, the image, or compose.
+      placeholder: "e21f91a, docker compose --profile app up"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checked
+    attributes:
+      label: Before submitting
+      options:
+        - label: I saw this happen myself, and the request above reproduces it.
+          required: true

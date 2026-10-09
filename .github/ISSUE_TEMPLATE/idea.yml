@@ -1,0 +1,30 @@
+name: Idea
+description: Something the service should answer, find, or measure differently
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What is annoying you
+      description: The situation, not the solution. The question it failed to answer, or the search that missed.
+    validations:
+      required: true
+
+  - type: textarea
+    id: idea
+    attributes:
+      label: What you had in mind
+      description: Optional. A rough shape is fine, and so is "no idea, but this bothers me."
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part, if you know
+      options:
+        - Search and retrieval
+        - Answers and citations (/ask)
+        - Ingest (/sync)
+        - Evals and CI gates
+        - Tracing (Langfuse)
+        - Packaging and deploy
+        - Not sure
