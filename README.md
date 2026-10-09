@@ -246,3 +246,7 @@ pure Notion reader).
 
 The target stack and the milestone order (M0–M11, each with a checkable done-when) are in
 [docs/stack-plan.md](docs/stack-plan.md).
+
+## License
+
+[MIT](LICENSE).
