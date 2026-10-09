@@ -10,6 +10,7 @@ target/
 .project
 .settings/
 .omc/
+.omo/
 .venv/
 __pycache__/
 .mypy_cache/
