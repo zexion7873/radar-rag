@@ -252,7 +252,7 @@ Done when:
 ### M9: Java 25 and the deployable image (deploy prep, ~1.5 days)
 Changes:
 - Bump Java 25 on its own first, and get the gates green.
-- Build the Dockerfile: model from the M4 script, libtorch pre-populated or pulled in via `pytorch-native-cpu` + `pytorch-jni` matching DJL 0.36.0, `-Dai.djl.offline=true`, and an AOT-cache training run.
+- Build the Dockerfile with `SERVER_ADDRESS=0.0.0.0`: the service binds loopback by default, so without it the offline curl test below gets no answer. Model from the M4 script, libtorch pre-populated or pulled in via `pytorch-native-cpu` + `pytorch-jni` matching DJL 0.36.0, `-Dai.djl.offline=true`, and an AOT-cache training run.
 - Switch `eval-retrieval` to run this image.
 
 Done when:
