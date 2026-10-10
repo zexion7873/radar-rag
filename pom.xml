@@ -63,12 +63,12 @@
         <dependency>
             <groupId>com.microsoft.onnxruntime</groupId>
             <artifactId>onnxruntime</artifactId>
-            <version>1.21.1</version>
+            <version>1.30.0</version>
         </dependency>
         <dependency>
             <groupId>ai.djl.huggingface</groupId>
             <artifactId>tokenizers</artifactId>
-            <version>0.36.0</version>
+            <version>0.38.0</version>
         </dependency>
 
         <!-- P2: Claude chat model for grounded /ask answers (needs ANTHROPIC_API_KEY). -->
@@ -105,7 +105,7 @@
         <dependency>
             <groupId>com.bucket4j</groupId>
             <artifactId>bucket4j_jdk17-core</artifactId>
-            <version>8.20.0</version>
+            <version>8.21.0</version>
         </dependency>
 
         <dependency>
