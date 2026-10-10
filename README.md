@@ -218,6 +218,10 @@ uv run radar-evals --golden golden_v1.jsonl --fixture fixtures/trending.json \
   --fixture fixtures/blog.json --source trending \
   --model-id paraphrase-multilingual-MiniLM-L12-v2 --out results/latest.json --baseline results/baseline.json --write-baseline
 
+# golden_v1 again over every source, as /ask searches; blog rows count as misses, so a lower bound.
+uv run radar-evals --golden golden_v1.jsonl --fixture fixtures/trending.json --fixture fixtures/blog.json \
+  --model-id paraphrase-multilingual-MiniLM-L12-v2 --out results/latest_v1_all.json --baseline results/baseline_v1_all.json
+
 # golden_v2 (33 items, trending and blog labels) queries every source, with its own baseline.
 uv run radar-evals --golden golden_v2.jsonl --fixture fixtures/trending.json --fixture fixtures/blog.json \
   --model-id paraphrase-multilingual-MiniLM-L12-v2 --out results/latest_v2.json --baseline results/baseline_v2.json
