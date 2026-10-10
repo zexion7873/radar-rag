@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -42,13 +43,15 @@ public class AskController {
     private final ChatClient chatClient;
     private final VectorStoreDocumentRetriever retriever;
     private final OutputConfig.Effort effort;
+    private final TurnstileVerifier turnstile;
 
     /**
      * {@code radar.ask.effort} is pinned so a model default change cannot move cost or quality; the
      * LLM gate measures medium, and the public prod path runs low.
      */
     public AskController(ChatClient.Builder chatClientBuilder, VectorStore vectorStore,
-            @Value("${radar.ask.effort:medium}") String effort) {
+            @Value("${radar.ask.effort:medium}") String effort, TurnstileVerifier turnstile) {
+        this.turnstile = turnstile;
         this.effort = OutputConfig.Effort.of(effort);
         // Throws on an unknown value, which the SDK would otherwise send to the API on every /ask.
         this.effort.known();
@@ -83,10 +86,12 @@ public class AskController {
     }
 
     @PostMapping("/ask")
-    public AskResponse ask(@RequestBody AskRequest req) {
+    public AskResponse ask(@RequestBody AskRequest req,
+            @RequestHeader(value = "X-Turnstile-Token", required = false) String turnstileToken) {
         if (req.q() == null || req.q().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "q is required");
         }
+        turnstile.check(turnstileToken);
         List<Document> docs = retriever.retrieve(new Query(req.q()));
         ChatResponse resp = chatClient.prompt()
                 .options(AnthropicChatOptions.builder()

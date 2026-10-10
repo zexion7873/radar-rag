@@ -45,6 +45,10 @@ radar:
   embedding:
     model: models/paraphrase/model.onnx
     tokenizer: models/paraphrase/tokenizer.json
+  turnstile:
+    # Cloudflare's documented always-pass test key, for local runs of the page; prod sets the real one.
+    # With no radar.turnstile.secret, /ask checks no token at all.
+    site-key: 1x00000000000000000000AA
   langfuse:
     # Without both keys LangfuseTracingConfig exports nothing.
     public-key: ${LANGFUSE_PUBLIC_KEY:}

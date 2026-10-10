@@ -60,7 +60,7 @@ jobs:
             --memory 2Gi --cpu 1 --cpu-boost --timeout 900 \
             --min-instances 0 --max-instances 1 \
             --set-env-vars SPRING_PROFILES_ACTIVE=prod,POSTGRES_USER=radar_owner \
-            --set-secrets POSTGRES_URL=postgres-url:latest,POSTGRES_PASSWORD=postgres-password:latest,ANTHROPIC_API_KEY=anthropic-api-key:latest,NOTION_TOKEN=notion-token:latest,SYNC_SECRET=sync-secret:latest,LANGFUSE_PUBLIC_KEY=langfuse-public-key:latest,LANGFUSE_SECRET_KEY=langfuse-secret-key:latest
+            --set-secrets POSTGRES_URL=postgres-url:latest,POSTGRES_PASSWORD=postgres-password:latest,ANTHROPIC_API_KEY=anthropic-api-key:latest,NOTION_TOKEN=notion-token:latest,SYNC_SECRET=sync-secret:latest,LANGFUSE_PUBLIC_KEY=langfuse-public-key:latest,LANGFUSE_SECRET_KEY=langfuse-secret-key:latest,TURNSTILE_SECRET=turnstile-secret:latest
       # Checks the prod profile's surface, not the data: a first deploy has an empty table.
       - name: Smoke test
         run: |
@@ -70,5 +70,7 @@ jobs:
           search=$(code -X POST "$url/search" -H 'content-type: application/json' -d '{"q":"agents","topK":1}')
           sync=$(code -X POST "$url/sync")
           swagger=$(code "$url/swagger-ui.html")
-          echo "search=$search sync-without-secret=$sync swagger=$swagger"
-          [ "$search" = 200 ] && [ "$sync" = 401 ] && [ "$swagger" = 404 ]
+          page=$(code "$url/")
+          ask=$(code -X POST "$url/ask" -H 'content-type: application/json' -d '{"q":"agents"}')
+          echo "search=$search sync-without-secret=$sync swagger=$swagger page=$page ask-without-token=$ask"
+          [ "$search" = 200 ] && [ "$sync" = 401 ] && [ "$swagger" = 404 ] && [ "$page" = 200 ] && [ "$ask" = 403 ]

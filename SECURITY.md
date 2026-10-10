@@ -27,8 +27,13 @@ Worth knowing before you decide whether something is in scope.
 - **Prod profile (`SPRING_PROFILES_ACTIVE=prod`).** `/sync` needs `Authorization: Bearer` with
   `SYNC_SECRET`, compared in constant time; boot fails without it, and an empty one refuses every call.
   `/ask` and `/search` are rate-limited per client, keyed on the right-most `X-Forwarded-For` entry
-  (an IPv6 client by its /64). Error bodies carry no message, logs are `INFO`, Swagger UI and
+  (an IPv6 client by its /64). `/ask` needs a Cloudflare Turnstile token, checked with siteverify
+  before any retrieval or model call; a missing or rejected token is `403`, and an unreachable
+  siteverify `503`, never a pass. Error bodies carry no message, logs are `INFO`, Swagger UI and
   `/v3/api-docs` are off, and `POSTGRES_PASSWORD` has no fallback.
+- **The page.** `/` serves static HTML whose Content-Security-Policy allows scripts and frames from
+  this origin and Cloudflare Turnstile only. Model output is inserted as text nodes, never as HTML,
+  and only `http(s)` citation URLs become links.
 - **Validates filters.** `/search` rejects filter values that could break out of the vector store's
   filter expression before building it.
 - **Downloads nothing at runtime.** The image carries the model and every native library, pinned and
@@ -46,6 +51,8 @@ Worth knowing before you decide whether something is in scope.
 - Anything that sends the Notion token, the Anthropic key or the Langfuse keys to a response or to a log
   a caller can read.
 - Getting `/ask` to return Anthropic's upstream error text, or `/sync` Notion's.
+- Under the prod profile: getting `/ask` to reach the model without a token Turnstile accepted, or
+  getting the page to run script from an answer.
 - Under the prod profile: calling `/sync` without the secret, or getting past the rate limit from one
   client.
 - Making the `@claude` workflow or the LLM eval run for someone other than the owner.
@@ -58,9 +65,9 @@ A report of these is a duplicate:
 
 - Without the prod profile, `/sync` has no authentication and Swagger UI is on. That run binds
   loopback by default.
-- `/ask` has no bot check until Cloudflare Turnstile arrives with the "Ask the radar" page (M11). A
-  caller rotating addresses gets fresh rate-limit buckets; the dedicated Anthropic workspace's monthly
-  spend limit is what caps the cost.
+- Turnstile stops scripted `/ask` calls, not a person asking by hand from many addresses. Each new
+  address gets fresh rate-limit buckets; the dedicated Anthropic workspace's monthly spend limit is
+  what caps the cost.
 - The rate limit lives in one instance's memory: it resets on restart and is not shared between
   instances (the deployment runs at most one).
 

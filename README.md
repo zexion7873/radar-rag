@@ -128,6 +128,10 @@ so the eval gates measure the service unthrottled and at medium effort. It adds:
 - **Per-client rate limits.** `/ask`: 5 a minute and 20 a day; `/search`: 30 a minute; past either,
   `429` with `Retry-After`. The client is the right-most `X-Forwarded-For` entry (the address Cloud
   Run's front end appends), an IPv6 client its /64.
+- **`/ask` needs a Cloudflare Turnstile token** (`X-Turnstile-Token`), checked with siteverify before
+  any retrieval or model call: missing or rejected is `403`, siteverify unreachable is `503`. Without
+  the prod profile there is no secret and nothing is checked, so local runs and the eval harness ask
+  freely; `/config` gives the page Cloudflare's always-pass test site key.
 - **`/ask` at low effort**, generic error bodies (no `message`), `INFO` logs, no Swagger UI or
   `/v3/api-docs`, and no fallback for `POSTGRES_PASSWORD`.
 
@@ -140,15 +144,15 @@ Workload Identity Federation, so no Google Cloud key is stored anywhere; every s
 URL included, is read from Secret Manager at startup. The Weekly sync workflow posts `/sync` on Mondays
 at 03:00 UTC, two hours after the Trending routine writes the week's rows.
 
-The live service is a JSON API until the "Ask the radar" page arrives (M11), so try it with curl. The
-first request after a quiet spell waits for a cold start. Cloud Run's second-generation environment
-is pinned, because the first generation's sandbox tripled the time spent loading the model:
+**[Ask the radar](https://radar-rag-50472171523.asia-east1.run.app)** is the live page: a question in,
+an answer with its cited trending repos and blog posts out. The first visit after a quiet spell waits
+for a cold start of about 10 s. Cloud Run's second-generation environment is pinned, because the first
+generation's sandbox tripled the time spent loading the model. `/search` also answers curl; the live
+`/ask` needs the page's Turnstile token:
 
 ```bash
 curl -X POST https://radar-rag-50472171523.asia-east1.run.app/search \
   -H 'Content-Type: application/json' -d '{"q":"agent memory across sessions","topK":3}'
-curl -X POST https://radar-rag-50472171523.asia-east1.run.app/ask \
-  -H 'Content-Type: application/json' -d '{"q":"which trending repos help agents remember things?"}'
 ```
 
 Each client gets 5 `/ask` a minute (20 a day) and 30 `/search` a minute; `/ask` questions and answers
@@ -263,7 +267,9 @@ src/main/java/com/radar/intel/
 ├── search/
 │   └── SearchController.java           # POST /search
 ├── ask/
-│   └── AskController.java              # POST /ask — retrieve, Claude with citation documents, cited rows
+│   ├── AskController.java              # POST /ask — retrieve, Claude with citation documents, cited rows
+│   ├── TurnstileVerifier.java          # siteverify check of the page's token; a no-op without a secret
+│   └── PageConfigController.java       # GET /config — the page's Turnstile site key
 ├── ratelimit/
 │   └── RateLimitFilter.java            # prod only: per-client token buckets on /ask and /search
 ├── tracing/
@@ -346,12 +352,10 @@ means. A run costs about $3.3.
 
 ## ⚠️ Known limitations
 
-- **The demo is an API, not a page.** Until M11's page, the live service answers curl, not a browser.
-  Without the prod profile `/sync` is open and Swagger UI is on, which is fine on loopback, the default
-  bind.
-- **No bot check on `/ask` until the page.** Cloudflare Turnstile arrives with the "Ask the radar"
-  page (M11); until then the per-client limit and the Anthropic workspace's monthly spend cap bound
-  what `/ask` can spend.
+- **Without the prod profile `/sync` is open and Swagger UI is on**, which is fine on loopback, the
+  default bind.
+- **A person can still spend on `/ask`.** Turnstile stops scripts, not someone asking by hand; the
+  per-client limit and the Anthropic workspace's monthly spend cap bound what that costs.
 - **Two sources.** Trending and Blog. The Loot ledgers stay out: the UI shows them only after a
   login, and this service and repository are public.
 - **Some blog posts appear twice.** The Blog table holds 22 posts recorded twice (same URL and date,
