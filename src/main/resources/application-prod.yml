@@ -1,6 +1,12 @@
 # The public deployment (SPRING_PROFILES_ACTIVE=prod). The image and CI run without it, so the eval
 # gates measure the service at medium effort and with no rate limit.
 spring:
+  ai:
+    vectorstore:
+      pgvector:
+        # The table exists, so boot skips the schema check and its ~1.4 s Neon connection; the first
+        # request connects instead. A fresh database needs one boot without this override.
+        initialize-schema: false
   datasource:
     # No fallback: application.yml's radar/radar is a loopback-only credential. Binding leaves an unset
     # variable as the literal placeholder, so boot fails at the database login, not at this line.

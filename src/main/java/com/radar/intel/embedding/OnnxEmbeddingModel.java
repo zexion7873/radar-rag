@@ -31,6 +31,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
 
 /**
  * Sentence embeddings from an ONNX transformer: tokenize, run the model, mean-pool the last hidden
@@ -60,16 +62,22 @@ public class OnnxEmbeddingModel extends AbstractEmbeddingModel implements AutoCl
 
     public OnnxEmbeddingModel(Path model, Path tokenizerJson, Map<String, String> tokenizerOptions,
             ObservationRegistry observationRegistry) throws IOException, OrtException {
+        // Independent, and each ~2 s of a Cloud Run cold start, so the session builds while the tokenizer loads.
+        FutureTask<OrtSession> pending = new FutureTask<>(() -> {
+            long[] start = clock();
+            try (var options = new OrtSession.SessionOptions()) {
+                OrtSession created = environment.createSession(model.toString(), options);
+                log.info("ONNX session created: {}", since(start));
+                return created;
+            }
+        });
+        Thread.ofPlatform().name("onnx-session").start(pending);
         long[] start = clock();
         try (InputStream in = Files.newInputStream(tokenizerJson)) {
             this.tokenizer = HuggingFaceTokenizer.newInstance(in, tokenizerOptions);
         }
         log.info("Tokenizer loaded: {}", since(start));
-        start = clock();
-        try (var options = new OrtSession.SessionOptions()) {
-            this.session = environment.createSession(model.toString(), options);
-        }
-        log.info("ONNX session created: {}", since(start));
+        this.session = await(pending);
         this.inputNames = session.getInputNames();
         if (!session.getOutputNames().contains(OUTPUT)) {
             throw new IllegalStateException(model + " has no " + OUTPUT + " output: " + session.getOutputNames());
@@ -206,6 +214,21 @@ public class OnnxEmbeddingModel extends AbstractEmbeddingModel implements AutoCl
         }
         finally {
             session.close();
+        }
+    }
+
+    private static OrtSession await(FutureTask<OrtSession> pending) throws OrtException {
+        try {
+            return pending.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted while creating the ONNX session", e);
+        } catch (ExecutionException e) {
+            switch (e.getCause()) {
+                case OrtException ort -> throw ort;
+                case RuntimeException runtime -> throw runtime;
+                default -> throw new IllegalStateException(e.getCause());
+            }
         }
     }
 

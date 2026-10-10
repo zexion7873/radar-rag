@@ -141,7 +141,8 @@ URL included, is read from Secret Manager at startup. The Weekly sync workflow p
 at 03:00 UTC, two hours after the Trending routine writes the week's rows.
 
 The live service is a JSON API until the "Ask the radar" page arrives (M11), so try it with curl. The
-first request after a quiet spell waits for a cold start:
+first request after a quiet spell waits for a cold start. Cloud Run's second-generation environment
+is pinned, because the first generation's sandbox tripled the time spent loading the model:
 
 ```bash
 curl -X POST https://radar-rag-50472171523.asia-east1.run.app/search \
