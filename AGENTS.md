@@ -17,6 +17,9 @@ comment, the commit body or the stack plan.
 - `cd evals && uv run ruff check && uv run ruff format --check && uv run mypy && uv run pytest` —
   exactly the CI `evals` job. `pytest -m service` needs a running service and is CI's.
 - `docker compose --profile app up --build` — the shipped image beside Postgres, 2 GiB, no swap.
+- Deploy (`deploy.yml`) runs only on `main`: Workload Identity trusts this repository's
+  `refs/heads/main` and nothing else, so a PR cannot try a deploy. Weekly sync (`sync.yml`) posts
+  `/sync` with `SYNC_SECRET` to `vars.RADAR_URL`.
 - CI `eval-retrieval` builds and runs the image and gates on hit@5 flips against
   `evals/results/baseline.json`. CI `eval-llm` is paid (~$3.3) and runs only on the owner's `eval:llm`
   label or dispatch: never trigger it without the owner's yes.
@@ -35,6 +38,10 @@ comment, the commit body or the stack plan.
 - **Spring AI spans carry content.** The vector-store span records the query text and
   `ChatContentObservationFilter` puts the prompt and answer on the chat span; `PRIVACY.md` says so and
   must change with them.
+- **Workflow logs are public.** Connection details live in Secret Manager (`postgres-url` and the
+  rest), never in a workflow or a repository variable, whose expanded values appear in the log.
+- **Scheduled workflows stop after 60 days without repository activity** (GitHub, public repos).
+  Re-enable Weekly sync in the Actions tab if the demo's data stops moving.
 - **The `prod` profile is invisible to the gates.** Only the deployment activates it: low effort, rate
   limits, a required `SYNC_SECRET`. Turning it on in CI throttles the harness's 62 queries from one
   address and moves the LLM gate off the effort it was measured at.

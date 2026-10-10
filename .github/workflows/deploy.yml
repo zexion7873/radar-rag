@@ -1,0 +1,71 @@
+name: Deploy
+
+# Builds the image and deploys it to Cloud Run. Runs from main only: the Workload Identity provider
+# trusts this repository's refs/heads/main and nothing else, so a PR branch cannot authenticate.
+on:
+  push:
+    branches: [main]
+    paths:
+      - src/main/**
+      - pom.xml
+      - Dockerfile
+      - scripts/fetch-models.sh
+      - .github/workflows/deploy.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+# A newer push waits for the running deploy instead of racing it onto the service.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      IMAGE: ${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/radar-rag/radar-rag:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: google-github-actions/auth@v3.0.0
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOY_SA }}
+      - uses: google-github-actions/setup-gcloud@v3.0.1
+      - run: gcloud auth configure-docker "${{ vars.GCP_REGION }}-docker.pkg.dev" --quiet
+      # Reads CI's GHA layer cache, so the ~480 MB model layer is usually not rebuilt.
+      - uses: docker/setup-buildx-action@v4.4.1
+      - uses: docker/build-push-action@v7.4.0
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE }}
+          cache-from: type=gha
+      # 2 GiB: ONNX Runtime holds the model natively (~1.1 GB), measured in M9. At most one instance, so
+      # the in-memory rate limit is the only one. Secrets come from Secret Manager, the JDBC URL included,
+      # so no connection detail reaches this public log.
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy radar-rag \
+            --project "${{ vars.GCP_PROJECT_ID }}" --region "${{ vars.GCP_REGION }}" \
+            --image "$IMAGE" \
+            --service-account "${{ vars.GCP_RUNTIME_SA }}" \
+            --allow-unauthenticated \
+            --memory 2Gi --cpu 1 --cpu-boost \
+            --min-instances 0 --max-instances 1 \
+            --set-env-vars SPRING_PROFILES_ACTIVE=prod,POSTGRES_USER=radar_owner \
+            --set-secrets POSTGRES_URL=postgres-url:latest,POSTGRES_PASSWORD=postgres-password:latest,ANTHROPIC_API_KEY=anthropic-api-key:latest,NOTION_TOKEN=notion-token:latest,SYNC_SECRET=sync-secret:latest,LANGFUSE_PUBLIC_KEY=langfuse-public-key:latest,LANGFUSE_SECRET_KEY=langfuse-secret-key:latest
+      # Checks the prod profile's surface, not the data: a first deploy has an empty table.
+      - name: Smoke test
+        run: |
+          url=$(gcloud run services describe radar-rag --project "${{ vars.GCP_PROJECT_ID }}" \
+            --region "${{ vars.GCP_REGION }}" --format='value(status.url)')
+          code() { curl -s -o /dev/null -w '%{http_code}' --max-time 120 "$@"; }
+          search=$(code -X POST "$url/search" -H 'content-type: application/json' -d '{"q":"agents","topK":1}')
+          sync=$(code -X POST "$url/sync")
+          swagger=$(code "$url/swagger-ui.html")
+          echo "search=$search sync-without-secret=$sync swagger=$swagger"
+          [ "$search" = 200 ] && [ "$sync" = 401 ] && [ "$swagger" = 404 ]
