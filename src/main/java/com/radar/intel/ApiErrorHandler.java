@@ -16,9 +16,9 @@ import org.springframework.web.client.RestClientResponseException;
 import java.util.Map;
 
 /**
- * Maps upstream failures to gateway statuses. Notion causes go in the JSON body (Spring's opaque
- * 500 hid a Notion 401 during the P0 bring-up). LLM causes are only logged: the anthropic-java SDK's
- * exception messages carry the upstream body, which must not reach /ask callers.
+ * Maps upstream failures to gateway statuses with a generic body. Upstream text is only logged: Notion's
+ * error body and the anthropic-java SDK's exception messages must not reach a public caller. Notion's
+ * status code stays in the body, since an opaque 502 once hid a Notion 401.
  */
 @RestControllerAdvice
 class ApiErrorHandler {
@@ -29,15 +29,16 @@ class ApiErrorHandler {
     @ExceptionHandler(RestClientResponseException.class)
     @ResponseStatus(HttpStatus.BAD_GATEWAY)
     Map<String, Object> upstreamStatus(RestClientResponseException e) {
-        return Map.of("error",
-                "upstream " + e.getStatusCode().value() + ": " + e.getResponseBodyAsString());
+        log.warn("Notion call failed: {} {}", e.getStatusCode().value(), e.getResponseBodyAsString());
+        return Map.of("error", "upstream " + e.getStatusCode().value());
     }
 
     /** Transport-level upstream failure with no HTTP status (DNS, connection refused, timeout). */
     @ExceptionHandler(RestClientException.class)
     @ResponseStatus(HttpStatus.BAD_GATEWAY)
     Map<String, Object> upstreamTransport(RestClientException e) {
-        return Map.of("error", "upstream unreachable: " + e.getMessage());
+        log.warn("Notion unreachable", e);
+        return Map.of("error", "upstream unreachable");
     }
 
     /** LLM call failed with a client error (bad request, missing/invalid ANTHROPIC_API_KEY). */

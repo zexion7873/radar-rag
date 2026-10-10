@@ -114,7 +114,20 @@ answer cites, each with the passages it quoted (`citedText`); `usage` is the cal
 `inputTokens` and `outputTokens` (thinking included).
 
 The OpenAPI spec is at `/v3/api-docs` and Swagger UI at `/swagger-ui.html`, both generated from the
-controllers.
+controllers. The prod profile turns both off.
+
+### 🔒 Prod profile
+
+`SPRING_PROFILES_ACTIVE=prod` is the public deployment's configuration; the image and CI run without it,
+so the eval gates measure the service unthrottled and at medium effort. It adds:
+
+- **`/sync` needs `Authorization: Bearer $SYNC_SECRET`.** Boot fails without `SYNC_SECRET`; set but
+  empty, every call gets `401`.
+- **Per-client rate limits.** `/ask`: 5 a minute and 20 a day; `/search`: 30 a minute; past either,
+  `429` with `Retry-After`. The client is the right-most `X-Forwarded-For` entry (the address Cloud
+  Run's front end appends), an IPv6 client its /64.
+- **`/ask` at low effort**, generic error bodies (no `message`), `INFO` logs, no Swagger UI or
+  `/v3/api-docs`, and no fallback for `POSTGRES_PASSWORD`.
 
 ### 🐳 In a container
 
@@ -212,7 +225,7 @@ src/main/java/com/radar/intel/
 │   └── TrendingRow.java
 ├── ingest/
 │   ├── TrendingIngestService.java      # Notion rows -> Documents; /sync replaces the trending rows
-│   └── IngestController.java           # POST /sync
+│   └── IngestController.java           # POST /sync, behind a bearer secret when one is set
 ├── embedding/
 │   ├── EmbeddingProperties.java        # radar.embedding.* config (model and tokenizer paths)
 │   ├── EmbeddingConfig.java            # the EmbeddingModel bean
@@ -221,11 +234,13 @@ src/main/java/com/radar/intel/
 │   └── SearchController.java           # POST /search
 ├── ask/
 │   └── AskController.java              # POST /ask — retrieve, Claude with citation documents, cited rows
+├── ratelimit/
+│   └── RateLimitFilter.java            # prod only: per-client token buckets on /ask and /search
 ├── tracing/
 │   ├── LangfuseProperties.java         # radar.langfuse.* config
 │   ├── LangfuseTracingConfig.java      # OTLP span exporter to Langfuse; a no-op without keys
 │   └── ChatContentObservationFilter.java  # prompt and answer onto the chat model span
-└── ApiErrorHandler.java                # surfaces upstream (Notion / Anthropic) failure causes
+└── ApiErrorHandler.java                # upstream failures -> 502/503 with a generic body; causes logged
 ```
 
 ---
@@ -299,9 +314,12 @@ means. A run costs about $3.3.
 
 ## ⚠️ Known limitations
 
-- **Not deployed yet, and not hardened for it.** `/sync` has no authentication, nothing rate-limits
-  `/ask`, Notion errors come back with Notion's body, and Swagger UI is on. That is fine on loopback,
-  which is the default bind; the public demo and its protections are milestone M10.
+- **Not deployed yet.** The prod profile above holds the public demo's protections; the deploy itself
+  is the rest of milestone M10. Without the profile `/sync` is open and Swagger UI is on, which is
+  fine on loopback, the default bind.
+- **No bot check on `/ask` until the page.** Cloudflare Turnstile arrives with the "Ask the radar"
+  page (M11); until then the per-client limit and the Anthropic workspace's monthly spend cap bound
+  what `/ask` can spend.
 - **One source.** Only the Trending Archive is ingested; Blog and Loot are P5.
 - **Small, hand-labelled golden set.** 62 items. The retrieval gate catches any flipped hit, but the
   LLM metrics move by up to ~0.03 between identical runs, so only a drop beyond that reads as a

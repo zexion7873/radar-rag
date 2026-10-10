@@ -11,7 +11,7 @@ fix ships as a commit to `main`.
 ## Supported versions
 
 Only `main`. There are no releases, tags or maintenance branches, and no public deployment yet: the
-service runs locally and in CI. The public demo, with the protections listed under "Not yet" below, is
+service runs locally and in CI. The public demo runs the prod profile described below; deploying it is
 milestone M10 in [docs/stack-plan.md](docs/stack-plan.md).
 
 ## What the service does
@@ -21,9 +21,15 @@ Worth knowing before you decide whether something is in scope.
 - **Binds loopback by default.** `server.address` is `127.0.0.1` unless `SERVER_ADDRESS` says
   otherwise; only the container image sets `0.0.0.0`, and compose publishes it on `127.0.0.1` alone.
 - **Reads Notion.** `POST /sync` pulls the Trending Archive with one internal integration token and
-  replaces those rows in pgvector. The token stays on the server.
+  replaces those rows in pgvector. The token stays on the server. Notion failures return a generic
+  body with Notion's status code; Notion's text is only logged.
 - **Calls Claude.** `POST /ask` sends the retrieved rows to Anthropic with the server's
   `ANTHROPIC_API_KEY`. Anthropic failures return a generic body; the upstream text is only logged.
+- **Prod profile (`SPRING_PROFILES_ACTIVE=prod`).** `/sync` needs `Authorization: Bearer` with
+  `SYNC_SECRET`, compared in constant time; boot fails without it, and an empty one refuses every call.
+  `/ask` and `/search` are rate-limited per client, keyed on the right-most `X-Forwarded-For` entry
+  (an IPv6 client by its /64). Error bodies carry no message, logs are `INFO`, Swagger UI and
+  `/v3/api-docs` are off, and `POSTGRES_PASSWORD` has no fallback.
 - **Validates filters.** `/search` rejects filter values that could break out of the vector store's
   filter expression before building it.
 - **Downloads nothing at runtime.** The image carries the model and every native library, pinned and
@@ -36,16 +42,22 @@ Worth knowing before you decide whether something is in scope.
 - Getting `/search` filters past validation into the filter expression.
 - Anything that sends the Notion token, the Anthropic key or the Langfuse keys to a response or to a log
   a caller can read.
-- Getting `/ask` to return Anthropic's upstream error text.
+- Getting `/ask` to return Anthropic's upstream error text, or `/sync` Notion's.
+- Under the prod profile: calling `/sync` without the secret, or getting past the rate limit from one
+  client.
 - Making the `@claude` workflow or the LLM eval run for someone other than the owner.
 
 ### Not yet, and already known
 
-These are open until M10 deploys the service, so a report of them is a duplicate:
+A report of these is a duplicate:
 
-- `/sync` has no authentication; anyone who can reach the port can trigger a sync.
-- There is no rate limit or spend cap in the service; `/ask` spends the operator's Anthropic credit.
-- Notion errors from `/sync` are returned with Notion's response body, and Swagger UI is on.
+- Without the prod profile, `/sync` has no authentication and Swagger UI is on. That run binds
+  loopback by default.
+- `/ask` has no bot check until Cloudflare Turnstile arrives with the "Ask the radar" page (M11). A
+  caller rotating addresses gets fresh rate-limit buckets; the dedicated Anthropic workspace's monthly
+  spend limit is what caps the cost.
+- The rate limit lives in one instance's memory: it resets on restart and is not shared between
+  instances (the deployment runs at most one).
 
 ### Out of scope
 

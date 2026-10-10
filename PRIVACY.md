@@ -22,7 +22,8 @@ There are no accounts, no cookies and no analytics. The service keeps no record 
 | Where | Contents |
 |---|---|
 | Postgres (`vector_store`) | The Trending Archive rows synced from Notion, and their embeddings. Never questions or answers. |
-| Application log | Startup, and Anthropic failures with the SDK's error. Questions and answers are not logged. |
+| Application log | Startup, and Notion and Anthropic failures with the upstream error. Questions and answers are not logged. |
+| Process memory, prod profile only | For rate limiting: each recent client's IP address (an IPv6 client's /64) with its request counters, at most 10,000 clients. Never logged or written anywhere, and gone on restart. |
 | Langfuse, if enabled | The traces above, kept for the Langfuse plan's retention (30 days on the free plan). |
 
 The archive rows are public GitHub repositories' names, descriptions and statistics, plus short
