@@ -47,9 +47,11 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -228,6 +230,35 @@ class AskFlowIT {
         mvc.perform(get("/config"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.turnstileSiteKey").value("1x00000000000000000000AA"));
+    }
+
+    @Test
+    void theUiOriginMayPostAskFromTheBrowserAndNoOtherOriginOrPathMay() throws Exception {
+        mvc.perform(options("/ask").header("Origin", "http://localhost:3000")
+                        .header("Access-Control-Request-Method", "POST")
+                        .header("Access-Control-Request-Headers", "content-type,x-turnstile-token"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:3000"))
+                .andExpect(header().string("Access-Control-Allow-Methods", "POST"));
+        mvc.perform(options("/ask").header("Origin", "https://evil.test")
+                        .header("Access-Control-Request-Method", "POST"))
+                .andExpect(status().isForbidden());
+        mvc.perform(options("/search").header("Origin", "http://localhost:3000")
+                        .header("Access-Control-Request-Method", "POST"))
+                // Answered as a plain OPTIONS: without the allow-origin header the browser refuses.
+                .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
+
+        stubMessages(200, """
+                {"id":"msg_c","type":"message","role":"assistant","model":"claude-opus-5-5",
+                 "content":[{"type":"text","text":"ok"}],
+                 "stop_reason":"end_turn","usage":{"input_tokens":1,"output_tokens":1}}""");
+        mvc.perform(post("/ask").header("Origin", "http://localhost:3000").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"q\":\"agents\"}"))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:3000"));
+        mvc.perform(post("/ask").header("Origin", "https://evil.test").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"q\":\"agents\"}"))
+                .andExpect(status().isForbidden());
     }
 
     private ResultActions ask() throws Exception {

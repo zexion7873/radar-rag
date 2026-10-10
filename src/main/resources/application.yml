@@ -52,6 +52,9 @@ radar:
   embedding:
     model: models/paraphrase/model.onnx
     tokenizer: models/paraphrase/tokenizer.json
+  ask:
+    # Browser origins allowed to POST /ask: github-radar-ui's dev server here, its production site in prod.
+    allowed-origins: http://localhost:3000
   turnstile:
     # Cloudflare's documented always-pass test key, for local runs of the page; prod sets the real one.
     # With no radar.turnstile.secret, /ask checks no token at all.

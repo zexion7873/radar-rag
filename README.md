@@ -418,7 +418,7 @@ Next: broad questions. golden_v2's answerable hit@5 is 0.583 against golden_v1's
 like "are there chips made for AI now?" rarely ranks the one post that answers it; golden_v2 measures that
 gap.
 
-The target stack and the milestone order (M0–M13, each with a checkable done-when) are in
+The target stack and the milestone order (M0–M14, each with a checkable done-when) are in
 [docs/stack-plan.md](docs/stack-plan.md).
 
 ---
