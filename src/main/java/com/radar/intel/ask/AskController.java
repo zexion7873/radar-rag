@@ -85,7 +85,7 @@ public class AskController {
         }
         turnstile.check(turnstileToken);
         // /search with topK 5 returns exactly these rows; the eval harness relies on that.
-        List<Document> docs = rowSearch.search(req.q(), 5, null);
+        List<Document> docs = rowSearch.balanced(req.q(), 5, null);
         ChatResponse resp = chatClient.prompt()
                 .options(AnthropicChatOptions.builder()
                         .effort(effort)
