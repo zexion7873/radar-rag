@@ -99,7 +99,10 @@ jobs:
           EVAL_SERVICE_URL: http://localhost:8080
           EVAL_NOTION_STUB_PORT: "8765"
         run: |
+          # golden_v1 labels trending rows only, so it queries that source: the blog rows the stub also
+          # serves cannot move a trending rank, and its baseline stays stamped by trending.json alone.
           args=(--golden golden_v1.jsonl --fixture fixtures/trending.json
+                --fixture fixtures/blog.json --source trending
                 --model-id paraphrase-multilingual-MiniLM-L12-v2
                 --out results/latest.json --baseline results/baseline.json)
           if [ -f results/baseline.json ]; then

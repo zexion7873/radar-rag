@@ -4,7 +4,8 @@ from typing import Any
 import httpx
 import pytest
 
-from radar_evals.freeze_notion import PARSED_PROPERTIES, freeze
+from radar_evals.freeze_notion import freeze
+from radar_evals.models import SOURCES
 
 
 def _raw_page(pid: str, repo: str) -> dict[str, Any]:
@@ -60,13 +61,16 @@ def test_freeze_follows_the_cursor_strips_pages_and_sorts_them() -> None:
     transport = _notion(
         {None: ([_raw_page("b", "b/two")], "c2"), "c2": ([_raw_page("a", "a/one")], None)}
     )
-    fixture = freeze("tok", "ds", base_url="https://notion.test", transport=transport)
+    fixture = freeze(
+        "tok", "trending", data_source_id="ds", base_url="https://notion.test", transport=transport
+    )
 
+    assert fixture.source == "trending"
     assert [p.id for p in fixture.pages] == ["a", "b"]
     first = fixture.pages[0]
-    assert set(first.properties) == set(PARSED_PROPERTIES)
+    assert set(first.properties) == set(SOURCES["trending"].properties)
     assert first.plain_text("Repo") == "a/one"
-    assert first.key == ("https://github.com/a/one", "2026-09-21")
+    assert first.key(fixture.spec) == ("https://github.com/a/one", "2026-09-21")
     dumped = json.dumps(fixture.model_dump())
     assert "user-id-must-not-leak" not in dumped
     assert "link-must-not-leak" not in dumped
@@ -77,7 +81,11 @@ def test_a_page_missing_a_parsed_property_fails_the_capture() -> None:
     del page["properties"]["Comment"]
     with pytest.raises(ValueError, match="Comment"):
         freeze(
-            "tok", "ds", base_url="https://notion.test", transport=_notion({None: ([page], None)})
+            "tok",
+            "trending",
+            data_source_id="ds",
+            base_url="https://notion.test",
+            transport=_notion({None: ([page], None)}),
         )
 
 
@@ -87,5 +95,9 @@ def test_a_mention_run_fails_the_capture() -> None:
     page["properties"]["Comment"]["rich_text"] = [mention]
     with pytest.raises(ValueError, match="non-text runs"):
         freeze(
-            "tok", "ds", base_url="https://notion.test", transport=_notion({None: ([page], None)})
+            "tok",
+            "trending",
+            data_source_id="ds",
+            base_url="https://notion.test",
+            transport=_notion({None: ([page], None)}),
         )

@@ -65,13 +65,14 @@ public class AskController {
     public record AskRequest(String q) {
     }
 
-    /** A row the answer was grounded on. */
-    public record Source(String id, String repo, String url, String week, Double score) {
+    /** A row the answer was grounded on; a trending row names its repo, a blog row its title. */
+    public record Source(String id, String source, String repo, String title, String url, String week,
+            Double score) {
     }
 
     /** A retrieved row the answer cites, with every passage cited from it. */
-    public record Citation(String id, String repo, String url, String week, Double score,
-            List<String> citedText) {
+    public record Citation(String id, String source, String repo, String title, String url, String week,
+            Double score, List<String> citedText) {
     }
 
     /** Token counts of the model call; output tokens include thinking. */
@@ -109,11 +110,12 @@ public class AskController {
                 docs.stream().map(AskController::source).toList(), usage);
     }
 
-    private static AnthropicCitationDocument citationDocument(Document d) {
+    static AnthropicCitationDocument citationDocument(Document d) {
         Map<String, Object> md = d.getMetadata();
+        Object name = md.containsKey("repo") ? md.get("repo") : md.get("title");
         return AnthropicCitationDocument.builder()
                 .plainText(d.getText())
-                .title(md.get("repo") + " " + md.get("week"))
+                .title(name + " " + md.get("week"))
                 .citationsEnabled(true)
                 .build();
     }
@@ -142,14 +144,16 @@ public class AskController {
         return textByDoc.entrySet().stream()
                 .map(e -> {
                     Source s = source(docs.get(e.getKey()));
-                    return new Citation(s.id(), s.repo(), s.url(), s.week(), s.score(), e.getValue());
+                    return new Citation(s.id(), s.source(), s.repo(), s.title(), s.url(), s.week(), s.score(),
+                            e.getValue());
                 })
                 .toList();
     }
 
-    private static Source source(Document d) {
+    static Source source(Document d) {
         Map<String, Object> md = d.getMetadata();
-        return new Source(d.getId(), str(md.get("repo")), str(md.get("url")), str(md.get("week")), d.getScore());
+        return new Source(d.getId(), str(md.get("source")), str(md.get("repo")), str(md.get("title")),
+                str(md.get("url")), str(md.get("week")), d.getScore());
     }
 
     private static String str(Object o) {

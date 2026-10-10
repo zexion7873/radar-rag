@@ -75,6 +75,7 @@ jobs:
         run: |
           uv sync --locked
           uv run radar-evals-llm --golden golden_v1.jsonl --fixture fixtures/trending.json \
+            --fixture fixtures/blog.json \
             --out results/llm-latest.json
       - if: always()
         uses: actions/upload-artifact@v7

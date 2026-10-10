@@ -7,7 +7,7 @@ import pytest
 
 from radar_evals import golden, retrieval
 from radar_evals.client import RadarClient
-from radar_evals.models import FrozenPage, NotionFixture
+from radar_evals.models import FrozenPage, NotionFixture, SyncResponse
 
 A = ("https://github.com/a/one", "2026-09-21")
 B = ("https://github.com/b/two", "2026-09-21")
@@ -32,13 +32,22 @@ class FakeService:
     def __init__(self, answers: dict[str, list[tuple[str, str] | None]], ingested: int) -> None:
         self.answers = answers
         self.ingested = ingested
+        self.sources: set[str | None] = set()
 
     def transport(self) -> httpx.MockTransport:
         def handle(request: httpx.Request) -> httpx.Response:
             if request.url.path == "/sync":
-                return httpx.Response(200, json={"ingested": self.ingested})
+                return httpx.Response(
+                    200,
+                    json={
+                        "ingested": self.ingested,
+                        "sources": {"trending": self.ingested},
+                        "failed": {},
+                    },
+                )
             body = json.loads(request.content)
             assert body["topK"] == retrieval.TOP_K
+            self.sources.add(body.get("source"))
             return httpx.Response(200, json=[_hit(k) for k in self.answers[body["q"]]])
 
         return httpx.MockTransport(handle)
@@ -188,6 +197,36 @@ def test_main_stops_on_rotten_labels_and_on_a_short_sync(
     service.ingested = 2
     assert _main(tmp_path, golden_path, fixture_path, "--write-baseline") == 1
     assert not (tmp_path / "baseline.json").exists()
+
+
+def test_one_fixture_stamps_with_its_file_hash(tmp_path: Path) -> None:
+    path = tmp_path / "trending.json"
+    path.write_text("{}", encoding="utf-8")
+    # sha256("{}"): the stamp a baseline recorded before blog existed must still match.
+    expected = "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    assert retrieval.fixture_stamp([path]) == expected
+    other = tmp_path / "blog.json"
+    other.write_text("[]", encoding="utf-8")
+    assert retrieval.fixture_stamp([path, other]) == retrieval.fixture_stamp([other, path])
+    assert retrieval.fixture_stamp([path, other]) != expected
+
+
+def test_sync_mismatch_names_a_failed_or_short_source() -> None:
+    fixture = NotionFixture(source="blog", data_source_id="ds", captured_at="d", pages=[])
+    ok = SyncResponse(ingested=0, sources={"blog": 0}, failed={})
+    failed = SyncResponse(ingested=0, sources={}, failed={"blog": "upstream 404"})
+    short = SyncResponse(ingested=0, sources={"blog": 0, "trending": 3}, failed={})
+    assert retrieval.sync_mismatch(ok, [fixture]) is None
+    assert "upstream 404" in (retrieval.sync_mismatch(failed, [fixture]) or "")
+    assert "trending" in (retrieval.sync_mismatch(short, [fixture]) or "")
+
+
+def test_main_queries_only_the_named_source(tmp_path: Path, service: FakeService) -> None:
+    golden_path, fixture_path = _write_inputs(tmp_path, ITEMS)
+    assert (
+        _main(tmp_path, golden_path, fixture_path, "--write-baseline", "--source", "trending") == 0
+    )
+    assert service.sources == {"trending"}
 
 
 def test_main_rejects_a_missing_baseline_before_syncing(

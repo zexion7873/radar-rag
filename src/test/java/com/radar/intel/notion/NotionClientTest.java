@@ -27,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class NotionClientTest {
 
     private static final String DS = "ds-1";
+    private static final String BLOG_DS = "ds-blog";
 
     @Test
     void fetchTrendingFollowsTheCursorAcrossPages(WireMockRuntimeInfo wm) {
@@ -64,14 +65,32 @@ class NotionClientTest {
     }
 
     @Test
+    void fetchBlogReadsItsOwnDataSourceAndColumns(WireMockRuntimeInfo wm) {
+        stubFor(get("/data_sources/" + BLOG_DS).willReturn(okJson("{\"id\":\"" + BLOG_DS + "\"}")));
+        stubFor(post("/data_sources/" + BLOG_DS + "/query").willReturn(okJson(page(false, "null", """
+                {"id": "page-post", "properties": {
+                  "Title": {"type": "title", "title": [{"plain_text": "A "}, {"plain_text": "post"}]},
+                  "URL": {"type": "url", "url": "https://x.test/p"},
+                  "Type": {"type": "select", "select": {"name": "official"}},
+                  "Published": {"type": "date", "date": null},
+                  "Archived": {"type": "date", "date": {"start": "2026-10-02"}},
+                  "Brief": {"type": "rich_text", "rich_text": [{"plain_text": "brief"}]},
+                  "Comment": {"type": "rich_text", "rich_text": []}
+                }}"""))));
+
+        assertThat(client(wm).fetchBlog()).containsExactly(new BlogRow("page-post", "A post",
+                "https://x.test/p", "official", null, "2026-10-02", "brief", ""));
+    }
+
+    @Test
     void aBlankBaseUrlFailsAtBindingInsteadOfAtTheFirstSync() {
-        assertThatThrownBy(() -> new NotionProperties("test-token", " ", "2025-09-03", DS))
+        assertThatThrownBy(() -> new NotionProperties("test-token", " ", "2025-09-03", DS, BLOG_DS))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("radar.notion.base-url");
     }
 
     private static NotionClient client(WireMockRuntimeInfo wm) {
-        return new NotionClient(new NotionProperties("test-token", wm.getHttpBaseUrl(), "2025-09-03", DS));
+        return new NotionClient(new NotionProperties("test-token", wm.getHttpBaseUrl(), "2025-09-03", DS, BLOG_DS));
     }
 
     private static String page(boolean hasMore, String nextCursorJson, String... rows) {

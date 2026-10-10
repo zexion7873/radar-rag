@@ -27,7 +27,7 @@ def _page(repo: str) -> FrozenPage:
 FIXTURE = NotionFixture(
     data_source_id="ds", captured_at="2026-10-09", pages=[_page(r) for r in REPOS]
 )
-ALIASES = llm.repo_aliases(FIXTURE)
+ALIASES = llm.repo_aliases([FIXTURE])
 
 
 def test_aliases_keep_full_names_and_only_distinctive_unique_bare_names() -> None:

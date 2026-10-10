@@ -45,7 +45,7 @@ jobs:
           tags: ${{ env.IMAGE }}
           cache-from: type=gha
       # 2 GiB: ONNX Runtime holds the model natively (~1.1 GB), measured in M9. At most one instance, so
-      # the in-memory rate limit is the only one. Secrets come from Secret Manager, the JDBC URL included,
+      # the in-memory rate limit is the only one. 900 s: a full sync embeds ~860 rows at ~0.17 s each. Secrets come from Secret Manager, the JDBC URL included,
       # so no connection detail reaches this public log.
       - name: Deploy to Cloud Run
         run: |
@@ -54,7 +54,7 @@ jobs:
             --image "$IMAGE" \
             --service-account "${{ vars.GCP_RUNTIME_SA }}" \
             --allow-unauthenticated \
-            --memory 2Gi --cpu 1 --cpu-boost \
+            --memory 2Gi --cpu 1 --cpu-boost --timeout 900 \
             --min-instances 0 --max-instances 1 \
             --set-env-vars SPRING_PROFILES_ACTIVE=prod,POSTGRES_USER=radar_owner \
             --set-secrets POSTGRES_URL=postgres-url:latest,POSTGRES_PASSWORD=postgres-password:latest,ANTHROPIC_API_KEY=anthropic-api-key:latest,NOTION_TOKEN=notion-token:latest,SYNC_SECRET=sync-secret:latest,LANGFUSE_PUBLIC_KEY=langfuse-public-key:latest,LANGFUSE_SECRET_KEY=langfuse-secret-key:latest

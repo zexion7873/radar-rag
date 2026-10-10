@@ -7,7 +7,7 @@
 <img src="docs/assets/social-card.png" width="640" alt="Radar RAG's social card: the radar mark, the name Radar RAG, and the line: Ask the radar. Get the citations.">
 
 **Ask the GitHub Radar archive a question, in Chinese or English, and get an answer grounded
-in the weekly trending rows, with citations back to the rows it used.**
+in the weekly trending rows and the blog archive, with citations back to the rows it used.**
 
 [![License: MIT](https://img.shields.io/github/license/zexion7873/radar-rag?style=flat)](LICENSE)
 [![Java 25](https://img.shields.io/badge/Java-25-orange?style=flat)](#-prerequisites)
@@ -24,7 +24,7 @@ harness that gates every pull request.
 
 ```mermaid
 flowchart LR
-  notion[(Notion<br/>Trending Archive)] -->|POST /sync| ingest[Ingest]
+  notion[(Notion<br/>Trending + Blog)] -->|POST /sync| ingest[Ingest]
   ingest -->|embed| onnx[OnnxEmbeddingModel<br/>multilingual, in-process]
   onnx --> pg[(pgvector)]
   user([caller]) -->|POST /search| pg
@@ -45,13 +45,15 @@ A standalone Java / Spring Boot service that adds LLM-powered intelligence on to
 skeleton: pgvector, Notion ingestion of the **Trending** table, and a semantic `/search`
 endpoint. **P1** adds metadata-filtered search. **P2** adds a RAG `/ask` endpoint —
 grounded Q&A with citations. **P3** adds a Python eval harness with CI gates, and **P4** traces every
-request into Langfuse (see [docs/stack-plan.md](docs/stack-plan.md)).
+request into Langfuse, and **P5** adds the Blog archive (see [docs/stack-plan.md](docs/stack-plan.md)).
 
 > Not a proxy in front of Notion — it exposes *new* capabilities (semantic search and
 > grounded Q&A) that the pure-reader [`github-radar-ui`](https://github.com/zexion7873/github-radar-ui) cannot do.
 
-- `POST /sync` — pull the Trending Archive from Notion and replace its rows in pgvector: one
-  document per Notion row (one repo, one week), keyed by the Notion page id.
+- `POST /sync` — pull the Trending and Blog archives from Notion and replace each one's rows in
+  pgvector: one document per Notion row (a repo's week, or a post), keyed by the Notion page id. Each
+  source refreshes on its own and reports `{ingested, sources, failed}`; any failed source makes it
+  a 502, with the others still synced. The Loot ledgers stay out: the UI keeps them behind a login.
 - `POST /search` — semantic search over the embedded rows, optionally filtered by metadata
   (`source` / `category` / `language` / `week` exact match, `stars_per_week` ≥ `minStars`).
 - `POST /ask` — ask a question in natural language; the service retrieves the relevant radar
@@ -184,9 +186,9 @@ On macOS, Docker Desktop must expose its default socket, or set
 ## 📏 Evals (`evals/`, Python)
 
 A typed Python package (uv, pydantic, httpx, pytest, mypy strict, ruff) that tests the service as a
-black box over HTTP. It serves a frozen copy of the Notion Trending table from a local stub, so an
-eval needs no Notion token and does not move when the table does. `/sync` replaces every trending
-row, so rows from an earlier live sync do not leak into an eval.
+black box over HTTP. It serves frozen copies of the Notion Trending and Blog tables from a local
+stub, so an eval needs no Notion token and does not move when the tables do. `/sync` replaces every
+row of each source, so rows from an earlier live sync do not leak into an eval.
 
 ```bash
 cd evals
@@ -199,17 +201,21 @@ EVAL_SERVICE_URL=http://localhost:8080 uv run pytest -m service
 
 # Retrieval eval over the golden set (golden_v1.jsonl, 62 items). The first run writes the
 # baseline with --write-baseline; later runs drop it and fail on any hit@5 hit→miss flip.
+# golden_v1 labels trending rows, so it queries --source trending.
 uv run radar-evals --golden golden_v1.jsonl --fixture fixtures/trending.json \
+  --fixture fixtures/blog.json --source trending \
   --model-id paraphrase-multilingual-MiniLM-L12-v2 --out results/latest.json --baseline results/baseline.json --write-baseline
 
 # LLM eval (paid, ~$3 per full run): /ask on every golden item, code checks (no empty answer, no
 # repo named or cited outside the retrieved rows), citation precision
 # against the golden labels, then DeepEval metrics judged by claude-sonnet-5-5. The service and
 # this command both need ANTHROPIC_API_KEY.
-uv run radar-evals-llm --golden golden_v1.jsonl --fixture fixtures/trending.json --out results/llm-latest.json
+uv run radar-evals-llm --golden golden_v1.jsonl --fixture fixtures/trending.json \
+  --fixture fixtures/blog.json --out results/llm-latest.json
 
-# Re-capture the fixture (reads Notion; keeps only the columns the service parses).
-NOTION_TOKEN=ntn_... uv run freeze-notion
+# Re-capture a fixture (reads Notion; keeps only the columns the service parses). Re-capturing
+# trending moves golden_v1's baseline.
+NOTION_TOKEN=ntn_... uv run freeze-notion --source blog
 ```
 
 CI runs the unit tests in `evals` and the live-service tests in `eval-retrieval`, against a
@@ -244,9 +250,10 @@ src/main/java/com/radar/intel/
 │   ├── NotionProperties.java           # radar.notion.* config
 │   ├── NotionClient.java               # resolve data source + paginated query (mirrors lib/notion.ts)
 │   ├── NotionProps.java                # typed property extractors
-│   └── TrendingRow.java
+│   ├── TrendingRow.java
+│   └── BlogRow.java
 ├── ingest/
-│   ├── TrendingIngestService.java      # Notion rows -> Documents; /sync replaces the trending rows
+│   ├── IngestService.java              # Notion rows -> Documents; each source refreshed on its own
 │   └── IngestController.java           # POST /sync, behind a bearer secret when one is set
 ├── embedding/
 │   ├── EmbeddingProperties.java        # radar.embedding.* config (model and tokenizer paths)
@@ -321,9 +328,11 @@ means. A run costs about $3.3.
   table only at startup, so a table created under the old HNSW setting needs, once: stop the
   service, `docker compose exec postgres psql -U radar -d radar -c 'DROP TABLE vector_store'`,
   start it again, then `POST /sync`.
-- **Full-refresh re-sync.** `POST /sync` deletes the trending rows and adds the table's current
-  rows in one transaction, so a row deleted in Notion does not linger and a failed embed leaves the
-  old rows in place. Ids are Notion page ids: the table has one row per repo per week.
+- **Full-refresh re-sync.** `POST /sync` deletes a source's rows and adds its table's current rows
+  in one transaction per source, so a row deleted in Notion does not linger and a failed fetch or
+  embed leaves that source's old rows in place. Ids are Notion page ids: trending has one row per
+  repo per week, blog one per post. A blog post's week is its publication date, or its archive date
+  when it has none.
 - **Spring AI moves fast.** Versions/artifact ids match the reference docs at scaffold time —
   verify against `start.spring.io` / the current reference when you build.
 - **RAG is grounded, not filtered.** `/ask` retrieves from the same pgvector store `/search` uses
@@ -342,7 +351,10 @@ means. A run costs about $3.3.
 - **No bot check on `/ask` until the page.** Cloudflare Turnstile arrives with the "Ask the radar"
   page (M11); until then the per-client limit and the Anthropic workspace's monthly spend cap bound
   what `/ask` can spend.
-- **One source.** Only the Trending Archive is ingested; Blog and Loot are P5.
+- **Two sources.** Trending and Blog. The Loot ledgers stay out: the UI shows them only after a
+  login, and this service and repository are public.
+- **Some blog posts appear twice.** The Blog table holds 22 posts recorded twice (same URL and date,
+  two pages); each is embedded twice, so a search can return one post in two of its slots.
 - **Small, hand-labelled golden set.** 62 items. The retrieval gate catches any flipped hit, but the
   LLM metrics move by up to ~0.03 between identical runs, so only a drop beyond that reads as a
   regression.
@@ -356,7 +368,7 @@ means. A run costs about $3.3.
 ## 🗺️ Next
 
 ~~P1 metadata-filtered search~~ (done) · ~~P2 RAG `/ask` with citations~~ (done) · ~~P3 eval
-harness (retrieval metrics + LLM-as-judge) + CI gates~~ (done) · ~~P4 Langfuse tracing~~ (done) · P5 Blog/Loot ingest +
+harness (retrieval metrics + LLM-as-judge) + CI gates~~ (done) · ~~P4 Langfuse tracing~~ (done) · P5 Blog ingest +
 an "Ask the radar" page served by this service ([github-radar-ui](https://github.com/zexion7873/github-radar-ui) only links to it, so it stays a
 pure Notion reader).
 

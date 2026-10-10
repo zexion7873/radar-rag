@@ -10,36 +10,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.client.RestClientException;
-import org.springframework.web.client.RestClientResponseException;
 
 import java.util.Map;
 
 /**
- * Maps upstream failures to gateway statuses with a generic body. Upstream text is only logged: Notion's
- * error body and the anthropic-java SDK's exception messages must not reach a public caller. Notion's
- * status code stays in the body, since an opaque 502 once hid a Notion 401.
+ * Maps LLM failures to gateway statuses with a generic body. The anthropic-java SDK's exception messages
+ * carry the upstream body, which must not reach a public caller, so they are only logged. Notion failures
+ * never get here: IngestService reports them per source.
  */
 @RestControllerAdvice
 class ApiErrorHandler {
 
     private static final Logger log = LoggerFactory.getLogger(ApiErrorHandler.class);
-
-    /** Notion returned an HTTP error status (e.g. 401). */
-    @ExceptionHandler(RestClientResponseException.class)
-    @ResponseStatus(HttpStatus.BAD_GATEWAY)
-    Map<String, Object> upstreamStatus(RestClientResponseException e) {
-        log.warn("Notion call failed: {} {}", e.getStatusCode().value(), e.getResponseBodyAsString());
-        return Map.of("error", "upstream " + e.getStatusCode().value());
-    }
-
-    /** Transport-level upstream failure with no HTTP status (DNS, connection refused, timeout). */
-    @ExceptionHandler(RestClientException.class)
-    @ResponseStatus(HttpStatus.BAD_GATEWAY)
-    Map<String, Object> upstreamTransport(RestClientException e) {
-        log.warn("Notion unreachable", e);
-        return Map.of("error", "upstream unreachable");
-    }
 
     /** LLM call failed with a client error (bad request, missing/invalid ANTHROPIC_API_KEY). */
     @ExceptionHandler(AnthropicServiceException.class)

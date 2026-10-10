@@ -89,7 +89,7 @@ def test_rotten_labels_are_the_ones_missing_from_the_fixture() -> None:
     fixture = NotionFixture(data_source_id="ds", captured_at="2026-09-25", pages=[page])
     stale = LABEL | {"week": "2026-09-14"}
     items = [_item(), _item(id="zh-2", labels=[LABEL, stale])]
-    assert golden.rotten_labels(items, fixture) == [
+    assert golden.rotten_labels(items, fixture.keys()) == [
         ("zh-2", ("https://github.com/a/one", "2026-09-14"))
     ]
 
@@ -100,7 +100,7 @@ FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "trending.json"
 
 def test_golden_v1_labels_all_exist_in_the_fixture() -> None:
     fixture = NotionFixture.model_validate_json(FIXTURE.read_text(encoding="utf-8"))
-    assert golden.rotten_labels(golden.load(GOLDEN_V1), fixture) == []
+    assert golden.rotten_labels(golden.load(GOLDEN_V1), fixture.keys()) == []
 
 
 def test_golden_v1_has_enough_cjk_only_items_for_the_embedding_ab() -> None:

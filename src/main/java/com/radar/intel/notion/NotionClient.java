@@ -7,6 +7,7 @@ import org.springframework.web.client.RestClient;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * Minimal Notion REST reader — the same recipe github-radar-ui's lib/notion.ts uses:
@@ -30,11 +31,9 @@ public class NotionClient {
 
     /** The Trending table's rows, mapped to {@link TrendingRow}. */
     public List<TrendingRow> fetchTrending() {
-        String dataSourceId = resolveDataSourceId(props.trendingDataSource());
-        List<TrendingRow> rows = new ArrayList<>();
-        for (JsonNode page : queryAll(dataSourceId)) {
+        return fetch(props.trendingDataSource(), page -> {
             JsonNode p = page.path("properties");
-            rows.add(new TrendingRow(
+            return new TrendingRow(
                     page.path("id").asString(),
                     NotionProps.text(p, "Repo"),
                     NotionProps.dateStart(p, "Week"),
@@ -43,9 +42,28 @@ public class NotionClient {
                     NotionProps.select(p, "Category"),
                     NotionProps.url(p, "Link"),
                     NotionProps.text(p, "Description"),
-                    NotionProps.text(p, "Comment")));
-        }
-        return rows;
+                    NotionProps.text(p, "Comment"));
+        });
+    }
+
+    /** The Blog table's rows, mapped to {@link BlogRow}. */
+    public List<BlogRow> fetchBlog() {
+        return fetch(props.blogDataSource(), page -> {
+            JsonNode p = page.path("properties");
+            return new BlogRow(
+                    page.path("id").asString(),
+                    NotionProps.text(p, "Title"),
+                    NotionProps.url(p, "URL"),
+                    NotionProps.select(p, "Type"),
+                    NotionProps.dateStart(p, "Published"),
+                    NotionProps.dateStart(p, "Archived"),
+                    NotionProps.text(p, "Brief"),
+                    NotionProps.text(p, "Comment"));
+        });
+    }
+
+    private <T> List<T> fetch(String dataSource, Function<JsonNode, T> mapper) {
+        return queryAll(resolveDataSourceId(dataSource)).stream().map(mapper).toList();
     }
 
     /**
