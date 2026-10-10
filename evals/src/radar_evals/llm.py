@@ -114,6 +114,29 @@ def citation_precision(resp: AskResponse, gains: dict[RowKey, int]) -> float | N
     return len(cited & gains.keys()) / len(cited)
 
 
+# Long enough that a shared repo name or stock phrase does not count, short enough to catch a
+# copied clause.
+COPIED_SPAN = 20
+
+
+def copied_share(answer: str, passages: list[str]) -> float | None:
+    """Share of the answer's characters inside a run of COPIED_SPAN or more characters that appears
+    verbatim in a retrieved row, whitespace collapsed; None for an empty answer."""
+    text = " ".join(answer.split())
+    if not text:
+        return None
+    windows = {
+        p[i : i + COPIED_SPAN]
+        for p in (" ".join(x.split()) for x in passages)
+        for i in range(len(p) - COPIED_SPAN + 1)
+    }
+    covered = [False] * len(text)
+    for i in range(len(text) - COPIED_SPAN + 1):
+        if text[i : i + COPIED_SPAN] in windows:
+            covered[i : i + COPIED_SPAN] = [True] * COPIED_SPAN
+    return sum(covered) / len(text)
+
+
 def generator_cost(resp: AskResponse) -> float:
     if resp.usage.model not in GENERATOR_PRICES:
         raise ValueError(f"no price for generator model {resp.usage.model!r}; add it")
@@ -140,6 +163,7 @@ class ItemResult(BaseModel):
     # Citation ids /ask returned that are not among the rows it retrieved; must stay empty.
     stray_citations: list[str] = []
     citation_precision: float | None = None
+    copied_share: float | None = None
     generator_model: str | None = None
     generator_cost: float = 0.0
     metrics: dict[str, MetricResult] = {}
@@ -157,6 +181,7 @@ class RunResult(BaseModel):
     means: dict[str, float]
     citation_precision: float | None
     citation_precision_n: int
+    copied_share: float | None = None
     generator_cost: float
     judge_cost: float
     failures: list[str]
@@ -180,9 +205,11 @@ def ask_one(
     sources = {s.id for s in resp.sources}
     if {h.id for h in hits} != sources:
         raise RuntimeError(f"{item.id}: /search and /ask retrieved different rows")
+    texts = [h.text for h in hits]
     result = base.model_copy(
         update={
             "answer": resp.answer,
+            "copied_share": copied_share(resp.answer, texts),
             "cited": sorted({c.repo for c in resp.citations if c.repo}),
             "unsourced": unsourced_repos(resp, aliases),
             "uncited": uncited_repos(resp, aliases),
@@ -192,7 +219,7 @@ def ask_one(
             "generator_cost": generator_cost(resp),
         }
     )
-    return result, [h.text for h in hits]
+    return result, texts
 
 
 def ask_items(
@@ -328,12 +355,22 @@ def summary(result: RunResult) -> str:
             f"{result.citation_precision:.3f} |"
         )
     uncited = sum(1 for r in result.items if r.uncited)
+    copied = (
+        []
+        if result.copied_share is None
+        else [
+            f"Answer text copied verbatim from the retrieved rows ({COPIED_SPAN}+ character runs): "
+            f"{result.copied_share:.3f} (not gated).",
+            "",
+        ]
+    )
     if result.langfuse_run_url:
         lines += ["", f"Langfuse experiment: {result.langfuse_run_url}"]
     lines += [
         "",
         f"Answers naming a retrieved repo without citing it: {uncited} (not gated).",
         "",
+        *copied,
         f"Cost: generator ${result.generator_cost:.2f} + judge ${result.judge_cost:.2f} "
         f"= ${result.generator_cost + result.judge_cost:.2f}",
         "",
@@ -433,6 +470,7 @@ def main(argv: list[str] | None = None) -> int:
         means=metric_means,
         citation_precision=mean_or_none(precisions),
         citation_precision_n=len(precisions),
+        copied_share=mean_or_none([r.copied_share for r in results if r.copied_share is not None]),
         generator_cost=sum(r.generator_cost for r in results),
         judge_cost=sum(m.cost for r in results for m in r.metrics.values()),
         failures=gate_failures(results, metric_means),

@@ -358,6 +358,11 @@ The judge agrees with a blind human grade on 11 of 12 items, in each of two hand
 means move by at most 0.011 between runs and single items by up to 0.27, so changes are compared on
 means. A run costs about $3.3.
 
+**After blog ingest, per-repo search and balanced sources**, with the prompt now asking for synthesis
+rather than restatement (CI run 38072910360): Faithfulness 0.995, AnswerRelevancy 0.922, Attribution
+0.890, Abstention 0.860, citation precision 0.385. Answers had restated their sources: 30.3% of answer
+text was a run of 20+ characters copied from a retrieved row, now 20.5%, at about $4 a run.
+
 ---
 
 ## 🧠 Notes / decisions
@@ -420,7 +425,7 @@ Next: broad questions. golden_v2's answerable hit@5 is 0.583 against golden_v1's
 like "are there chips made for AI now?" rarely ranks the one post that answers it; golden_v2 measures that
 gap.
 
-The target stack and the milestone order (M0–M14, each with a checkable done-when) are in
+The target stack and the milestone order (M0–M15, each with a checkable done-when) are in
 [docs/stack-plan.md](docs/stack-plan.md).
 
 ---
