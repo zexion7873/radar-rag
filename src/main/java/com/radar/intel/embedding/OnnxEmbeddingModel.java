@@ -7,6 +7,8 @@ import ai.onnxruntime.OrtEnvironment;
 import ai.onnxruntime.OrtException;
 import ai.onnxruntime.OrtSession;
 import io.micrometer.observation.ObservationRegistry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.document.MetadataMode;
 import org.springframework.ai.embedding.AbstractEmbeddingModel;
@@ -20,6 +22,8 @@ import org.springframework.ai.observation.conventions.AiProvider;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -27,6 +31,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.FutureTask;
 
 /**
  * Sentence embeddings from an ONNX transformer: tokenize, run the model, mean-pool the last hidden
@@ -34,6 +40,10 @@ import java.util.Set;
  * without its PyTorch dependency, and loads the model by path so the JVM heap never holds it.
  */
 public class OnnxEmbeddingModel extends AbstractEmbeddingModel implements AutoCloseable {
+
+    private static final Logger log = LoggerFactory.getLogger(OnnxEmbeddingModel.class);
+
+    private static final ThreadMXBean THREADS = ManagementFactory.getThreadMXBean();
 
     private static final String OUTPUT = "last_hidden_state";
 
@@ -52,12 +62,22 @@ public class OnnxEmbeddingModel extends AbstractEmbeddingModel implements AutoCl
 
     public OnnxEmbeddingModel(Path model, Path tokenizerJson, Map<String, String> tokenizerOptions,
             ObservationRegistry observationRegistry) throws IOException, OrtException {
+        // Independent, and each ~2 s of a Cloud Run cold start, so the session builds while the tokenizer loads.
+        FutureTask<OrtSession> pending = new FutureTask<>(() -> {
+            long[] start = clock();
+            try (var options = new OrtSession.SessionOptions()) {
+                OrtSession created = environment.createSession(model.toString(), options);
+                log.info("ONNX session created: {}", since(start));
+                return created;
+            }
+        });
+        Thread.ofPlatform().name("onnx-session").start(pending);
+        long[] start = clock();
         try (InputStream in = Files.newInputStream(tokenizerJson)) {
             this.tokenizer = HuggingFaceTokenizer.newInstance(in, tokenizerOptions);
         }
-        try (var options = new OrtSession.SessionOptions()) {
-            this.session = environment.createSession(model.toString(), options);
-        }
+        log.info("Tokenizer loaded: {}", since(start));
+        this.session = await(pending);
         this.inputNames = session.getInputNames();
         if (!session.getOutputNames().contains(OUTPUT)) {
             throw new IllegalStateException(model + " has no " + OUTPUT + " output: " + session.getOutputNames());
@@ -195,5 +215,30 @@ public class OnnxEmbeddingModel extends AbstractEmbeddingModel implements AutoCl
         finally {
             session.close();
         }
+    }
+
+    private static OrtSession await(FutureTask<OrtSession> pending) throws OrtException {
+        try {
+            return pending.get();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("interrupted while creating the ONNX session", e);
+        } catch (ExecutionException e) {
+            switch (e.getCause()) {
+                case OrtException ort -> throw ort;
+                case RuntimeException runtime -> throw runtime;
+                default -> throw new IllegalStateException(e.getCause());
+            }
+        }
+    }
+
+    private static long[] clock() {
+        return new long[] {System.nanoTime(), THREADS.getCurrentThreadCpuTime()};
+    }
+
+    /** Wall time well above this thread's CPU time is time spent waiting, on I/O or on other threads. */
+    private static String since(long[] start) {
+        return "wall %d ms, cpu %d ms".formatted((System.nanoTime() - start[0]) / 1_000_000,
+                (THREADS.getCurrentThreadCpuTime() - start[1]) / 1_000_000);
     }
 }

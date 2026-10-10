@@ -16,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -23,6 +24,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -36,12 +38,18 @@ import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
+import static org.hamcrest.Matchers.containsString;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -78,6 +86,9 @@ class AskFlowIT {
 
     @MockitoBean
     EmbeddingModel embeddingModel;
+
+    @MockitoBean
+    TurnstileVerifier turnstile;
 
     @Autowired
     VectorStore vectorStore;
@@ -190,6 +201,30 @@ class AskFlowIT {
 
         assertThat(result.getResponse().getContentAsString()).doesNotContain(UPSTREAM_SECRET);
         ANTHROPIC.verify(attempts, postRequestedFor(urlEqualTo("/v1/messages")));
+    }
+
+    @Test
+    void aFailedBotCheckIs403AndNeverReachesTheModel() throws Exception {
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "bot check failed"))
+                .when(turnstile).check("bad-token");
+
+        mvc.perform(post("/ask").contentType(MediaType.APPLICATION_JSON).header("X-Turnstile-Token", "bad-token")
+                        .content("{\"q\":\"agents\"}"))
+                .andExpect(status().isForbidden());
+
+        verify(turnstile).check("bad-token");
+        assertThat(ANTHROPIC.findAll(postRequestedFor(urlEqualTo("/v1/messages")))).isEmpty();
+    }
+
+    @Test
+    void theRootServesTheAskPageAndConfigItsSiteKey() throws Exception {
+        mvc.perform(get("/")).andExpect(forwardedUrl("index.html"));
+        mvc.perform(get("/index.html"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(containsString("<title>Ask the radar</title>")));
+        mvc.perform(get("/config"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.turnstileSiteKey").value("1x00000000000000000000AA"));
     }
 
     private ResultActions ask() throws Exception {

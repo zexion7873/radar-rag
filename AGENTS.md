@@ -46,6 +46,8 @@ comment, the commit body or the stack plan.
   blog, and an unfiltered golden_v1 run would rank blog rows into its top 5 and flip hits. The run's
   fixture stamp then covers `trending.json` alone, which is why the baseline survived blog's arrival.
   Re-freezing `trending.json` moves that baseline; re-freezing `blog.json` does not.
+- **The live `/ask` takes no harness traffic.** Under `prod` it needs a Turnstile token from the page,
+  so evals run against a local or CI service, which has no Turnstile secret and checks nothing.
 - **The `prod` profile is invisible to the gates.** Only the deployment activates it: low effort, rate
   limits, a required `SYNC_SECRET`. Turning it on in CI throttles the harness's 62 queries from one
   address and moves the LLM gate off the effort it was measured at.
