@@ -1,7 +1,7 @@
 name: Weekly sync
 
-# Re-embeds the Trending Archive on the deployed service. The Trending routine writes its rows on
-# Mondays at 01:00 UTC; this runs two hours later, since scheduled runs can start late.
+# Re-embeds the Trending Archive and the blog on the deployed service. The Trending routine writes
+# its rows on Mondays at 01:00 UTC; this runs two hours later, since scheduled runs can start late.
 on:
   schedule:
     - cron: "0 3 * * 1"
