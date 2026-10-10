@@ -10,9 +10,8 @@ fix ships as a commit to `main`.
 
 ## Supported versions
 
-Only `main`. There are no releases, tags or maintenance branches, and no public deployment yet: the
-service runs locally and in CI. The public demo runs the prod profile described below; deploying it is
-milestone M10 in [docs/stack-plan.md](docs/stack-plan.md).
+Only `main`. There are no releases, tags or maintenance branches. The public demo is `main`, deployed
+to Cloud Run by the Deploy workflow, and runs the prod profile described below.
 
 ## What the service does
 
@@ -36,6 +35,10 @@ Worth knowing before you decide whether something is in scope.
   checked at build time.
 - **Automation.** The repository's `@claude` workflow runs only for comments, reviews and issues written
   by the repository owner; the paid LLM eval runs only on the owner's label or dispatch.
+- **Deploys without a stored cloud key.** The Deploy workflow authenticates to Google Cloud through
+  Workload Identity Federation, which trusts only this repository (by its numeric id) on
+  `refs/heads/main`. The service runs as its own account, which can read its secrets in Secret Manager
+  and nothing else.
 
 ### In scope
 
@@ -46,6 +49,8 @@ Worth knowing before you decide whether something is in scope.
 - Under the prod profile: calling `/sync` without the secret, or getting past the rate limit from one
   client.
 - Making the `@claude` workflow or the LLM eval run for someone other than the owner.
+- Getting a workflow run from another repository, a fork or a non-`main` ref to authenticate to the
+  project's Google Cloud.
 
 ### Not yet, and already known
 

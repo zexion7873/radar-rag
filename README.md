@@ -129,6 +129,15 @@ so the eval gates measure the service unthrottled and at medium effort. It adds:
 - **`/ask` at low effort**, generic error bodies (no `message`), `INFO` logs, no Swagger UI or
   `/v3/api-docs`, and no fallback for `POSTGRES_PASSWORD`.
 
+### ☁️ Deploy
+
+A push to `main` that touches the service runs the Deploy workflow: it builds the image, pushes it to
+Artifact Registry and deploys it to Cloud Run in asia-east1 (2 GiB, at most one instance, the prod
+profile), then smoke-tests `/search`, `/sync` without the secret and Swagger. It signs in through
+Workload Identity Federation, so no Google Cloud key is stored anywhere; every secret, the Neon JDBC
+URL included, is read from Secret Manager at startup. The Weekly sync workflow posts `/sync` on Mondays
+at 03:00 UTC, two hours after the Trending routine writes the week's rows.
+
 ### 🐳 In a container
 
 The image fetches the model itself and carries everything the service loads, so it downloads nothing
@@ -314,8 +323,8 @@ means. A run costs about $3.3.
 
 ## ⚠️ Known limitations
 
-- **Not deployed yet.** The prod profile above holds the public demo's protections; the deploy itself
-  is the rest of milestone M10. Without the profile `/sync` is open and Swagger UI is on, which is
+- **Demo link pending.** The Deploy workflow ships `main` to Cloud Run; the public URL goes here once
+  the first deploy is verified. Without the prod profile `/sync` is open and Swagger UI is on, which is
   fine on loopback, the default bind.
 - **No bot check on `/ask` until the page.** Cloudflare Turnstile arrives with the "Ask the radar"
   page (M11); until then the per-client limit and the Anthropic workspace's monthly spend cap bound
