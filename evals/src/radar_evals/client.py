@@ -24,11 +24,16 @@ class RadarClient:
 
     def sync(self) -> SyncResponse:
         resp = self._http.post("/sync")
-        resp.raise_for_status()
+        # A 502 still carries the per-source result: what synced, and why the rest failed.
+        if resp.status_code != httpx.codes.BAD_GATEWAY:
+            resp.raise_for_status()
         return SyncResponse.model_validate(resp.json())
 
-    def search(self, q: str, top_k: int) -> list[SearchHit]:
-        resp = self._http.post("/search", json={"q": q, "topK": top_k})
+    def search(self, q: str, top_k: int, source: str | None = None) -> list[SearchHit]:
+        body: dict[str, str | int] = {"q": q, "topK": top_k}
+        if source is not None:
+            body["source"] = source
+        resp = self._http.post("/search", json=body)
         resp.raise_for_status()
         return _HITS.validate_python(resp.json())
 

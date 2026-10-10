@@ -42,6 +42,10 @@ comment, the commit body or the stack plan.
   rest), never in a workflow or a repository variable, whose expanded values appear in the log.
 - **Scheduled workflows stop after 60 days without repository activity** (GitHub, public repos).
   Re-enable Weekly sync in the Actions tab if the demo's data stops moving.
+- **golden_v1 queries `source: trending` only.** Its labels are trending rows; the stub also serves
+  blog, and an unfiltered golden_v1 run would rank blog rows into its top 5 and flip hits. The run's
+  fixture stamp then covers `trending.json` alone, which is why the baseline survived blog's arrival.
+  Re-freezing `trending.json` moves that baseline; re-freezing `blog.json` does not.
 - **The `prod` profile is invisible to the gates.** Only the deployment activates it: low effort, rate
   limits, a required `SYNC_SECRET`. Turning it on in CI throttles the harness's 62 queries from one
   address and moves the LLM gate off the effort it was measured at.

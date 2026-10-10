@@ -16,7 +16,7 @@ from pydantic import BaseModel
 
 from radar_evals import golden, metrics
 from radar_evals.client import RadarClient
-from radar_evals.models import NotionFixture, RowKey
+from radar_evals.models import SOURCES, NotionFixture, RowKey, SyncResponse
 from radar_evals.notion_stub import NotionStub
 
 # /ask retrieves with topK 5 and no filter, so /search at k=5 measures exactly what /ask reads.
@@ -62,10 +62,12 @@ class RunResult(BaseModel):
     aggregates: dict[str, dict[str, float]]
 
 
-def run_items(items: list[golden.GoldenItem], client: RadarClient) -> list[ItemResult]:
+def run_items(
+    items: list[golden.GoldenItem], client: RadarClient, source: str | None = None
+) -> list[ItemResult]:
     results = []
     for item in items:
-        hits = client.search(item.q, TOP_K)
+        hits = client.search(item.q, TOP_K, source)
         retrieved = [h.key for h in hits]
         # An unkeyed hit still holds its rank; a unique sentinel makes it a non-relevant row.
         ranked = [k if k is not None else (f"#unkeyed-{i}", "") for i, k in enumerate(retrieved)]
@@ -152,6 +154,28 @@ def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def load_fixtures(paths: list[Path]) -> list[NotionFixture]:
+    return [NotionFixture.model_validate_json(p.read_text(encoding="utf-8")) for p in paths]
+
+
+def fixture_stamp(paths: list[Path]) -> str:
+    """One fixture stamps with its file hash, as the baselines recorded before blog existed;
+    several stamp with a hash of their sorted file hashes."""
+    if len(paths) == 1:
+        return _sha256(paths[0])
+    return hashlib.sha256("".join(sorted(_sha256(p) for p in paths)).encode()).hexdigest()
+
+
+def sync_mismatch(resp: SyncResponse, fixtures: list[NotionFixture]) -> str | None:
+    """Why the service's corpus is not exactly the fixtures' embeddable rows, or None."""
+    if resp.failed:
+        return f"/sync failed for {resp.failed}"
+    expected = {f.source: f.embeddable_count() for f in fixtures}
+    if resp.sources != expected:
+        return f"/sync ingested {resp.sources}, the fixtures have {expected}"
+    return None
+
+
 def _git_sha() -> str:
     return subprocess.run(
         ["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True
@@ -161,7 +185,18 @@ def _git_sha() -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the retrieval eval against a live service.")
     parser.add_argument("--golden", type=Path, required=True)
-    parser.add_argument("--fixture", type=Path, required=True)
+    parser.add_argument(
+        "--fixture",
+        type=Path,
+        action="append",
+        required=True,
+        help="one per source the stub serves",
+    )
+    parser.add_argument(
+        "--source",
+        choices=sorted(SOURCES),
+        help="query this source only; the stamp and the label check then cover its fixture alone",
+    )
     parser.add_argument("--model-id", required=True, help="embedding model the service runs")
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--baseline", type=Path)
@@ -179,8 +214,13 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(f"{args.baseline} does not exist; create it with --write-baseline")
 
     items = golden.load(args.golden)
-    fixture = NotionFixture.model_validate_json(args.fixture.read_text(encoding="utf-8"))
-    rotten = golden.rotten_labels(items, fixture)
+    fixtures = load_fixtures(args.fixture)
+    scope = [
+        (path, f)
+        for path, f in zip(args.fixture, fixtures, strict=True)
+        if args.source is None or f.source == args.source
+    ]
+    rotten = golden.rotten_labels(items, set().union(*(f.keys() for _, f in scope)))
     if rotten:
         print(
             f"{len(rotten)} label(s) point at rows absent from the fixture: {rotten}",
@@ -188,18 +228,16 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 1
 
-    with NotionStub(fixture, port=args.stub_port), RadarClient(args.service_url) as client:
-        expected = sum(1 for p in fixture.pages if p.embeddable)
-        ingested = client.sync().ingested
-        if ingested != expected:
-            print(f"/sync ingested {ingested} rows, the fixture has {expected}", file=sys.stderr)
+    with NotionStub(fixtures, port=args.stub_port), RadarClient(args.service_url) as client:
+        if mismatch := sync_mismatch(client.sync(), fixtures):
+            print(mismatch, file=sys.stderr)
             return 1
-        results = run_items(items, client)
+        results = run_items(items, client, args.source)
 
     result = RunResult(
         golden_file=args.golden.name,
         golden_sha256=_sha256(args.golden),
-        fixture_sha256=_sha256(args.fixture),
+        fixture_sha256=fixture_stamp([path for path, _ in scope]),
         model_id=args.model_id,
         git_sha=_git_sha(),
         top_k=TOP_K,

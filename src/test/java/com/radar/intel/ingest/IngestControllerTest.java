@@ -4,24 +4,22 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.http.HttpStatus;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.web.client.HttpClientErrorException;
 
-import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
-import static org.hamcrest.Matchers.not;
-import static org.hamcrest.Matchers.containsString;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 class IngestControllerTest {
+
+    private static final IngestService.SyncResult SYNCED =
+            new IngestService.SyncResult(859, Map.of("trending", 190, "blog", 669), Map.of());
 
     @Nested
     @WebMvcTest(IngestController.class)
@@ -31,22 +29,27 @@ class IngestControllerTest {
         private MockMvc mvc;
 
         @MockitoBean
-        private TrendingIngestService ingest;
+        private IngestService ingest;
 
         @Test
-        void syncIsOpen() throws Exception {
-            when(ingest.sync()).thenReturn(190);
-            mvc.perform(post("/sync")).andExpect(status().isOk()).andExpect(jsonPath("$.ingested").value(190));
+        void syncIsOpenAndReportsEachSource() throws Exception {
+            when(ingest.sync()).thenReturn(SYNCED);
+            mvc.perform(post("/sync"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.ingested").value(859))
+                    .andExpect(jsonPath("$.sources.trending").value(190))
+                    .andExpect(jsonPath("$.sources.blog").value(669))
+                    .andExpect(jsonPath("$.failed").isEmpty());
         }
 
         @Test
-        void aNotionErrorBodyStaysOutOfTheResponse() throws Exception {
-            when(ingest.sync()).thenThrow(HttpClientErrorException.create(HttpStatus.UNAUTHORIZED, "Unauthorized",
-                    null, "notion-body-must-not-leak".getBytes(StandardCharsets.UTF_8), StandardCharsets.UTF_8));
+        void aFailedSourceAnswers502WithTheSourcesThatSynced() throws Exception {
+            when(ingest.sync()).thenReturn(
+                    new IngestService.SyncResult(190, Map.of("trending", 190), Map.of("blog", "upstream 404")));
             mvc.perform(post("/sync"))
                     .andExpect(status().isBadGateway())
-                    .andExpect(jsonPath("$.error").value("upstream 401"))
-                    .andExpect(content().string(not(containsString("notion-body-must-not-leak"))));
+                    .andExpect(jsonPath("$.sources.trending").value(190))
+                    .andExpect(jsonPath("$.failed.blog").value("upstream 404"));
         }
     }
 
@@ -59,14 +62,14 @@ class IngestControllerTest {
         private MockMvc mvc;
 
         @MockitoBean
-        private TrendingIngestService ingest;
+        private IngestService ingest;
 
         @Test
         void theRightBearerSyncs() throws Exception {
-            when(ingest.sync()).thenReturn(190);
+            when(ingest.sync()).thenReturn(SYNCED);
             mvc.perform(post("/sync").header("Authorization", "Bearer s3cret"))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.ingested").value(190));
+                    .andExpect(jsonPath("$.ingested").value(859));
         }
 
         @Test
@@ -92,7 +95,7 @@ class IngestControllerTest {
         private MockMvc mvc;
 
         @MockitoBean
-        private TrendingIngestService ingest;
+        private IngestService ingest;
 
         @Test
         void everyCallIsRefused() throws Exception {

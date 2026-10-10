@@ -22,7 +22,14 @@ from radar_evals import golden
 from radar_evals.client import RadarClient
 from radar_evals.models import AskResponse, NotionFixture, RowKey
 from radar_evals.notion_stub import NotionStub
-from radar_evals.retrieval import TOP_K, _git_sha, _sha256
+from radar_evals.retrieval import (
+    TOP_K,
+    _git_sha,
+    _sha256,
+    fixture_stamp,
+    load_fixtures,
+    sync_mismatch,
+)
 
 JUDGE_MODEL = "claude-sonnet-5-5"
 FLOOR = 0.7
@@ -60,13 +67,13 @@ ABSTENTION_STEPS = [
 _DISTINCTIVE = re.compile(r"[-_.0-9]|.[A-Z]")
 
 
-def repo_aliases(fixture: NotionFixture) -> dict[str, str]:
+def repo_aliases(fixtures: list[NotionFixture]) -> dict[str, str]:
     """Lower-cased spellings that name a fixture repo, mapped to its lower-cased owner/name.
 
     Every owner/name counts. A bare name counts when exactly one fixture repo has it and it is
     distinctive, so "skills" (four owners) and "codex" (an ordinary word) are never matched.
     """
-    full_names = {p.plain_text("Repo").strip() for p in fixture.pages} - {""}
+    full_names = {p.plain_text("Repo").strip() for f in fixtures for p in f.pages} - {""}
     aliases = {name.lower(): name.lower() for name in full_names}
     bare_counts = Counter(name.rsplit("/", 1)[-1].lower() for name in full_names)
     for name in full_names:
@@ -344,7 +351,13 @@ def summary(result: RunResult) -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Run the LLM eval against a live service.")
     parser.add_argument("--golden", type=Path, required=True)
-    parser.add_argument("--fixture", type=Path, required=True)
+    parser.add_argument(
+        "--fixture",
+        type=Path,
+        action="append",
+        required=True,
+        help="one per source the stub serves",
+    )
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument(
         "--service-url", default=os.environ.get("EVAL_SERVICE_URL", "http://localhost:8080")
@@ -357,8 +370,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("ANTHROPIC_API_KEY is not set; the judge needs it")
 
     items = golden.load(args.golden)
-    fixture = NotionFixture.model_validate_json(args.fixture.read_text(encoding="utf-8"))
-    aliases = repo_aliases(fixture)
+    fixtures = load_fixtures(args.fixture)
+    aliases = repo_aliases(fixtures)
 
     git_sha = _git_sha()
     langfuse = None
@@ -369,11 +382,9 @@ def main(argv: list[str] | None = None) -> int:
 
     run_url = None
     # /ask can take minutes on a hard question; the client's 300 s timeout covers it.
-    with NotionStub(fixture, port=args.stub_port), RadarClient(args.service_url) as client:
-        expected = sum(1 for p in fixture.pages if p.embeddable)
-        ingested = client.sync().ingested
-        if ingested != expected:
-            print(f"/sync ingested {ingested} rows, the fixture has {expected}", file=sys.stderr)
+    with NotionStub(fixtures, port=args.stub_port), RadarClient(args.service_url) as client:
+        if mismatch := sync_mismatch(client.sync(), fixtures):
+            print(mismatch, file=sys.stderr)
             return 1
         if langfuse is None:
             answered, contexts = ask_items(items, client, aliases)
@@ -414,7 +425,7 @@ def main(argv: list[str] | None = None) -> int:
     result = RunResult(
         golden_file=args.golden.name,
         golden_sha256=_sha256(args.golden),
-        fixture_sha256=_sha256(args.fixture),
+        fixture_sha256=fixture_stamp(args.fixture),
         judge_model=JUDGE_MODEL,
         git_sha=git_sha,
         floor=FLOOR,

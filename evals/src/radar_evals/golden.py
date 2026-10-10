@@ -7,7 +7,7 @@ from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from radar_evals.models import NotionFixture, RowKey
+from radar_evals.models import RowKey
 
 type Script = Literal["cjk-only", "mixed", "latin"]
 
@@ -93,9 +93,8 @@ def load(path: Path) -> list[GoldenItem]:
     return items
 
 
-def rotten_labels(items: list[GoldenItem], fixture: NotionFixture) -> list[tuple[str, RowKey]]:
-    """Labels on a (url, week) the fixture lacks: no retrieval can ever hit them."""
-    present = fixture.keys()
+def rotten_labels(items: list[GoldenItem], present: set[RowKey]) -> list[tuple[str, RowKey]]:
+    """Labels on a (url, week) no fixture holds: no retrieval can ever hit them."""
     return [
         (item.id, label.key) for item in items for label in item.labels if label.key not in present
     ]

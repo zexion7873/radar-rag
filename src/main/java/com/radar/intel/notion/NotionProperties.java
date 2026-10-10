@@ -4,7 +4,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /** Bound from radar.notion.* in application.yml. */
 @ConfigurationProperties(prefix = "radar.notion")
-public record NotionProperties(String token, String baseUrl, String version, String trendingDataSource) {
+public record NotionProperties(
+        String token, String baseUrl, String version, String trendingDataSource, String blogDataSource) {
 
     public NotionProperties {
         // A set-but-empty NOTION_BASE_URL bypasses the YAML default; RestClient then builds

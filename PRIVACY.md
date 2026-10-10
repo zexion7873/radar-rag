@@ -23,14 +23,17 @@ There are no accounts, no cookies and no analytics. The service keeps no record 
 
 | Where | Contents |
 |---|---|
-| Postgres (`vector_store`; Neon for the demo) | The Trending Archive rows synced from Notion, and their embeddings. Never questions or answers. |
+| Postgres (`vector_store`; Neon for the demo) | The Trending and Blog Archive rows synced from Notion, and their embeddings. Never questions or answers. |
 | Application log | Startup, and Notion and Anthropic failures with the upstream error. Questions and answers are not logged. |
 | Google Cloud Logging, demo only | Cloud Run's request log: method, path, status, latency, client IP address and user agent, kept for the log bucket's retention (30 days by default). Request bodies, and so questions, are not in it. |
 | Process memory, prod profile only | For rate limiting: each recent client's IP address (an IPv6 client's /64) with its request counters, at most 10,000 clients. Never logged or written anywhere, and gone on restart. |
 | Langfuse, if enabled | The traces above, kept for the Langfuse plan's retention (30 days on the free plan). |
 
-The archive rows are public GitHub repositories' names, descriptions and statistics, plus short
-comments written by the upstream routines. They hold no personal data.
+The trending rows are public GitHub repositories' names, descriptions and statistics, plus short
+comments written by the upstream routines. The blog rows are public posts' titles and links, with a
+brief and a comment written by the upstream routines; the table's author column is not read. Beyond
+what those public pages already publish, such as a personal blog's address, they hold no personal
+data. The Loot ledgers, which the UI shows only after a login, are not read at all.
 
 ## Removing it
 
