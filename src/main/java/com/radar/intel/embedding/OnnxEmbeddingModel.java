@@ -7,6 +7,8 @@ import ai.onnxruntime.OrtEnvironment;
 import ai.onnxruntime.OrtException;
 import ai.onnxruntime.OrtSession;
 import io.micrometer.observation.ObservationRegistry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.document.MetadataMode;
 import org.springframework.ai.embedding.AbstractEmbeddingModel;
@@ -20,6 +22,8 @@ import org.springframework.ai.observation.conventions.AiProvider;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -34,6 +38,10 @@ import java.util.Set;
  * without its PyTorch dependency, and loads the model by path so the JVM heap never holds it.
  */
 public class OnnxEmbeddingModel extends AbstractEmbeddingModel implements AutoCloseable {
+
+    private static final Logger log = LoggerFactory.getLogger(OnnxEmbeddingModel.class);
+
+    private static final ThreadMXBean THREADS = ManagementFactory.getThreadMXBean();
 
     private static final String OUTPUT = "last_hidden_state";
 
@@ -52,12 +60,16 @@ public class OnnxEmbeddingModel extends AbstractEmbeddingModel implements AutoCl
 
     public OnnxEmbeddingModel(Path model, Path tokenizerJson, Map<String, String> tokenizerOptions,
             ObservationRegistry observationRegistry) throws IOException, OrtException {
+        long[] start = clock();
         try (InputStream in = Files.newInputStream(tokenizerJson)) {
             this.tokenizer = HuggingFaceTokenizer.newInstance(in, tokenizerOptions);
         }
+        log.info("Tokenizer loaded: {}", since(start));
+        start = clock();
         try (var options = new OrtSession.SessionOptions()) {
             this.session = environment.createSession(model.toString(), options);
         }
+        log.info("ONNX session created: {}", since(start));
         this.inputNames = session.getInputNames();
         if (!session.getOutputNames().contains(OUTPUT)) {
             throw new IllegalStateException(model + " has no " + OUTPUT + " output: " + session.getOutputNames());
@@ -195,5 +207,15 @@ public class OnnxEmbeddingModel extends AbstractEmbeddingModel implements AutoCl
         finally {
             session.close();
         }
+    }
+
+    private static long[] clock() {
+        return new long[] {System.nanoTime(), THREADS.getCurrentThreadCpuTime()};
+    }
+
+    /** Wall time well above this thread's CPU time is time spent waiting, on I/O or on other threads. */
+    private static String since(long[] start) {
+        return "wall %d ms, cpu %d ms".formatted((System.nanoTime() - start[0]) / 1_000_000,
+                (THREADS.getCurrentThreadCpuTime() - start[1]) / 1_000_000);
     }
 }
