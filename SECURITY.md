@@ -34,6 +34,11 @@ Worth knowing before you decide whether something is in scope.
 - **The page.** `/` serves static HTML whose Content-Security-Policy allows scripts and frames from
   this origin and Cloudflare Turnstile only. Model output is inserted as text nodes, never as HTML,
   and only `http(s)` citation URLs become links.
+- **Cross-origin `/ask` from one site.** `POST /ask` allows CORS from github-radar-ui's production
+  origin only (`radar.ask.allowed-origins`; `http://localhost:3000` outside prod), with the
+  `Content-Type` and `X-Turnstile-Token` headers. Every other path and origin keeps the browser's
+  same-origin default. Preflights are not rate-limited, so each question costs one request from the
+  limit. The Turnstile token and the rate limit apply exactly as for the page here.
 - **Validates filters.** `/search` rejects filter values that could break out of the vector store's
   filter expression before building it.
 - **Downloads nothing at runtime.** The image carries the model and every native library, pinned and
@@ -55,6 +60,8 @@ Worth knowing before you decide whether something is in scope.
   getting the page to run script from an answer.
 - Under the prod profile: calling `/sync` without the secret, or getting past the rate limit from one
   client.
+- Getting a browser on an origin outside `radar.ask.allowed-origins` to read a response from `/ask`, or
+  from any other path cross-origin.
 - Making the `@claude` workflow or the LLM eval run for someone other than the owner.
 - Getting a workflow run from another repository, a fork or a non-`main` ref to authenticate to the
   project's Google Cloud.

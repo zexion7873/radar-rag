@@ -58,10 +58,12 @@ class RateLimitFilter extends OncePerRequestFilter {
 
     // The servlet path is decoded, normalized and stripped of ;parameters, as MVC maps it; the raw URI
     // would let "/ask;x" through unlimited.
+    // A browser sends an OPTIONS preflight before each cross-origin POST /ask; counting it would halve
+    // the limit for github-radar-ui's page.
     @Override
     protected boolean shouldNotFilter(HttpServletRequest req) {
         String path = req.getServletPath();
-        return !path.equals("/ask") && !path.equals("/search");
+        return "OPTIONS".equals(req.getMethod()) || !path.equals("/ask") && !path.equals("/search");
     }
 
     @Override

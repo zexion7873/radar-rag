@@ -87,6 +87,22 @@ class RateLimitFilterTest {
     }
 
     @Test
+    void preflightsAndTheConfigFetchSpendNothing() throws Exception {
+        for (int i = 0; i < 10; i++) {
+            MockHttpServletRequest preflight = request("/ask", "1.2.3.4");
+            preflight.setMethod("OPTIONS");
+            assertThat(status(preflight)).isEqualTo(200);
+            MockHttpServletRequest config = request("/config", "1.2.3.4");
+            config.setMethod("GET");
+            assertThat(status(config)).isEqualTo(200);
+        }
+        for (int i = 0; i < 5; i++) {
+            assertThat(status(request("/ask", "1.2.3.4"))).isEqualTo(200);
+        }
+        assertThat(status(request("/ask", "1.2.3.4"))).isEqualTo(429);
+    }
+
+    @Test
     void syncIsNotLimitedHere() throws Exception {
         for (int i = 0; i < 40; i++) {
             assertThat(status(request("/sync", "1.2.3.4"))).isEqualTo(200);

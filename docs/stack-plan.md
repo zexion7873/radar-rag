@@ -34,7 +34,7 @@ would reopen one.
 | D3 | `/ask` runs on `claude-opus-5-5`. | — |
 | D4 | DeepEval is the eval library (RAGAS has had no release since 2026-01). The LLM judge is pinned to `claude-sonnet-5-5` (`claude-sonnet-5` through M7): a different model from the Opus 5.5 generator, at half its price ($2/$10 vs $4/$20 per MTok). DeepEval 4.2.8's registry lacks Sonnet 5.5, so the harness passes its prices. | A judge change resets the LLM noise band: two fresh runs and a new 12-item hand grade before later changes are judged. |
 | D5 | The CI fixture is the frozen raw Notion rows (pre-embedding JSON), never a pgvector dump, which would lock the embedding model. Relevance labels are at (url, week). | — |
-| D6 | The three radar repos stay separate. github-radar-ui is a pure Notion reader: it calls nothing but Notion. | — |
+| D6 | The three radar repos stay separate. github-radar-ui's server is a pure Notion reader: it calls nothing but Notion. Its `/ask` page's browser code calls this service's `POST /ask`, like an embedded widget (amended in M14; it held no exception before). | — |
 | D7 | There is no OpenAI key, and Anthropic has no embeddings API, so embeddings run locally or come from a third-party provider. | — |
 
 ## Known bugs (2026-09-25)
@@ -328,6 +328,9 @@ Done when:
 ### M13: Balanced sources in /ask (RAG, ~0.5 day)
 **Status: done (2026-10-10).** Found while reading M12's paid LLM run (CI run 38062488273, $3.80), the first since Blog ingest: it passed the 0.7 floors but fell below the four-run band (Abstention 0.855, AnswerRelevancy 0.860, Attribution 0.914, Faithfulness 0.995). Local runs of golden_v1 over every source, as `/ask` searches, separated the causes: answerable hit@5 0.571 before M12 and 0.619 after (none lost), against 0.857 on trending alone. Blog rows held 60-67% of the top 5, and the retrieval gate, which queries golden_v1 with `source: trending`, never saw it. Each source is now searched on its own and the rows are taken in turns, starting with the source whose best row scores higher; `/search` does the same when no `source` is named, so D1's equivalence holds. Rule fixed before the runs: golden_v2 answerable hit@5 must not fall and golden_v1 over every source must gain at least two items. Simulated offline from per-source `/search` results, then confirmed on the service: in turns 14/24 and 31/42 (none lost) passed and beat a 2 trending + 3 blog quota (29/42, one lost) and a two-per-source floor (30/42); 3 trending + 2 blog lost a golden_v2 hit (13/24). Cost: golden_v2 swaps one hit (v2q11-en lost, v2q05 won) and its answerable R@5 falls from 0.288 to 0.245, because items labelled with several posts get fewer blog slots. golden_v2's baseline is rewritten by CI; golden_v1's, on trending alone, does not move. CI now also gates golden_v1 over every source, against its own baseline, so `/ask`'s retrieval is measured by two golden sets rather than one.
 
+### M14: The Ask page moves into github-radar-ui (UI, ~1 day)
+**Status: in progress (2026-10-11).** Decided with the owner and the github-radar-ui session: the page belongs where the radar's data is read, so a cited repo or post opens its detail page on the same site. D6 is amended rather than reversed: what it protects still holds, since github-radar-ui's server reads only Notion, holds no secret of this service (the Turnstile site key is public) and deploys on its own; its other pages never wait on this service's cold start. D1's "pure-reader" flip-when therefore does not fire. The do-not-add entry "an Ask panel inside github-radar-ui" is withdrawn with it. Beat: a Next.js route proxying `/ask`, which would key every visitor's rate limit on Vercel's addresses; reading `/config` cross-origin for the site key, which adds a CORS path and puts the widget behind the cold start; restyling this service's page to match, which copies the UI's design into a second place. Steps: this service allows CORS on `POST /ask` for github-radar-ui's origin (`http://localhost:3000` outside prod) and stops counting preflights against the rate limit; the owner adds github-radar-ui's hostname to the Turnstile widget; github-radar-ui ships `/ask` (a static shell, one client component, a no-cors `/config` request on mount to start a cold instance while the visitor types); the owner asks one question on the live site; a week later this service's `/` redirects (301) there and its static page is removed.
+
 ## 4. Do-not-add list
 
 | Item | Why | Durable / deferred | Flip-when |
@@ -371,7 +374,6 @@ Done when:
 | JaCoCo gate, PIT, Pact | Coverage numbers on 500 lines are vanity, and the API has no consumers | Deferred | The service grows well past four endpoints, or a second consumer appears. |
 | Queue / async ingestion | ~200 rows once a week | Durable | Ingest exceeds the Cloud Run request timeout. |
 | Multi-arch images | Cloud Run runs amd64 | Deferred | The deploy target becomes ARM. |
-| An "Ask" panel inside github-radar-ui that calls radar-rag | Breaks D6 | Durable while D6 holds | The UI drops its pure-reader contract (also a D1 flip-when). |
 
 ## 5. Open decisions
 
