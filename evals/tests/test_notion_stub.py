@@ -1,4 +1,5 @@
 import httpx
+import pytest
 
 from radar_evals.models import FrozenPage, NotionFixture
 from radar_evals.notion_stub import NotionStub
@@ -55,3 +56,10 @@ def test_each_fixture_answers_under_its_own_data_source() -> None:
         bl = http.post("/data_sources/bl/query", json={}).json()["results"]
     assert [p["id"] for p in tr] == ["tr000", "tr001"]
     assert [p["id"] for p in bl] == ["bl000", "bl001", "bl002"]
+
+
+def test_each_request_is_logged_to_stderr(capfd: pytest.CaptureFixture[str]) -> None:
+    with NotionStub([_fixture(1)]) as stub, httpx.Client(base_url=stub.base_url) as http:
+        http.post("/data_sources/ds/query", json={})
+    err = capfd.readouterr().err
+    assert '"POST /data_sources/ds/query HTTP/1.1" 200' in err

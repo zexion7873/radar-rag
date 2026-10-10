@@ -1,8 +1,10 @@
 """A local stand-in for the two Notion endpoints NotionClient calls, served from fixtures."""
 
 import json
+import sys
 import threading
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from types import TracebackType
 from typing import Any, Self
@@ -16,8 +18,11 @@ def _handler(fixtures: Sequence[NotionFixture]) -> type[BaseHTTPRequestHandler]:
     pages = {f.data_source_id: [p.model_dump() for p in f.pages] for f in fixtures}
 
     class Handler(BaseHTTPRequestHandler):
+        # One stderr line per request, and BaseHTTPRequestHandler's own errors (a malformed or
+        # timed-out request), so a CI sync that fails on the service side shows what the stub saw.
         def log_message(self, format: str, *args: Any) -> None:
-            pass
+            stamp = datetime.now(UTC).strftime("%H:%M:%S.%f")[:-3]
+            print(f"stub {stamp} :{self.client_address[1]} {format % args}", file=sys.stderr)
 
         def _send(self, status: int, body: dict[str, Any]) -> None:
             data = json.dumps(body).encode()
