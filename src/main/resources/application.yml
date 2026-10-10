@@ -1,6 +1,13 @@
 spring:
   application:
     name: radar-rag
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          # The page's files revalidate on every load, so a deploy reaches returning visitors at once;
+          # without it browsers guess a freshness from Last-Modified (1980 in the reproducible jar).
+          no-cache: true
   datasource:
     url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/radar}
     username: ${POSTGRES_USER:radar}

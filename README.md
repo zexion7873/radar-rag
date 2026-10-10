@@ -375,9 +375,13 @@ means. A run costs about $3.3.
 ## 🗺️ Next
 
 ~~P1 metadata-filtered search~~ (done) · ~~P2 RAG `/ask` with citations~~ (done) · ~~P3 eval
-harness (retrieval metrics + LLM-as-judge) + CI gates~~ (done) · ~~P4 Langfuse tracing~~ (done) · P5 Blog ingest +
-an "Ask the radar" page served by this service ([github-radar-ui](https://github.com/zexion7873/github-radar-ui) only links to it, so it stays a
-pure Notion reader).
+harness (retrieval metrics + LLM-as-judge) + CI gates~~ (done) · ~~P4 Langfuse tracing~~ (done) · ~~P5 Blog ingest +
+an "Ask the radar" page served by this service~~ (done; [github-radar-ui](https://github.com/zexion7873/github-radar-ui) only links to it, so it
+stays a pure Notion reader).
+
+Next: broad questions. golden_v2's answerable hit@5 is 0.583 against golden_v1's 0.786, because a question
+like "are there chips made for AI now?" rarely ranks the one post that answers it; golden_v2 measures that
+gap.
 
 The target stack and the milestone order (M0–M11, each with a checkable done-when) are in
 [docs/stack-plan.md](docs/stack-plan.md).
