@@ -327,6 +327,14 @@ gate counts hits per url. hit@5 0.786 → 0.857, R@5 0.404 → 0.579, MRR 0.633 
 0.762 → 0.810, English 0.810 → 0.905: the slots a repeat held now go to other repos. golden_v2 stays at
 0.583; blog posts never repeat.
 
+**Sources in turns** (what `/ask` reads): the gate above queries golden_v1 on trending alone, but `/ask`
+searches every source, and blog, with 3× trending's rows and broader text, took 60-67% of the five
+slots. Over every source golden_v1's answerable hit@5 was 0.619, not 0.857. Each source is now searched
+on its own and the rows taken in turns: golden_v1 over every source 0.619 → 0.738 (none lost), golden_v2
+0.583 → 0.583 (one hit swapped), golden_v2 R@5 0.288 → 0.245, since questions labelled with several
+posts get fewer blog slots. Chosen by a rule fixed before the runs, over two fixed quotas and a two-per-
+source floor.
+
 **Answer quality** (`/ask` on `claude-opus-5-5` with native citations, judged by
 `claude-sonnet-5-5` through DeepEval; two runs on one commit, all 62 golden_v1 items, measured before
 the blog ingest): no errors, empty answers, or repos named or cited outside the retrieved rows.
@@ -366,8 +374,8 @@ means. A run costs about $3.3.
   when it has none.
 - **Spring AI moves fast.** Versions/artifact ids match the reference docs at scaffold time —
   verify against `start.spring.io` / the current reference when you build.
-- **RAG is grounded, not filtered.** `/ask` retrieves exactly what `/search` with `topK` 5 returns,
-  one row per url, sends each row as an Anthropic citation document titled "repo week", with the
+- **RAG is grounded, not filtered.** `/ask` retrieves exactly what `/search` with `topK` 5 and no
+  `source` returns, one row per url, each source searched on its own and taken in turns, sends each row as an Anthropic citation document titled "repo week", with the
   repo's chart run (weeks charted, first and last) appended for the model only, and returns only
   the rows Claude cites. It takes only a question — no
   metadata-filter fields — so it has no SQL-filter input surface (unlike `/search`, which validates its filter values). The retriever keeps every
@@ -401,11 +409,11 @@ harness (retrieval metrics + LLM-as-judge) + CI gates~~ (done) · ~~P4 Langfuse 
 an "Ask the radar" page served by this service~~ (done; [github-radar-ui](https://github.com/zexion7873/github-radar-ui) only links to it, so it
 stays a pure Notion reader).
 
-Next: broad questions. golden_v2's answerable hit@5 is 0.583 against golden_v1's 0.857, because a question
+Next: broad questions. golden_v2's answerable hit@5 is 0.583 against golden_v1's 0.738 over every source, because a question
 like "are there chips made for AI now?" rarely ranks the one post that answers it; golden_v2 measures that
 gap.
 
-The target stack and the milestone order (M0–M11, each with a checkable done-when) are in
+The target stack and the milestone order (M0–M13, each with a checkable done-when) are in
 [docs/stack-plan.md](docs/stack-plan.md).
 
 ---
