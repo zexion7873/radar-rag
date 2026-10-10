@@ -70,7 +70,7 @@ jobs:
           search=$(code -X POST "$url/search" -H 'content-type: application/json' -d '{"q":"agents","topK":1}')
           sync=$(code -X POST "$url/sync")
           swagger=$(code "$url/swagger-ui.html")
-          page=$(code "$url/")
+          root=$(code "$url/")
           ask=$(code -X POST "$url/ask" -H 'content-type: application/json' -d '{"q":"agents"}')
-          echo "search=$search sync-without-secret=$sync swagger=$swagger page=$page ask-without-token=$ask"
-          [ "$search" = 200 ] && [ "$sync" = 401 ] && [ "$swagger" = 404 ] && [ "$page" = 200 ] && [ "$ask" = 403 ]
+          echo "search=$search sync-without-secret=$sync swagger=$swagger root-redirect=$root ask-without-token=$ask"
+          [ "$search" = 200 ] && [ "$sync" = 401 ] && [ "$swagger" = 404 ] && [ "$root" = 301 ] && [ "$ask" = 403 ]

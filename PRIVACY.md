@@ -5,6 +5,7 @@ with its database on Neon (Singapore), operated by the repository owner. Anyone 
 is the operator of the data below, with their own Notion, Anthropic and Langfuse accounts.
 
 There are no accounts, no cookies and no analytics. The service keeps no record of who asked what.
+The "Ask the radar" page is github-radar-ui's, and that site's own analytics are its to describe.
 
 ## Where a question goes
 
@@ -13,10 +14,10 @@ There are no accounts, no cookies and no analytics. The service keeps no record 
   records the query text.
 - **`POST /ask`.** The question, together with the five archive rows retrieved for it, is sent to
   Anthropic's API to generate the answer, under the operator's API key and Anthropic's terms for it.
-- **The page's bot check.** The "Ask the radar" page loads Cloudflare Turnstile, which runs in the
-  visitor's browser and collects the signals Cloudflare's own privacy policy describes. On the public
-  demo the service sends Cloudflare only the token Turnstile issued, never the question or the
-  visitor's address.
+- **The page's bot check.** github-radar-ui's "Ask the radar" page loads Cloudflare Turnstile, which
+  runs in the visitor's browser and collects the signals Cloudflare's own privacy policy describes. On
+  the public demo this service sends Cloudflare only the token Turnstile issued, never the question or
+  the visitor's address.
 - **Langfuse, only when both Langfuse keys are set.** Each request is traced to Langfuse Cloud. A
   `/search` trace carries the query text; an `/ask` trace carries the question, the full prompt sent to
   Claude (the question and the retrieved rows), the answer, token counts and timings. Without both

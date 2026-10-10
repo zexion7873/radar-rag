@@ -12,8 +12,6 @@ comment, the commit body or the stack plan.
 
 - `scripts/fetch-models.sh` — the embedding model into `models/`, pinned and sha256-checked. The
   service does not start without it.
-- `npm ci && npm run typecheck` — `tsc` over the page's `app.js`, which stays plain JS served as is;
-  its types are JSDoc, and `types/` declares the Turnstile globals. CI's `build` job runs it.
 - `mvn -B verify` — unit tests plus the `*IT` integration tests on Testcontainers pgvector (needs
   Docker). Homebrew's `mvn` runs on whatever `JAVA_HOME` names; it must be a JDK 25.
 - `cd evals && uv run ruff check && uv run ruff format --check && uv run mypy && uv run pytest` —
@@ -50,7 +48,7 @@ comment, the commit body or the stack plan.
   (`baseline_v1_all.json`); it and golden_v2 measure `/ask`'s retrieval. The trending-only run's
   fixture stamp then covers `trending.json` alone, which is why the baseline survived blog's arrival.
   Re-freezing `trending.json` moves that baseline; re-freezing `blog.json` does not.
-- **The live `/ask` takes no harness traffic.** Under `prod` it needs a Turnstile token from the page,
+- **The live `/ask` takes no harness traffic.** Under `prod` it needs a Turnstile token from github-radar-ui's page,
   so evals run against a local or CI service, which has no Turnstile secret and checks nothing.
 - **The `prod` profile is invisible to the gates.** Only the deployment activates it: low effort, rate
   limits, a required `SYNC_SECRET`. Turning it on in CI throttles the harness's 62 queries from one

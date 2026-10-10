@@ -38,7 +38,6 @@ import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
-import static org.hamcrest.Matchers.containsString;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -49,8 +48,6 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.forwardedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -222,11 +219,11 @@ class AskFlowIT {
     }
 
     @Test
-    void theRootServesTheAskPageAndConfigItsSiteKey() throws Exception {
-        mvc.perform(get("/")).andExpect(forwardedUrl("index.html"));
-        mvc.perform(get("/index.html"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(containsString("<title>Ask the radar</title>")));
+    void theRootRedirectsToGithubRadarUisAskPageAndConfigStillAnswers() throws Exception {
+        mvc.perform(get("/"))
+                .andExpect(status().isMovedPermanently())
+                .andExpect(header().string("Location", "https://whyisthistrending.vercel.app/ask"));
+        mvc.perform(get("/index.html")).andExpect(status().isNotFound());
         mvc.perform(get("/config"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.turnstileSiteKey").value("1x00000000000000000000AA"));

@@ -31,14 +31,13 @@ Worth knowing before you decide whether something is in scope.
   before any retrieval or model call; a missing or rejected token is `403`, and an unreachable
   siteverify `503`, never a pass. Error bodies carry no message, logs are `INFO`, Swagger UI and
   `/v3/api-docs` are off, and `POSTGRES_PASSWORD` has no fallback.
-- **The page.** `/` serves static HTML whose Content-Security-Policy allows scripts and frames from
-  this origin and Cloudflare Turnstile only. Model output is inserted as text nodes, never as HTML,
-  and only `http(s)` citation URLs become links.
+- **No page here.** `/` redirects (301) to github-radar-ui's `/ask`, which renders the answers; this
+  service serves no HTML, only JSON.
 - **Cross-origin `/ask` from one site.** `POST /ask` allows CORS from github-radar-ui's production
   origin only (`radar.ask.allowed-origins`; `http://localhost:3000` outside prod), with the
   `Content-Type` and `X-Turnstile-Token` headers. Every other path and origin keeps the browser's
   same-origin default. Preflights are not rate-limited, so each question costs one request from the
-  limit. The Turnstile token and the rate limit apply exactly as for the page here.
+  limit. The Turnstile token and the rate limit apply as to any other caller.
 - **Validates filters.** `/search` rejects filter values that could break out of the vector store's
   filter expression before building it.
 - **Downloads nothing at runtime.** The image carries the model and every native library, pinned and
@@ -56,8 +55,7 @@ Worth knowing before you decide whether something is in scope.
 - Anything that sends the Notion token, the Anthropic key or the Langfuse keys to a response or to a log
   a caller can read.
 - Getting `/ask` to return Anthropic's upstream error text, or `/sync` Notion's.
-- Under the prod profile: getting `/ask` to reach the model without a token Turnstile accepted, or
-  getting the page to run script from an answer.
+- Under the prod profile: getting `/ask` to reach the model without a token Turnstile accepted.
 - Under the prod profile: calling `/sync` without the secret, or getting past the rate limit from one
   client.
 - Getting a browser on an origin outside `radar.ask.allowed-origins` to read a response from `/ask`, or
