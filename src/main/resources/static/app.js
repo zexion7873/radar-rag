@@ -84,16 +84,34 @@ function label(row) {
   return row.repo || row.title || row.url || row.id;
 }
 
+// github-radar-ui resolves any week's Notion page id to the repo's full history; it keeps these two
+// route shapes stable for this page.
+const RADAR_UI = "https://whyisthistrending.vercel.app";
+const PAGE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
+function isHttp(url) {
+  return typeof url === "string" && /^https?:\/\//.test(url);
+}
+
+function anchor(href, text) {
+  const a = document.createElement("a");
+  a.href = href;
+  a.textContent = text;
+  a.rel = "noopener noreferrer";
+  a.target = "_blank";
+  return a;
+}
+
+function detailPage(row) {
+  if (!PAGE_ID.test(row.id ?? "")) return null;
+  return `${RADAR_UI}/${row.source === "blog" ? "blog" : "trending"}/${row.id}`;
+}
+
 function link(row) {
   const name = label(row);
-  if (row.url && /^https?:\/\//.test(row.url)) {
-    const a = document.createElement("a");
-    a.href = row.url;
-    a.textContent = name;
-    a.rel = "noopener noreferrer";
-    a.target = "_blank";
-    return a;
-  }
+  const page = detailPage(row);
+  if (page) return anchor(page, name);
+  if (isHttp(row.url)) return anchor(row.url, name);
   return document.createTextNode(name);
 }
 
@@ -105,6 +123,9 @@ function renderRows(list, rows, withQuotes) {
     const meta = document.createElement("span");
     meta.className = "meta";
     meta.textContent = ` · ${row.source === "blog" ? "blog" : "trending"} · ${row.week ?? ""}`;
+    if (detailPage(row) && isHttp(row.url)) {
+      meta.append(" · ", anchor(row.url, row.source === "blog" ? "原文 ↗" : "GitHub ↗"));
+    }
     li.append(meta);
     if (withQuotes) {
       for (const quote of row.citedText ?? []) {
