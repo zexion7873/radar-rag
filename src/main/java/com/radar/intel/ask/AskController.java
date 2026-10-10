@@ -12,6 +12,7 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.rag.Query;
 import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -40,8 +41,17 @@ public class AskController {
 
     private final ChatClient chatClient;
     private final VectorStoreDocumentRetriever retriever;
+    private final OutputConfig.Effort effort;
 
-    public AskController(ChatClient.Builder chatClientBuilder, VectorStore vectorStore) {
+    /**
+     * {@code radar.ask.effort} is pinned so a model default change cannot move cost or quality; the
+     * LLM gate measures medium, and the public prod path runs low.
+     */
+    public AskController(ChatClient.Builder chatClientBuilder, VectorStore vectorStore,
+            @Value("${radar.ask.effort:medium}") String effort) {
+        this.effort = OutputConfig.Effort.of(effort);
+        // Throws on an unknown value, which the SDK would otherwise send to the API on every /ask.
+        this.effort.known();
         this.chatClient = chatClientBuilder.defaultSystem(SYSTEM).build();
         // Threshold 0 keeps every candidate; topK alone bounds the context window, and /search with
         // topK 5 stays exactly this retrieval (the eval harness relies on that).
@@ -79,9 +89,7 @@ public class AskController {
         List<Document> docs = retriever.retrieve(new Query(req.q()));
         ChatResponse resp = chatClient.prompt()
                 .options(AnthropicChatOptions.builder()
-                        // Opus 5.5 defaults to medium already; pinned so a model default change cannot
-                        // move cost or quality.
-                        .effort(OutputConfig.Effort.MEDIUM)
+                        .effort(effort)
                         .citationDocuments(docs.stream().map(AskController::citationDocument).toList()))
                 .user(req.q())
                 .call()

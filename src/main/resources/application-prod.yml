@@ -1,0 +1,29 @@
+# The public deployment (SPRING_PROFILES_ACTIVE=prod). The image and CI run without it, so the eval
+# gates measure the service at medium effort and with no rate limit.
+spring:
+  datasource:
+    # No fallback: application.yml's radar/radar is a loopback-only credential. Binding leaves an unset
+    # variable as the literal placeholder, so boot fails at the database login, not at this line.
+    password: ${POSTGRES_PASSWORD}
+
+server:
+  error:
+    include-message: never
+
+logging:
+  level:
+    com.radar.intel: INFO
+
+# Swagger UI's Try-it-out would be a one-click way to spend on /ask.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+radar:
+  sync:
+    # Required; an empty value refuses every /sync (IngestController).
+    secret: ${SYNC_SECRET}
+  ask:
+    effort: low
