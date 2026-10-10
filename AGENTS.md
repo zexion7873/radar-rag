@@ -12,6 +12,8 @@ comment, the commit body or the stack plan.
 
 - `scripts/fetch-models.sh` — the embedding model into `models/`, pinned and sha256-checked. The
   service does not start without it.
+- `npm ci && npm run typecheck` — `tsc` over the page's `app.js`, which stays plain JS served as is;
+  its types are JSDoc, and `types/` declares the Turnstile globals. CI's `build` job runs it.
 - `mvn -B verify` — unit tests plus the `*IT` integration tests on Testcontainers pgvector (needs
   Docker). Homebrew's `mvn` runs on whatever `JAVA_HOME` names; it must be a JDK 25.
 - `cd evals && uv run ruff check && uv run ruff format --check && uv run mypy && uv run pytest` —
