@@ -138,6 +138,19 @@ Workload Identity Federation, so no Google Cloud key is stored anywhere; every s
 URL included, is read from Secret Manager at startup. The Weekly sync workflow posts `/sync` on Mondays
 at 03:00 UTC, two hours after the Trending routine writes the week's rows.
 
+The live service is a JSON API until the "Ask the radar" page arrives (M11), so try it with curl. The
+first request after a quiet spell waits for a cold start:
+
+```bash
+curl -X POST https://radar-rag-50472171523.asia-east1.run.app/search \
+  -H 'Content-Type: application/json' -d '{"q":"agent memory across sessions","topK":3}'
+curl -X POST https://radar-rag-50472171523.asia-east1.run.app/ask \
+  -H 'Content-Type: application/json' -d '{"q":"which trending repos help agents remember things?"}'
+```
+
+Each client gets 5 `/ask` a minute (20 a day) and 30 `/search` a minute; `/ask` questions and answers
+are traced, as [PRIVACY.md](PRIVACY.md) describes.
+
 ### 🐳 In a container
 
 The image fetches the model itself and carries everything the service loads, so it downloads nothing
@@ -323,9 +336,9 @@ means. A run costs about $3.3.
 
 ## ⚠️ Known limitations
 
-- **Demo link pending.** The Deploy workflow ships `main` to Cloud Run; the public URL goes here once
-  the first deploy is verified. Without the prod profile `/sync` is open and Swagger UI is on, which is
-  fine on loopback, the default bind.
+- **The demo is an API, not a page.** Until M11's page, the live service answers curl, not a browser.
+  Without the prod profile `/sync` is open and Swagger UI is on, which is fine on loopback, the default
+  bind.
 - **No bot check on `/ask` until the page.** Cloudflare Turnstile arrives with the "Ask the radar"
   page (M11); until then the per-client limit and the Anthropic workspace's monthly spend cap bound
   what `/ask` can spend.
