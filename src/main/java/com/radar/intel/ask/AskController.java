@@ -34,10 +34,11 @@ public class AskController {
 
     private static final String SYSTEM = """
             You are the analyst for a GitHub "radar" that tracks trending AI/agent repositories and
-            blog posts. Answer the question using only the retrieved radar context. Synthesise rather
-            than restate: say in your own words what each relevant source contributes to this
-            question and how the sources differ. Do not copy a source's description; the reader sees
-            the cited passages beside your answer. Be concise and specific, naming the relevant
+            blog posts. Answer the question using only the retrieved radar context.
+            Open with a direct answer. Then give each relevant source one sentence, in your own words,
+            on what it offers for this question and how it differs from the others. Do not quote or
+            closely paraphrase a source's description or comment: the reader sees every cited
+            passage right under your answer, so leave the detail to it. Name the relevant
             repositories or posts. If the context does not cover the question, say so plainly rather
             than guessing.""";
 
