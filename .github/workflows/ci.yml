@@ -135,6 +135,24 @@ jobs:
             echo "::error::No results/baseline_v2.json committed; commit the one in the retrieval-eval artifact."
             exit 1
           fi
+      - name: Retrieval eval over golden_v1 on every source, gated on hit@5 flips against its baseline
+        working-directory: evals
+        env:
+          EVAL_SERVICE_URL: http://localhost:8080
+          EVAL_NOTION_STUB_PORT: "8765"
+        run: |
+          # /ask searches every source in turns; the trending-only step above cannot see blog rows
+          # crowding its labels out. Blog rows count as misses here, so the score is a lower bound.
+          args=(--golden golden_v1.jsonl --fixture fixtures/trending.json --fixture fixtures/blog.json
+                --model-id paraphrase-multilingual-MiniLM-L12-v2
+                --out results/latest_v1_all.json --baseline results/baseline_v1_all.json)
+          if [ -f results/baseline_v1_all.json ]; then
+            uv run radar-evals "${args[@]}"
+          else
+            uv run radar-evals "${args[@]}" --write-baseline
+            echo "::error::No results/baseline_v1_all.json committed; commit the one in the retrieval-eval artifact."
+            exit 1
+          fi
       - if: always()
         uses: actions/upload-artifact@v7
         with:

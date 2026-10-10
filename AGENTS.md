@@ -46,7 +46,8 @@ comment, the commit body or the stack plan.
   Re-enable Weekly sync in the Actions tab if the demo's data stops moving.
 - **golden_v1 queries `source: trending` only.** Its labels are trending rows; the stub also serves
   blog, and an unfiltered golden_v1 run counts every blog row as a miss. `/ask` searches every source,
-  balanced in turns, so this gate does not measure `/ask`'s retrieval; golden_v2 does. The run's
+  balanced in turns, so a second golden_v1 step runs over every source with its own baseline
+  (`baseline_v1_all.json`); it and golden_v2 measure `/ask`'s retrieval. The trending-only run's
   fixture stamp then covers `trending.json` alone, which is why the baseline survived blog's arrival.
   Re-freezing `trending.json` moves that baseline; re-freezing `blog.json` does not.
 - **The live `/ask` takes no harness traffic.** Under `prod` it needs a Turnstile token from the page,
