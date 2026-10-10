@@ -353,8 +353,6 @@ means. A run costs about $3.3.
   what `/ask` can spend.
 - **Two sources.** Trending and Blog. The Loot ledgers stay out: the UI shows them only after a
   login, and this service and repository are public.
-- **Some blog posts appear twice.** The Blog table holds 22 posts recorded twice (same URL and date,
-  two pages); each is embedded twice, so a search can return one post in two of its slots.
 - **Small, hand-labelled golden set.** 62 items. The retrieval gate catches any flipped hit, but the
   LLM metrics move by up to ~0.03 between identical runs, so only a drop beyond that reads as a
   regression.
