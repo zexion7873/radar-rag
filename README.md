@@ -141,8 +141,10 @@ A push to `main` that touches the service runs the Deploy workflow: it builds th
 Artifact Registry and deploys it to Cloud Run in asia-east1 (2 GiB, at most one instance, the prod
 profile), then smoke-tests `/search`, `/sync` without the secret and Swagger. It signs in through
 Workload Identity Federation, so no Google Cloud key is stored anywhere; every secret, the Neon JDBC
-URL included, is read from Secret Manager at startup. The Weekly sync workflow posts `/sync` on Mondays
-at 03:00 UTC, two hours after the Trending routine writes the week's rows.
+URL included, is read from Secret Manager at startup. A cleanup policy on the Artifact Registry
+repository keeps the three most recent images and deletes the rest, so a rollback reaches back two
+deploys. The Weekly sync workflow posts `/sync` on Mondays at 03:00 UTC, two hours after the Trending
+routine writes the week's rows.
 
 **[Ask the radar](https://radar-rag-50472171523.asia-east1.run.app)** is the live page: a question in,
 an answer with its cited trending repos and blog posts out. The first visit after a quiet spell waits
