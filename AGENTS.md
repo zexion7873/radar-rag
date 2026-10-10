@@ -35,6 +35,9 @@ comment, the commit body or the stack plan.
 - **Spring AI spans carry content.** The vector-store span records the query text and
   `ChatContentObservationFilter` puts the prompt and answer on the chat span; `PRIVACY.md` says so and
   must change with them.
+- **The `prod` profile is invisible to the gates.** Only the deployment activates it: low effort, rate
+  limits, a required `SYNC_SECRET`. Turning it on in CI throttles the harness's 62 queries from one
+  address and moves the LLM gate off the effort it was measured at.
 - **Langfuse orgs created on or after 2026-09-16 have no legacy read API.** Read traces through
   `GET /api/public/v2/observations` with explicit `fields`.
 - **Docs move with the code.** A milestone's status line in `docs/stack-plan.md`, the README, and
