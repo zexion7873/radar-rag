@@ -1,6 +1,8 @@
 """Retrieval eval: sync from the frozen fixture, run the golden set through /search, gate on flips.
 
-The gate fails when an item that hit at k in the baseline misses now. Exact vector search over a
+The gate fails when an item that hit at k in the baseline misses now, counted per url: /search
+returns a url once, at its best-scoring week, so a label on another week of a retrieved repo is
+still that repo found. Exact vector search over a
 frozen fixture with a pinned model is deterministic, so a flip is a real regression, not noise.
 """
 
@@ -11,6 +13,7 @@ import subprocess
 import sys
 from collections.abc import Hashable, Iterable
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -90,21 +93,25 @@ def run_items(
     return results
 
 
-def aggregate(results: Iterable[ItemResult]) -> dict[str, dict[str, float]]:
-    """Mean row-level scores per group; items without labels have no retrieval score.
+def aggregate(
+    results: Iterable[ItemResult], level: Literal["url", "row"] = "url"
+) -> dict[str, dict[str, float]]:
+    """Mean scores per group at `level` ("url" or "row"); items without labels have no retrieval
+    score.
 
     Language and script groups hold answerable items only, so a labelled adversarial item cannot
     move the zh-TW/English comparison.
     """
     groups: dict[str, list[Scores]] = {}
     for r in results:
-        if r.row is None:
+        scores_at = r.url if level == "url" else r.row
+        if scores_at is None:
             continue
         names = ["all", f"kind:{r.kind}"]
         if r.kind == "answerable":
             names += [f"lang:{r.lang}", f"script:{r.script}"]
         for group in names:
-            groups.setdefault(group, []).append(r.row)
+            groups.setdefault(group, []).append(scores_at)
     out: dict[str, dict[str, float]] = {}
     for group, scores in sorted(groups.items()):
         n = len(scores)
@@ -121,11 +128,11 @@ def flips(baseline: RunResult, current: RunResult) -> list[str]:
             raise ValueError(
                 f"baseline {stamp} differs from this run; rewrite it with --write-baseline"
             )
-    before = {r.id: r.row.hit for r in baseline.items if r.row is not None}
+    before = {r.id: r.url.hit for r in baseline.items if r.url is not None}
     return [
         r.id
         for r in current.items
-        if r.row is not None and before.get(r.id) == 1.0 and r.row.hit == 0.0
+        if r.url is not None and before.get(r.id) == 1.0 and r.url.hit == 0.0
     ]
 
 
@@ -140,6 +147,11 @@ def summary(result: RunResult, flipped: list[str]) -> str:
         lines.append(
             f"| {group} | {int(s['n'])} | {s['hit']:.3f} | {s['precision']:.3f} | "
             f"{s['recall']:.3f} | {s['mrr']:.3f} | {s['ndcg']:.3f} |"
+        )
+    if row := aggregate(result.items, "row").get("all"):
+        lines.append(
+            f"\nPer url. Per (url, week), all: hit {row['hit']:.3f}, P {row['precision']:.3f}, "
+            f"R {row['recall']:.3f}, MRR {row['mrr']:.3f}, nDCG {row['ndcg']:.3f}."
         )
     lines.append("")
     lines.append(

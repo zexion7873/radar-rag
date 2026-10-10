@@ -23,6 +23,17 @@ class AskControllerTest {
     }
 
     @Test
+    void aCitationDocumentTellsTheModelHowLongItsRepoCharted() {
+        Document charted = new Document(TRENDING.getId(), "t", Map.of("source", "trending", "repo", "o/repo",
+                "weeks_on_chart", 3, "first_week", "2026-06-18", "last_week", "2026-07-06"));
+
+        assertThat(AskController.citationDocument(charted).toDocumentBlockParam().source().asText().data())
+                .isEqualTo("t\n\nCharted in 3 week(s): first 2026-06-18, last 2026-07-06.");
+        assertThat(AskController.citationDocument(BLOG).toDocumentBlockParam().source().asText().data())
+                .isEqualTo("b");
+    }
+
+    @Test
     void aSourceNamesItsOriginAndTitle() {
         AskController.Source blog = AskController.source(BLOG);
 

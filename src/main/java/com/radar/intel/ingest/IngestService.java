@@ -18,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeSet;
 import java.util.function.Supplier;
 
 /** Pulls each Notion table and embeds its rows into pgvector, one source at a time. */
@@ -48,8 +49,7 @@ public class IngestService {
     public SyncResult sync() {
         Map<String, Integer> sources = new LinkedHashMap<>();
         Map<String, String> failed = new LinkedHashMap<>();
-        refresh("trending", () -> notion.fetchTrending().stream().map(IngestService::trending).toList(),
-                sources, failed);
+        refresh("trending", () -> trending(notion.fetchTrending()), sources, failed);
         refresh("blog", () -> notion.fetchBlog().stream().map(IngestService::blog).toList(), sources, failed);
         int total = sources.values().stream().mapToInt(Integer::intValue).sum();
         return new SyncResult(total, sources, failed);
@@ -79,6 +79,30 @@ public class IngestService {
             case RestClientException _ -> "upstream unreachable";
             default -> "sync failed";
         };
+    }
+
+    /**
+     * Maps a Trending fetch to Documents, each carrying its repo's chart run across the fetch: the
+     * weeks it charted, the first and the last. Search returns a repo once, so its row alone cannot say
+     * how long the repo charted.
+     */
+    static List<Document> trending(List<TrendingRow> rows) {
+        Map<String, TreeSet<String>> weeksByLink = new HashMap<>();
+        for (TrendingRow r : rows) {
+            if (r.link() != null && r.week() != null) {
+                weeksByLink.computeIfAbsent(r.link(), l -> new TreeSet<>()).add(r.week());
+            }
+        }
+        return rows.stream().map(r -> {
+            Document d = trending(r);
+            TreeSet<String> weeks = r.link() == null ? null : weeksByLink.get(r.link());
+            if (d != null && weeks != null) {
+                d.getMetadata().put("weeks_on_chart", weeks.size());
+                d.getMetadata().put("first_week", weeks.first());
+                d.getMetadata().put("last_week", weeks.last());
+            }
+            return d;
+        }).toList();
     }
 
     /**

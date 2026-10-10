@@ -1,6 +1,7 @@
 package com.radar.intel.ask;
 
 import com.anthropic.models.messages.OutputConfig;
+import com.radar.intel.search.RowSearch;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.anthropic.AnthropicCitationDocument;
 import org.springframework.ai.chat.client.ChatClient;
@@ -9,9 +10,6 @@ import org.springframework.ai.chat.metadata.ChatResponseMetadata;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.document.Document;
-import org.springframework.ai.rag.Query;
-import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -41,7 +39,7 @@ public class AskController {
             plainly rather than guessing.""";
 
     private final ChatClient chatClient;
-    private final VectorStoreDocumentRetriever retriever;
+    private final RowSearch rowSearch;
     private final OutputConfig.Effort effort;
     private final TurnstileVerifier turnstile;
 
@@ -49,20 +47,14 @@ public class AskController {
      * {@code radar.ask.effort} is pinned so a model default change cannot move cost or quality; the
      * LLM gate measures medium, and the public prod path runs low.
      */
-    public AskController(ChatClient.Builder chatClientBuilder, VectorStore vectorStore,
+    public AskController(ChatClient.Builder chatClientBuilder, RowSearch rowSearch,
             @Value("${radar.ask.effort:medium}") String effort, TurnstileVerifier turnstile) {
         this.turnstile = turnstile;
         this.effort = OutputConfig.Effort.of(effort);
         // Throws on an unknown value, which the SDK would otherwise send to the API on every /ask.
         this.effort.known();
         this.chatClient = chatClientBuilder.defaultSystem(SYSTEM).build();
-        // Threshold 0 keeps every candidate; topK alone bounds the context window, and /search with
-        // topK 5 stays exactly this retrieval (the eval harness relies on that).
-        this.retriever = VectorStoreDocumentRetriever.builder()
-                .vectorStore(vectorStore)
-                .similarityThreshold(0.0)
-                .topK(5)
-                .build();
+        this.rowSearch = rowSearch;
     }
 
     public record AskRequest(String q) {
@@ -92,7 +84,8 @@ public class AskController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "q is required");
         }
         turnstile.check(turnstileToken);
-        List<Document> docs = retriever.retrieve(new Query(req.q()));
+        // /search with topK 5 returns exactly these rows; the eval harness relies on that.
+        List<Document> docs = rowSearch.search(req.q(), 5, null);
         ChatResponse resp = chatClient.prompt()
                 .options(AnthropicChatOptions.builder()
                         .effort(effort)
@@ -118,8 +111,15 @@ public class AskController {
     static AnthropicCitationDocument citationDocument(Document d) {
         Map<String, Object> md = d.getMetadata();
         Object name = md.containsKey("repo") ? md.get("repo") : md.get("title");
+        String text = d.getText();
+        // Search keeps one week per repo, so the run it belongs to rides along for the model only;
+        // the embedded text stays the row's own.
+        if (md.get("weeks_on_chart") instanceof Number weeks) {
+            text += "\n\nCharted in " + weeks + " week(s): first " + md.get("first_week") + ", last "
+                    + md.get("last_week") + ".";
+        }
         return AnthropicCitationDocument.builder()
-                .plainText(d.getText())
+                .plainText(text)
                 .title(name + " " + md.get("week"))
                 .citationsEnabled(true)
                 .build();
