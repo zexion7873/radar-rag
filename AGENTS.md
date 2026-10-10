@@ -51,6 +51,9 @@ comment, the commit body or the stack plan.
 - **The `prod` profile is invisible to the gates.** Only the deployment activates it: low effort, rate
   limits, a required `SYNC_SECRET`. Turning it on in CI throttles the harness's 62 queries from one
   address and moves the LLM gate off the effort it was measured at.
+- **Document ids are Notion page ids, and the page links on them.** A source links to github-radar-ui's
+  `/trending/<page id>` or `/blog/<page id>`; re-keying documents breaks those links. github-radar-ui
+  keeps both routes and messages this repo before changing them.
 - **Langfuse orgs created on or after 2026-09-16 have no legacy read API.** Read traces through
   `GET /api/public/v2/observations` with explicit `fields`.
 - **Docs move with the code.** A milestone's status line in `docs/stack-plan.md`, the README, and

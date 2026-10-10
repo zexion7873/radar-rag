@@ -147,7 +147,9 @@ deploys. The Weekly sync workflow posts `/sync` on Mondays at 03:00 UTC, two hou
 routine writes the week's rows.
 
 **[Ask the radar](https://radar-rag-50472171523.asia-east1.run.app)** is the live page: a question in,
-an answer with its cited trending repos and blog posts out. The first visit after a quiet spell waits
+an answer with its cited trending repos and blog posts out. Each source links to its page on
+[github-radar-ui](https://whyisthistrending.vercel.app), a repo's with every week it charted, and to
+GitHub or the original post beside it. The first visit after a quiet spell waits
 for a cold start of about 10 s. Cloud Run's second-generation environment is pinned, because the first
 generation's sandbox tripled the time spent loading the model. `/search` also answers curl; the live
 `/ask` needs the page's Turnstile token:
