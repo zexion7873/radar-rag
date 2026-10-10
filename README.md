@@ -206,6 +206,10 @@ uv run radar-evals --golden golden_v1.jsonl --fixture fixtures/trending.json \
   --fixture fixtures/blog.json --source trending \
   --model-id paraphrase-multilingual-MiniLM-L12-v2 --out results/latest.json --baseline results/baseline.json --write-baseline
 
+# golden_v2 (33 items, trending and blog labels) queries every source, with its own baseline.
+uv run radar-evals --golden golden_v2.jsonl --fixture fixtures/trending.json --fixture fixtures/blog.json \
+  --model-id paraphrase-multilingual-MiniLM-L12-v2 --out results/latest_v2.json --baseline results/baseline_v2.json
+
 # LLM eval (paid, ~$3 per full run): /ask on every golden item, code checks (no empty answer, no
 # repo named or cited outside the retrieved rows), citation precision
 # against the golden labels, then DeepEval metrics judged by claude-sonnet-5-5. The service and
