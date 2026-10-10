@@ -43,7 +43,8 @@ comment, the commit body or the stack plan.
 - **Scheduled workflows stop after 60 days without repository activity** (GitHub, public repos).
   Re-enable Weekly sync in the Actions tab if the demo's data stops moving.
 - **golden_v1 queries `source: trending` only.** Its labels are trending rows; the stub also serves
-  blog, and an unfiltered golden_v1 run would rank blog rows into its top 5 and flip hits. The run's
+  blog, and an unfiltered golden_v1 run counts every blog row as a miss. `/ask` searches every source,
+  balanced in turns, so this gate does not measure `/ask`'s retrieval; golden_v2 does. The run's
   fixture stamp then covers `trending.json` alone, which is why the baseline survived blog's arrival.
   Re-freezing `trending.json` moves that baseline; re-freezing `blog.json` does not.
 - **The live `/ask` takes no harness traffic.** Under `prod` it needs a Turnstile token from the page,

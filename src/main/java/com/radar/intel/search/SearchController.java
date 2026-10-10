@@ -43,7 +43,9 @@ public class SearchController {
     public List<SearchHit> search(@RequestBody SearchQuery req) {
         validate(req);
         int k = (req.topK() != null && req.topK() > 0) ? req.topK() : 10;
-        List<Document> hits = rowSearch.search(req.q(), k, toFilter(req));
+        // No source chosen: balance them, as /ask does, so topK 5 here is exactly /ask's retrieval.
+        List<Document> hits = hasText(req.source()) ? rowSearch.search(req.q(), k, toFilter(req))
+                : rowSearch.balanced(req.q(), k, toFilter(req));
         return hits.stream()
                 .map(d -> new SearchHit(d.getId(), d.getText(), d.getMetadata(), d.getScore()))
                 .toList();

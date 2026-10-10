@@ -3,7 +3,7 @@
  "golden_sha256": "71bb35713920cebf43e527ad55552717faf936a462e77a0071c8679fdef12ef9",
  "fixture_sha256": "dbf6a51b12bddcad510c0fa318b67a6984d84bad0e711c2f2d482ce0a81e2c52",
  "model_id": "paraphrase-multilingual-MiniLM-L12-v2",
- "git_sha": "8eab2af3b9230787dd98e6d5bee4d55ba4fc75d8",
+ "git_sha": "21ec47c2b57db60aa1a58d71bf8d31fd23bee508",
  "top_k": 5,
  "items": [
   {
@@ -17,20 +17,20 @@
      "2026-09-10"
     ],
     [
+     "https://github.com/Tencent/AI-Infra-Guard",
+     "2026-08-24"
+    ],
+    [
      "https://huggingface.co/blog/security-incident-july-2026",
      "2026-07-16"
     ],
     [
+     "https://github.com/bojieli/ai-agent-book",
+     "2026-09-21"
+    ],
+    [
      "https://simonwillison.net/2026/Aug/2/open-letters",
      "2026-08-02"
-    ],
-    [
-     "https://www.anthropic.com/research/intelligence-targeting-conventional-weapons-capabilities",
-     "2026-09-10"
-    ],
-    [
-     "https://www.latent.space/p/aiewf-daily-dispatch-agency",
-     "2026-07-02"
     ]
    ],
    "row": {
@@ -38,14 +38,14 @@
     "precision": 0.4,
     "recall": 0.25,
     "mrr": 1.0,
-    "ndcg": 0.5919819915518812
+    "ndcg": 0.5444581444316119
    },
    "url": {
     "hit": 1.0,
     "precision": 0.4,
     "recall": 0.25,
     "mrr": 1.0,
-    "ndcg": 0.5919819915518812
+    "ndcg": 0.5444581444316119
    }
   },
   {
@@ -59,35 +59,35 @@
      "2026-09-10"
     ],
     [
+     "https://github.com/asgeirtj/system_prompts_leaks",
+     "2026-06-27"
+    ],
+    [
      "https://www.latent.space/p/ainews-ai-cybersecurity-becomes-top",
      "2026-07-22"
     ],
     [
+     "https://github.com/mukul975/Anthropic-Cybersecurity-Skills",
+     "2026-08-24"
+    ],
+    [
      "https://huggingface.co/blog/security-incident-july-2026",
      "2026-07-16"
-    ],
-    [
-     "https://openai.com/index/the-defenders-window/",
-     "2026-08-17"
-    ],
-    [
-     "https://deepmind.google/blog/securing-the-future-of-ai-agents",
-     "2026-06-18"
     ]
    ],
    "row": {
     "hit": 1.0,
-    "precision": 1.0,
-    "recall": 0.625,
+    "precision": 0.6,
+    "recall": 0.375,
     "mrr": 1.0,
-    "ndcg": 0.8073332658149857
+    "ndcg": 0.5941318947563956
    },
    "url": {
     "hit": 1.0,
-    "precision": 1.0,
-    "recall": 0.625,
+    "precision": 0.6,
+    "recall": 0.375,
     "mrr": 1.0,
-    "ndcg": 0.8073332658149857
+    "ndcg": 0.5941318947563956
    }
   },
   {
@@ -101,20 +101,20 @@
      "2026-07-27"
     ],
     [
-     "https://github.com/tinyhumansai/openhuman",
-     "2026-08-31"
-    ],
-    [
      "https://www.anthropic.com/news/model-hardware-standard-research-preview",
      "2026-08-27"
     ],
     [
-     "https://github.com/palmier-io/palmier-pro",
-     "2026-06-29"
+     "https://github.com/tinyhumansai/openhuman",
+     "2026-08-31"
     ],
     [
-     "https://github.com/blader/humanizer",
-     "2026-09-14"
+     "https://huggingface.co/blog/nvidia/state-of-simulation-for-physical-ai",
+     "2026-07-21"
+    ],
+    [
+     "https://github.com/palmier-io/palmier-pro",
+     "2026-06-29"
     ]
    ],
    "row": {
@@ -143,20 +143,20 @@
      "2026-06-29"
     ],
     [
-     "https://github.com/Nutlope/hallmark",
-     "2026-07-27"
-    ],
-    [
-     "https://github.com/tinyhumansai/openhuman",
-     "2026-08-31"
-    ],
-    [
      "https://huggingface.co/blog/nvidia/state-of-simulation-for-physical-ai",
      "2026-07-21"
     ],
     [
+     "https://github.com/Nutlope/hallmark",
+     "2026-07-27"
+    ],
+    [
      "https://www.latent.space/p/aiewf26trends",
      "2026-07-14"
+    ],
+    [
+     "https://github.com/tinyhumansai/openhuman",
+     "2026-08-31"
     ]
    ],
    "row": {
@@ -193,27 +193,27 @@
      "2026-07-22"
     ],
     [
-     "https://www.latent.space/p/airbnb",
-     "2026-10-02"
+     "https://github.com/Zackriya-Solutions/meetily",
+     "2026-07-13"
     ],
     [
-     "https://ai.meta.com/blog/assistive-robotics-university-of-pittsburgh-sam-dino",
-     "2026-07-27"
+     "https://www.latent.space/p/airbnb",
+     "2026-10-02"
     ]
    ],
    "row": {
     "hit": 1.0,
-    "precision": 0.4,
-    "recall": 1.0,
+    "precision": 0.2,
+    "recall": 0.5,
     "mrr": 1.0,
-    "ndcg": 0.9072278740982787
+    "ndcg": 0.7601875334318685
    },
    "url": {
     "hit": 1.0,
-    "precision": 0.4,
-    "recall": 1.0,
+    "precision": 0.2,
+    "recall": 0.5,
     "mrr": 1.0,
-    "ndcg": 0.9072278740982787
+    "ndcg": 0.7601875334318685
    }
   },
   {
@@ -227,35 +227,35 @@
      "2026-07-24"
     ],
     [
+     "https://github.com/maziyarpanahi/openmed",
+     "2026-06-18"
+    ],
+    [
      "https://www.langchain.com/blog/towards-automating-eval-engineering",
      "2026-07-22"
     ],
     [
+     "https://github.com/TencentCloud/CubeSandbox",
+     "2026-07-13"
+    ],
+    [
      "https://huggingface.co/blog/nvidia/state-of-simulation-for-physical-ai",
      "2026-07-21"
-    ],
-    [
-     "https://ai.meta.com/blog/assistive-robotics-university-of-pittsburgh-sam-dino",
-     "2026-07-27"
-    ],
-    [
-     "https://github.com/maziyarpanahi/openmed",
-     "2026-06-18"
     ]
    ],
    "row": {
     "hit": 1.0,
-    "precision": 0.4,
-    "recall": 1.0,
+    "precision": 0.2,
+    "recall": 0.5,
     "mrr": 1.0,
-    "ndcg": 0.9238850086262381
+    "ndcg": 0.7601875334318685
    },
    "url": {
     "hit": 1.0,
-    "precision": 0.4,
-    "recall": 1.0,
+    "precision": 0.2,
+    "recall": 0.5,
     "mrr": 1.0,
-    "ndcg": 0.9238850086262381
+    "ndcg": 0.7601875334318685
    }
   },
   {
@@ -273,31 +273,31 @@
      "2026-07-24"
     ],
     [
+     "https://github.com/chopratejas/headroom",
+     "2026-06-22"
+    ],
+    [
      "https://simonwillison.net/2026/Sep/17/compaction-summaries",
      "2026-09-17"
     ],
     [
-     "https://simonwillison.net/2026/Sep/17/how-to-write-with-an-llm",
-     "2026-09-17"
-    ],
-    [
-     "https://www.langchain.com/blog/organizing-context-in-a-multi-agent-harness",
-     "2026-09-08"
+     "https://github.com/koala73/worldmonitor",
+     "2026-07-27"
     ]
    ],
    "row": {
     "hit": 1.0,
-    "precision": 0.2,
-    "recall": 0.2,
+    "precision": 0.4,
+    "recall": 0.4,
     "mrr": 0.5,
-    "ndcg": 0.11450494763206998
+    "ndcg": 0.2959909957759406
    },
    "url": {
     "hit": 1.0,
-    "precision": 0.2,
-    "recall": 0.25,
+    "precision": 0.4,
+    "recall": 0.5,
     "mrr": 0.5,
-    "ndcg": 0.13445389546353417
+    "ndcg": 0.3475582778491182
    }
   },
   {
@@ -315,31 +315,31 @@
      "2026-07-24"
     ],
     [
+     "https://github.com/chopratejas/headroom",
+     "2026-06-22"
+    ],
+    [
      "https://www.langchain.com/blog/organizing-context-in-a-multi-agent-harness",
      "2026-09-08"
     ],
     [
-     "https://simonwillison.net/2026/Sep/17/compaction-summaries",
-     "2026-09-17"
-    ],
-    [
-     "https://research.google/blog/open-and-emergent-problems-in-agentic-privacy-and-security-a-contextual-angle",
-     "2026-10-05"
+     "https://github.com/volcengine/OpenViking",
+     "2026-08-24"
     ]
    ],
    "row": {
     "hit": 1.0,
-    "precision": 0.2,
-    "recall": 0.2,
+    "precision": 0.4,
+    "recall": 0.4,
     "mrr": 0.5,
-    "ndcg": 0.11450494763206998
+    "ndcg": 0.2959909957759406
    },
    "url": {
     "hit": 1.0,
-    "precision": 0.2,
-    "recall": 0.25,
+    "precision": 0.4,
+    "recall": 0.5,
     "mrr": 0.5,
-    "ndcg": 0.13445389546353417
+    "ndcg": 0.3475582778491182
    }
   },
   {
@@ -353,35 +353,35 @@
      "2026-07-30"
     ],
     [
+     "https://github.com/bojieli/ai-agent-book",
+     "2026-07-27"
+    ],
+    [
      "https://www.langchain.com/blog/towards-automating-eval-engineering",
      "2026-07-22"
     ],
     [
+     "https://github.com/different-ai/openwork",
+     "2026-08-03"
+    ],
+    [
      "https://claude.com/blog/anthropics-approach-to-teaching-and-learning-ai",
      "2026-08-20"
-    ],
-    [
-     "https://claude.com/blog/how-to-prepare-for-ai-driven-code-modernization-projects",
-     "2026-09-23"
-    ],
-    [
-     "https://www.latent.space/p/aiewf-daily-dispatch-agency",
-     "2026-07-02"
     ]
    ],
    "row": {
-    "hit": 0.0,
-    "precision": 0.0,
-    "recall": 0.0,
-    "mrr": 0.0,
-    "ndcg": 0.0
+    "hit": 1.0,
+    "precision": 0.2,
+    "recall": 0.5,
+    "mrr": 0.5,
+    "ndcg": 0.23981246656813146
    },
    "url": {
-    "hit": 0.0,
-    "precision": 0.0,
-    "recall": 0.0,
-    "mrr": 0.0,
-    "ndcg": 0.0
+    "hit": 1.0,
+    "precision": 0.2,
+    "recall": 0.5,
+    "mrr": 0.5,
+    "ndcg": 0.23981246656813146
    }
   },
   {
@@ -395,20 +395,20 @@
      "2026-07-30"
     ],
     [
-     "https://claude.com/blog/how-to-prepare-for-ai-driven-code-modernization-projects",
-     "2026-09-23"
-    ],
-    [
      "https://github.com/different-ai/openwork",
      "2026-08-03"
     ],
     [
-     "https://claude.com/blog/anthropics-approach-to-teaching-and-learning-ai",
-     "2026-08-20"
+     "https://claude.com/blog/how-to-prepare-for-ai-driven-code-modernization-projects",
+     "2026-09-23"
     ],
     [
-     "https://www.latent.space/p/aiewf26trends",
-     "2026-07-14"
+     "https://github.com/zhaoxuya520/reverse-skill",
+     "2026-08-10"
+    ],
+    [
+     "https://claude.com/blog/anthropics-approach-to-teaching-and-learning-ai",
+     "2026-08-20"
     ]
    ],
    "row": {
@@ -437,35 +437,35 @@
      "2026-08-02"
     ],
     [
+     "https://github.com/bojieli/ai-agent-book",
+     "2026-07-27"
+    ],
+    [
      "https://www.latent.space/p/aiewf-daily-dispatch-agency",
      "2026-07-02"
     ],
     [
+     "https://github.com/iOfficeAI/OfficeCLI",
+     "2026-07-13"
+    ],
+    [
      "https://openai.com/index/how-enterprises-put-ai-to-work/",
      "2026-08-12"
-    ],
-    [
-     "https://www.latent.space/p/aiewf26trends",
-     "2026-07-14"
-    ],
-    [
-     "https://github.com/bojieli/ai-agent-book",
-     "2026-07-27"
     ]
    ],
    "row": {
     "hit": 1.0,
-    "precision": 0.8,
-    "recall": 0.6666666666666666,
+    "precision": 0.6,
+    "recall": 0.5,
     "mrr": 1.0,
-    "ndcg": 0.6685622027129364
+    "ndcg": 0.4965085250015501
    },
    "url": {
     "hit": 1.0,
-    "precision": 0.8,
-    "recall": 0.6666666666666666,
+    "precision": 0.6,
+    "recall": 0.5,
     "mrr": 1.0,
-    "ndcg": 0.6685622027129364
+    "ndcg": 0.4965085250015501
    }
   },
   {
@@ -479,35 +479,35 @@
      "2026-08-12"
     ],
     [
+     "https://github.com/blader/humanizer",
+     "2026-09-14"
+    ],
+    [
      "https://simonwillison.net/2026/Aug/2/open-letters",
      "2026-08-02"
     ],
     [
+     "https://github.com/bojieli/ai-agent-book",
+     "2026-07-27"
+    ],
+    [
      "https://www.latent.space/p/aiewf-daily-dispatch-agency",
      "2026-07-02"
-    ],
-    [
-     "https://www.latent.space/p/aiewf26trends",
-     "2026-07-14"
-    ],
-    [
-     "https://www.anthropic.com/threat-intelligence-report-september-2026",
-     "2026-09-10"
     ]
    ],
    "row": {
     "hit": 1.0,
-    "precision": 0.8,
-    "recall": 0.6666666666666666,
+    "precision": 0.6,
+    "recall": 0.5,
     "mrr": 1.0,
-    "ndcg": 0.777747077360283
+    "ndcg": 0.6304013237664882
    },
    "url": {
     "hit": 1.0,
-    "precision": 0.8,
-    "recall": 0.6666666666666666,
+    "precision": 0.6,
+    "recall": 0.5,
     "mrr": 1.0,
-    "ndcg": 0.777747077360283
+    "ndcg": 0.6304013237664882
    }
   },
   {
@@ -521,20 +521,20 @@
      "2026-08-11"
     ],
     [
-     "https://www.latent.space/p/aiewf-daily-dispatch-agency",
-     "2026-07-02"
-    ],
-    [
      "https://github.com/Nutlope/hallmark",
      "2026-07-20"
     ],
     [
-     "https://simonwillison.net/2026/Aug/11/there-are-no-lossless-transformations-of-natural-language-text",
-     "2026-08-11"
+     "https://www.latent.space/p/aiewf-daily-dispatch-agency",
+     "2026-07-02"
     ],
     [
      "https://github.com/blader/humanizer",
      "2026-09-14"
+    ],
+    [
+     "https://simonwillison.net/2026/Aug/11/there-are-no-lossless-transformations-of-natural-language-text",
+     "2026-08-11"
     ]
    ],
    "row": {
@@ -542,14 +542,14 @@
     "precision": 0.4,
     "recall": 0.3333333333333333,
     "mrr": 1.0,
-    "ndcg": 0.44113388284068555
+    "ndcg": 0.4331804834861008
    },
    "url": {
     "hit": 1.0,
     "precision": 0.4,
     "recall": 0.4,
     "mrr": 1.0,
-    "ndcg": 0.4785372057762079
+    "ndcg": 0.469909445244515
    }
   },
   {
@@ -575,8 +575,8 @@
      "2026-07-02"
     ],
     [
-     "https://simonwillison.net/2026/Aug/2/open-letters",
-     "2026-08-02"
+     "https://github.com/moeru-ai/airi",
+     "2026-08-03"
     ]
    ],
    "row": {
@@ -605,35 +605,35 @@
      "2026-07-22"
     ],
     [
-     "https://simonwillison.net/2026/Aug/12/florian-herrengt",
-     "2026-08-12"
-    ],
-    [
-     "https://www.latent.space/p/aiewf26trends",
-     "2026-07-14"
-    ],
-    [
      "https://github.com/addyosmani/agent-skills",
      "2026-08-17"
     ],
     [
-     "https://hamel.dev/blog/posts/evals-faq",
-     "2026-09-18"
+     "https://simonwillison.net/2026/Aug/12/florian-herrengt",
+     "2026-08-12"
+    ],
+    [
+     "https://github.com/Nutlope/hallmark",
+     "2026-07-27"
+    ],
+    [
+     "https://www.latent.space/p/aiewf26trends",
+     "2026-07-14"
     ]
    ],
    "row": {
     "hit": 1.0,
-    "precision": 0.4,
-    "recall": 0.5,
-    "mrr": 0.3333333333333333,
-    "ndcg": 0.27143224831248475
+    "precision": 0.2,
+    "recall": 0.25,
+    "mrr": 0.2,
+    "ndcg": 0.08244002855984638
    },
    "url": {
     "hit": 1.0,
-    "precision": 0.4,
-    "recall": 0.5,
-    "mrr": 0.3333333333333333,
-    "ndcg": 0.27143224831248475
+    "precision": 0.2,
+    "recall": 0.25,
+    "mrr": 0.2,
+    "ndcg": 0.08244002855984638
    }
   },
   {
@@ -647,35 +647,35 @@
      "2026-07-02"
     ],
     [
-     "https://www.latent.space/p/aiewf26trends",
-     "2026-07-14"
-    ],
-    [
      "https://github.com/addyosmani/agent-skills",
      "2026-08-17"
     ],
     [
-     "https://simonwillison.net/2026/Sep/11/feeling-sad-about-ai",
-     "2026-09-11"
+     "https://www.latent.space/p/aiewf26trends",
+     "2026-07-14"
     ],
     [
-     "https://www.latent.space/p/skill-engineering-design",
-     "2026-07-02"
+     "https://github.com/Nutlope/hallmark",
+     "2026-07-27"
+    ],
+    [
+     "https://simonwillison.net/2026/Sep/11/feeling-sad-about-ai",
+     "2026-09-11"
     ]
    ],
    "row": {
     "hit": 1.0,
     "precision": 0.4,
     "recall": 0.5,
-    "mrr": 0.5,
-    "ndcg": 0.31801201929589323
+    "mrr": 0.3333333333333333,
+    "ndcg": 0.27143224831248475
    },
    "url": {
     "hit": 1.0,
     "precision": 0.4,
     "recall": 0.5,
-    "mrr": 0.5,
-    "ndcg": 0.31801201929589323
+    "mrr": 0.3333333333333333,
+    "ndcg": 0.27143224831248475
    }
   },
   {
@@ -697,12 +697,12 @@
      "2026-09-10"
     ],
     [
-     "https://simonwillison.net/2026/Aug/2/open-letters",
-     "2026-08-02"
-    ],
-    [
      "https://github.com/blader/humanizer",
      "2026-09-14"
+    ],
+    [
+     "https://simonwillison.net/2026/Aug/2/open-letters",
+     "2026-08-02"
     ]
    ],
    "row": {
@@ -735,16 +735,16 @@
      "2026-08-11"
     ],
     [
+     "https://github.com/Panniantong/Agent-Reach",
+     "2026-06-29"
+    ],
+    [
      "https://www.anthropic.com/threat-intelligence-report-september-2026",
      "2026-09-10"
     ],
     [
-     "https://www.anthropic.com/institute/measuring-pace-of-ai-development",
-     "2026-09-17"
-    ],
-    [
-     "https://www.anthropic.com/news/wellbeing-research-grants",
-     "2026-08-25"
+     "https://github.com/K-Dense-AI/scientific-agent-skills",
+     "2026-09-07"
     ]
    ],
    "row": {
@@ -777,16 +777,16 @@
      "2026-07-03"
     ],
     [
+     "https://github.com/maziyarpanahi/openmed",
+     "2026-06-18"
+    ],
+    [
      "https://simonwillison.net/2026/Aug/2/open-letters",
      "2026-08-02"
     ],
     [
-     "https://www.latent.space/p/aiewf-daily-dispatch-agency",
-     "2026-07-02"
-    ],
-    [
-     "https://github.com/maziyarpanahi/openmed",
-     "2026-06-18"
+     "https://github.com/Zackriya-Solutions/meetily",
+     "2026-07-13"
     ]
    ],
    "row": {
@@ -815,20 +815,20 @@
      "2026-06-18"
     ],
     [
-     "https://github.com/different-ai/openwork",
-     "2026-08-03"
-    ],
-    [
-     "https://github.com/TencentCloud/CubeSandbox",
-     "2026-07-13"
-    ],
-    [
      "https://simonwillison.net/2026/jul/3/open-source-ai-gap-map",
      "2026-07-03"
     ],
     [
+     "https://github.com/different-ai/openwork",
+     "2026-08-03"
+    ],
+    [
      "https://simonwillison.net/2026/Jun/21/temporary-cloudflare-accounts",
      "2026-06-21"
+    ],
+    [
+     "https://github.com/TencentCloud/CubeSandbox",
+     "2026-07-13"
     ]
    ],
    "row": {
@@ -861,16 +861,16 @@
      "2026-08-11"
     ],
     [
+     "https://github.com/semantica-agi/semantica",
+     "2026-08-17"
+    ],
+    [
      "https://www.latent.space/p/aiewf-daily-dispatch-agency",
      "2026-07-02"
     ],
     [
-     "https://www.anthropic.com/threat-intelligence-report-september-2026",
-     "2026-09-10"
-    ],
-    [
-     "https://simonwillison.net/2026/Aug/2/open-letters",
-     "2026-08-02"
+     "https://github.com/K-Dense-AI/scientific-agent-skills",
+     "2026-09-07"
     ]
    ],
    "row": {
@@ -903,31 +903,31 @@
      "2026-08-02"
     ],
     [
+     "https://github.com/blader/humanizer",
+     "2026-09-14"
+    ],
+    [
      "https://www.anthropic.com/threat-intelligence-report-september-2026",
      "2026-09-10"
     ],
     [
-     "https://www.latent.space/p/aiewf-daily-dispatch-agency",
-     "2026-07-02"
-    ],
-    [
-     "https://research.google/blog/advancing-amie-towards-expert-level-audio-visual-clinical-consultations",
-     "2026-08-11"
+     "https://github.com/bojieli/ai-agent-book",
+     "2026-09-21"
     ]
    ],
    "row": {
-    "hit": 1.0,
-    "precision": 0.2,
-    "recall": 0.2,
-    "mrr": 0.2,
-    "ndcg": 0.14041677439671904
+    "hit": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "mrr": 0.0,
+    "ndcg": 0.0
    },
    "url": {
-    "hit": 1.0,
-    "precision": 0.2,
-    "recall": 0.2,
-    "mrr": 0.2,
-    "ndcg": 0.14041677439671904
+    "hit": 0.0,
+    "precision": 0.0,
+    "recall": 0.0,
+    "mrr": 0.0,
+    "ndcg": 0.0
    }
   },
   {
@@ -941,20 +941,20 @@
      "2026-09-10"
     ],
     [
-     "https://www.latent.space/p/aiewf-daily-dispatch-agency",
-     "2026-07-02"
-    ],
-    [
-     "https://simonwillison.net/2026/Aug/2/open-letters",
-     "2026-08-02"
-    ],
-    [
      "https://github.com/tinyhumansai/openhuman",
      "2026-08-31"
     ],
     [
-     "https://www.latent.space/p/ainews-ai-cybersecurity-becomes-top",
-     "2026-07-22"
+     "https://www.latent.space/p/aiewf-daily-dispatch-agency",
+     "2026-07-02"
+    ],
+    [
+     "https://github.com/tt-a1i/archify",
+     "2026-08-31"
+    ],
+    [
+     "https://simonwillison.net/2026/Aug/2/open-letters",
+     "2026-08-02"
     ]
    ],
    "row": {
@@ -983,20 +983,20 @@
      "2026-07-21"
     ],
     [
+     "https://github.com/iOfficeAI/OfficeCLI",
+     "2026-07-13"
+    ],
+    [
      "https://hamel.dev/blog/posts/evals-faq",
      "2026-09-18"
     ],
     [
+     "https://github.com/asgeirtj/system_prompts_leaks",
+     "2026-06-18"
+    ],
+    [
      "https://www.latent.space/p/aiewf-daily-dispatch-agency",
      "2026-07-02"
-    ],
-    [
-     "https://www.latent.space/p/ainews-ai-cybersecurity-becomes-top",
-     "2026-07-22"
-    ],
-    [
-     "https://github.com/iOfficeAI/OfficeCLI",
-     "2026-07-13"
     ]
    ],
    "row": {
@@ -1025,19 +1025,19 @@
      "2026-07-03"
     ],
     [
+     "https://github.com/bojieli/ai-agent-book",
+     "2026-07-27"
+    ],
+    [
      "https://www.latent.space/p/aiewf-daily-dispatch-agency",
      "2026-07-02"
     ],
     [
+     "https://github.com/different-ai/openwork",
+     "2026-08-03"
+    ],
+    [
      "https://ai.meta.com/blog/assistive-robotics-university-of-pittsburgh-sam-dino",
-     "2026-07-27"
-    ],
-    [
-     "https://www.langchain.com/blog/towards-automating-eval-engineering",
-     "2026-07-22"
-    ],
-    [
-     "https://github.com/bojieli/ai-agent-book",
      "2026-07-27"
     ]
    ],
@@ -1055,20 +1055,20 @@
      "2026-07-27"
     ],
     [
+     "https://github.com/tt-a1i/archify",
+     "2026-08-31"
+    ],
+    [
      "https://www.anthropic.com/research/project-pilot",
      "2026-07-24"
     ],
     [
+     "https://github.com/maziyarpanahi/openmed",
+     "2026-06-18"
+    ],
+    [
      "https://huggingface.co/blog/cerebras-gemma4-voice-ai",
      "2026-07-01"
-    ],
-    [
-     "https://huggingface.co/blog/nvidia/state-of-simulation-for-physical-ai",
-     "2026-07-21"
-    ],
-    [
-     "https://deepmind.google/blog/gemini-robotics-2-brings-whole-body-intelligence-to-robots",
-     "2026-07-30"
     ]
    ],
    "row": null,
@@ -1085,20 +1085,20 @@
      "2026-08-02"
     ],
     [
+     "https://github.com/semantica-agi/semantica",
+     "2026-08-17"
+    ],
+    [
      "https://www.latent.space/p/ainews-ai-is-eating-finance-aie-nyc",
      "2026-07-29"
     ],
     [
+     "https://github.com/bojieli/ai-agent-book",
+     "2026-07-27"
+    ],
+    [
      "https://www.anthropic.com/threat-intelligence-report-september-2026",
      "2026-09-10"
-    ],
-    [
-     "https://www.latent.space/p/aiewf-daily-dispatch-agency",
-     "2026-07-02"
-    ],
-    [
-     "https://claude.com/blog/anthropics-approach-to-teaching-and-learning-ai",
-     "2026-08-20"
     ]
    ],
    "row": null,
@@ -1119,16 +1119,16 @@
      "2026-07-29"
     ],
     [
+     "https://github.com/different-ai/openwork",
+     "2026-08-03"
+    ],
+    [
      "https://huggingface.co/blog/nvidia/state-of-simulation-for-physical-ai",
      "2026-07-21"
     ],
     [
-     "https://www.langchain.com/blog/towards-automating-eval-engineering",
-     "2026-07-22"
-    ],
-    [
-     "https://github.com/different-ai/openwork",
-     "2026-08-03"
+     "https://github.com/palmier-io/palmier-pro",
+     "2026-06-29"
     ]
    ],
    "row": null,
@@ -1145,20 +1145,20 @@
      "2026-07-08"
     ],
     [
+     "https://github.com/different-ai/openwork",
+     "2026-08-03"
+    ],
+    [
      "https://www.latent.space/p/airbnb",
      "2026-10-02"
     ],
     [
+     "https://github.com/diegosouzapw/OmniRoute",
+     "2026-08-03"
+    ],
+    [
      "https://www.anthropic.com/institute/measuring-pace-of-ai-development",
      "2026-09-17"
-    ],
-    [
-     "https://research.google/blog/how-mobility-gives-language-models-a-deeper-understanding-of-place",
-     "2026-08-21"
-    ],
-    [
-     "https://github.com/different-ai/openwork",
-     "2026-08-03"
     ]
    ],
    "row": null,
@@ -1175,35 +1175,35 @@
      "2026-06-17"
     ],
     [
+     "https://github.com/lyogavin/airllm",
+     "2026-08-10"
+    ],
+    [
      "https://www.interconnects.ai/p/glm-52-is-the-step-change-for-open",
      "2026-06-22"
     ],
     [
+     "https://github.com/PrimeIntellect-ai/prime-agent",
+     "2026-08-10"
+    ],
+    [
      "https://www.interconnects.ai/p/glm-53-how-chinese-labs-keep-stride",
      "2026-08-14"
-    ],
-    [
-     "https://www.interconnects.ai/p/open-models-recap-more-on-kimi-k3",
-     "2026-07-22"
-    ],
-    [
-     "https://www.interconnects.ai/p/latest-open-artifacts-24-motif-3",
-     "2026-09-08"
     ]
    ],
    "row": {
     "hit": 1.0,
     "precision": 0.2,
     "recall": 1.0,
-    "mrr": 0.3333333333333333,
-    "ndcg": 0.5
+    "mrr": 0.2,
+    "ndcg": 0.38685280723454163
    },
    "url": {
     "hit": 1.0,
     "precision": 0.2,
     "recall": 1.0,
-    "mrr": 0.3333333333333333,
-    "ndcg": 0.5
+    "mrr": 0.2,
+    "ndcg": 0.38685280723454163
    }
   },
   {
@@ -1221,16 +1221,16 @@
      "2026-08-10"
     ],
     [
-     "https://huggingface.co/blog/PaddlePaddle/pp-ocrv6",
-     "2026-06-22"
-    ],
-    [
      "https://github.com/jamiepine/voicebox",
      "2026-06-29"
     ],
     [
-     "https://openai.com/index/introducing-gpt-live-1-in-the-api",
-     "2026-09-10"
+     "https://huggingface.co/blog/PaddlePaddle/pp-ocrv6",
+     "2026-06-22"
+    ],
+    [
+     "https://github.com/huggingface/speech-to-speech",
+     "2026-08-03"
     ]
    ],
    "row": {
@@ -1259,20 +1259,20 @@
      "2026-07-30"
     ],
     [
+     "https://github.com/calesthio/OpenMontage",
+     "2026-08-31"
+    ],
+    [
      "https://openai.com/index/introducing-gpt-6-sol-and-luna",
      "2026-09-22"
     ],
     [
+     "https://github.com/diegosouzapw/OmniRoute",
+     "2026-08-03"
+    ],
+    [
      "https://simonwillison.net/2026/Oct/7/claude-haiku-5-5",
      "2026-10-07"
-    ],
-    [
-     "https://www.latent.space/p/ainews-gpt-56-price-cut-by-20-80",
-     "2026-07-31"
-    ],
-    [
-     "https://x.ai/news/grok-4-6",
-     "2026-08-12"
     ]
    ],
    "row": {
@@ -1301,20 +1301,20 @@
      "2026-06-29"
     ],
     [
+     "https://github.com/google-research/timesfm",
+     "2026-09-07"
+    ],
+    [
      "https://research.google/blog/empty-shelves-or-lost-keys-recall-is-the-bottleneck-for-parametric-factuality",
      "2026-08-12"
     ],
     [
+     "https://github.com/DietrichGebert/ponytail",
+     "2026-09-07"
+    ],
+    [
      "https://deepmind.google/blog/introducing-gemini-3-8-live-and-3-8-live-extended-thinking",
      "2026-09-15"
-    ],
-    [
-     "https://research.google/blog/toolgrad-efficient-tool-use-dataset-generation-with-textual-gradients",
-     "2026-09-10"
-    ],
-    [
-     "https://research.google/blog/thinking-to-recall-how-reasoning-unlocks-parametric-knowledge-in-llms",
-     "2026-06-24"
     ]
    ],
    "row": {
@@ -1337,58 +1337,58 @@
   "all": {
    "n": 28.0,
    "hit": 0.5714285714285714,
-   "precision": 0.23571428571428574,
-   "recall": 0.3181547619047619,
-   "mrr": 0.4238095238095238,
-   "ndcg": 0.3044724620173596
+   "precision": 0.2,
+   "recall": 0.28125,
+   "mrr": 0.419047619047619,
+   "ndcg": 0.27866514228752254
   },
   "kind:adversarial": {
    "n": 4.0,
    "hit": 0.5,
    "precision": 0.1,
    "recall": 0.5,
-   "mrr": 0.3333333333333333,
-   "ndcg": 0.375
+   "mrr": 0.3,
+   "ndcg": 0.3467132018086354
   },
   "kind:answerable": {
    "n": 24.0,
    "hit": 0.5833333333333334,
-   "precision": 0.25833333333333336,
-   "recall": 0.2878472222222222,
+   "precision": 0.21666666666666667,
+   "recall": 0.24479166666666666,
    "mrr": 0.4388888888888889,
-   "ndcg": 0.2927178723535862
+   "ndcg": 0.2673237990340037
   },
   "lang:en": {
    "n": 12.0,
-   "hit": 0.5833333333333334,
-   "precision": 0.2833333333333334,
-   "recall": 0.3034722222222222,
-   "mrr": 0.43333333333333335,
-   "ndcg": 0.31200196860888385
+   "hit": 0.5,
+   "precision": 0.21666666666666667,
+   "recall": 0.23124999999999998,
+   "mrr": 0.40277777777777773,
+   "ndcg": 0.27049057170544233
   },
   "lang:zh-TW": {
    "n": 12.0,
-   "hit": 0.5833333333333334,
-   "precision": 0.23333333333333336,
-   "recall": 0.2722222222222222,
-   "mrr": 0.4444444444444444,
-   "ndcg": 0.2734337760982886
+   "hit": 0.6666666666666666,
+   "precision": 0.21666666666666667,
+   "recall": 0.25833333333333336,
+   "mrr": 0.47500000000000003,
+   "ndcg": 0.26415702636256516
   },
   "script:latin": {
    "n": 12.0,
-   "hit": 0.5833333333333334,
-   "precision": 0.2833333333333334,
-   "recall": 0.3034722222222222,
-   "mrr": 0.43333333333333335,
-   "ndcg": 0.31200196860888385
+   "hit": 0.5,
+   "precision": 0.21666666666666667,
+   "recall": 0.23124999999999998,
+   "mrr": 0.40277777777777773,
+   "ndcg": 0.27049057170544233
   },
   "script:mixed": {
    "n": 12.0,
-   "hit": 0.5833333333333334,
-   "precision": 0.23333333333333336,
-   "recall": 0.2722222222222222,
-   "mrr": 0.4444444444444444,
-   "ndcg": 0.2734337760982886
+   "hit": 0.6666666666666666,
+   "precision": 0.21666666666666667,
+   "recall": 0.25833333333333336,
+   "mrr": 0.47500000000000003,
+   "ndcg": 0.26415702636256516
   }
  }
 }

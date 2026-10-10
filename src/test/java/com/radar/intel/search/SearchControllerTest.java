@@ -22,7 +22,9 @@ import java.util.Map;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -59,12 +61,34 @@ class SearchControllerTest {
 
     @Test
     void aCleanFilterReachesTheStore() throws Exception {
-        search(Map.of("q", "agents", "week", "2026-09-21", "language", "Python"), 200);
+        search(Map.of("q", "agents", "source", "trending", "week", "2026-09-21", "language", "Python"), 200);
         ArgumentCaptor<SearchRequest> sent = ArgumentCaptor.forClass(SearchRequest.class);
         verify(vectorStore).similaritySearch(sent.capture());
         FilterExpressionBuilder b = new FilterExpressionBuilder();
-        assertThat(sent.getValue().getFilterExpression())
-                .isEqualTo(b.and(b.eq("language", "Python"), b.eq("week", "2026-09-21")).build());
+        assertThat(sent.getValue().getFilterExpression()).isEqualTo(b.and(
+                b.and(b.eq("source", "trending"), b.eq("language", "Python")), b.eq("week", "2026-09-21")).build());
+    }
+
+    @Test
+    void withoutASourceEachSourceIsSearchedUnderTheFilterAndTakenInTurns() throws Exception {
+        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenAnswer(inv -> {
+            String filter = String.valueOf(inv.getArgument(0, SearchRequest.class).getFilterExpression());
+            return filter.contains("trending")
+                    ? List.of(hit("t1", "https://github.com/a/one", 0.9), hit("t2", "https://github.com/b/two", 0.8),
+                            hit("t3", "https://github.com/c/three", 0.7))
+                    : List.of(hit("b1", "https://x.test/1", 0.95), hit("b2", "https://x.test/2", 0.5));
+        });
+        mvc.perform(post("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(JSON.writeValueAsString(Map.of("q", "agents", "topK", 5, "week", "2026-09-21"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].id").value(contains("b1", "t1", "b2", "t2", "t3")));
+        ArgumentCaptor<SearchRequest> sent = ArgumentCaptor.forClass(SearchRequest.class);
+        verify(vectorStore, times(2)).similaritySearch(sent.capture());
+        FilterExpressionBuilder b = new FilterExpressionBuilder();
+        assertThat(sent.getAllValues()).extracting(SearchRequest::getFilterExpression).containsExactly(
+                b.and(b.eq("week", "2026-09-21"), b.eq("source", "trending")).build(),
+                b.and(b.eq("week", "2026-09-21"), b.eq("source", "blog")).build());
     }
 
     // The eval harness identifies rows by this id; dropping it would break its id checks silently.
@@ -88,7 +112,7 @@ class SearchControllerTest {
                 hit("c", "https://x.test/post", 0.6)));
         mvc.perform(post("/search")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(JSON.writeValueAsString(Map.of("q", "agents", "topK", 2))))
+                        .content(JSON.writeValueAsString(Map.of("q", "agents", "source", "trending", "topK", 2))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].id").value("a-sept"))

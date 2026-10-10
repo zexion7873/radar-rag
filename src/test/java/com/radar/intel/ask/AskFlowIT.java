@@ -108,7 +108,8 @@ class AskFlowIT {
         vectorStore.add(IntStream.range(0, 6)
                 .mapToObj(i -> new Document(UUID.nameUUIDFromBytes(("row-" + i).getBytes()).toString(),
                         "repo-" + i + " is a coding agent",
-                        Map.of("repo", "o/repo-" + i, "url", "https://github.com/o/repo-" + i, "week", "2026-09-21")))
+                        Map.of("source", "trending", "repo", "o/repo-" + i, "url", "https://github.com/o/repo-" + i,
+                                "week", "2026-09-21")))
                 .toList());
         ANTHROPIC.resetAll();
     }
