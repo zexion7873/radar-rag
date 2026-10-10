@@ -287,8 +287,9 @@ src/main/java/com/radar/intel/
 
 ## 📊 Results
 
-All numbers come from the CI runner over the 62-item golden set: hit@5, recall@5 and MRR at the
-(url, week) level, on the 42 answerable items unless the column says otherwise.
+All numbers come from the CI runner: hit@5, recall@5 and MRR at the (url, week) level. Until the
+golden_v2 paragraph they use golden_v1 (62 items, trending only), on its 42 answerable items unless
+the column says otherwise.
 
 **Bug 1, one row per repo per week** (MiniLM, ids keyed by Notion page id instead of repo url):
 a fixture sync stores 190 rows instead of 111, and recall@5 rises from 0.126 to 0.166.
@@ -307,9 +308,15 @@ MiniLM's English WordPiece vocabulary turns 76% of the corpus's CJK characters i
 multilingual models close the English-minus-Chinese hit@5 gap from 0.476 to 0.048. mE5 ranks the
 first hit higher (MRR) but finds one fewer zh-TW item, so paraphrase ships.
 
+**golden_v2, trending and blog together** (33 items: 12 zh-TW questions with literal English twins,
+5 no-answer, 4 adversarial; every source queried): answerable hit@5 0.583, R@5 0.285, MRR 0.439,
+against golden_v1's 0.786 on trending alone. Its questions are broader than golden_v1's ("are there
+chips made for AI now?"), and for 10 of the 12 the post the question was written from was outside the
+top 30; improving that ranking is the next step, and this gate measures it.
+
 **Answer quality** (`/ask` on `claude-opus-5-5` with native citations, judged by
-`claude-sonnet-5-5` through DeepEval; two runs on one commit, all 62 items): no errors, empty
-answers, or repos named or cited outside the retrieved rows.
+`claude-sonnet-5-5` through DeepEval; two runs on one commit, all 62 golden_v1 items, measured before
+the blog ingest): no errors, empty answers, or repos named or cited outside the retrieved rows.
 
 | metric | items | run 1 | run 2 |
 |---|---:|---:|---:|
@@ -362,9 +369,10 @@ means. A run costs about $3.3.
   per-client limit and the Anthropic workspace's monthly spend cap bound what that costs.
 - **Two sources.** Trending and Blog. The Loot ledgers stay out: the UI shows them only after a
   login, and this service and repository are public.
-- **Small, hand-labelled golden set.** 62 items. The retrieval gate catches any flipped hit, but the
-  LLM metrics move by up to ~0.03 between identical runs, so only a drop beyond that reads as a
-  regression.
+- **Small golden sets.** golden_v1 has 62 items and golden_v2 33. The owner wrote the zh-TW
+  questions (the English twins are literal translations) and confirmed every label from candidate
+  lists. The retrieval gates catch any flipped hit, but the LLM metrics move by up to ~0.03 between
+  identical runs, so only a drop beyond that reads as a regression.
 - **Exact vector search.** Right for a few hundred rows; it scans every row, so a much larger archive
   needs an index and a filter strategy first.
 - **amd64 image, 2 GiB.** The image targets Cloud Run's architecture, and ONNX Runtime keeps ~1.1 GB

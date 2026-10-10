@@ -306,16 +306,16 @@ golden_v2 (2026-10-10): 33 items. 12 answerable zh-TW questions, each with a lit
 Blog ingest (2026-10-10): `IngestService` refreshes trending and blog in separate transactions, and `/sync` answers `{ingested, sources, failed}`, 502 when a source failed; a failure reason carries Notion's status code at most. Notion failures no longer reach `ApiErrorHandler`, so its Notion mappings are gone. Blog embeds Title + Brief + Comment, with metadata `title`, `url`, `category` (Type) and `week`. `/ask`'s sources and citations carry `source` and `title`, and a blog row's citation document is titled by its post. The harness's fixtures name their source; the stub serves several; `freeze-notion --source blog` froze 669 posts (~1 MB, the seven columns the service reads). M2's and M10's checks moved to the per-source shape. Verified locally on the stub with both fixtures: `/sync` returned `200 {"ingested":859,"sources":{"trending":190,"blog":669},"failed":{}}`, and 502 with trending still synced when the blog table was missing; golden_v1 under `--source trending` kept its stamp, and all 62 top-5 lists and every aggregate matched the baseline. Found here: the Blog table holds 22 posts recorded twice (same URL and date, two pages), so each is embedded twice.
 
 Changes:
-- Blog (Title + Brief + Comment) and Loot (Repo + Asset + Intro + Why; `Asset` names the thing worth taking, confirm it in golden_v2), each with its own `source` value, page-id keys, and a full refresh per source in its own `@Transactional`.
-- All four loot ledgers (claude, copilot, opencode, codex) come from a configured target-to-data-source map, and `freeze-notion` gains them and Blog. Decide whether `heat:` rows (trending repos with a ruling, written by the loot triage) are embedded: included, each is a second copy of a trending repo.
+- Blog (Title + Brief + Comment) and Loot (Repo + Asset + Intro + Why; `Asset` names the thing worth taking, confirm it in golden_v2), each with its own `source` value, page-id keys, and a full refresh per source in its own `@Transactional`. *Loot dropped (see the status line): the UI keeps the ledgers behind its login.*
+- All four loot ledgers (claude, copilot, opencode, codex) come from a configured target-to-data-source map, and `freeze-notion` gains them and Blog. Decide whether `heat:` rows (trending repos with a ruling, written by the loot triage) are embedded: included, each is a second copy of a trending repo. *Dropped with Loot.*
 - Blog `week` falls back to `Archived` when `Published` is empty.
 - `/sync` returns a total plus per-source counts, and reports a failing source (a new ledger returns 404 until the Notion integration is shared into it) without discarding the others. M2's and M10's checks move to the new shape.
-- golden_v2 labels are keyed (source, url, week): a loot `Link` falls back to the repo URL, so (url, week) alone collides with trending.
+- golden_v2 labels are keyed (source, url, week): a loot `Link` falls back to the repo URL, so (url, week) alone collides with trending. *Dropped with Loot: blog URLs never collide with trending's, so (url, week) stays.*
 - M7's citation title falls back from repo to the post title for blog rows.
-- Port from PR #6 by hand: the `fetchLoot` / `fetchBlog` property mappings, `LootRow` / `BlogRow` (plus `pageId`, and `archived` for Blog), the shared metadata keys (Type → category, Published → week, title, status), and three of its `IngestMappingTest` cases.
+- Port from PR #6 by hand: the `fetchLoot` / `fetchBlog` property mappings, `LootRow` / `BlogRow` (plus `pageId`, and `archived` for Blog), the shared metadata keys (Type → category, Published → week, title, status), and three of its `IngestMappingTest` cases. *Blog half only, written against the live schema rather than PR #6's July one.*
 - `static/index.html`, with Cloudflare Turnstile verified server-side on `/ask` (moved from M10, because the widget needs this page).
 - The github-radar-ui outbound link.
-- `golden_v2` with Blog and Loot items.
+- `golden_v2` with Blog and Loot items. *Blog only, Loot dropped.*
 
 Done when:
 - `curl -s -X POST $URL/search -H 'content-type: application/json' -d '{"q":"...","source":"blog","topK":5}' | jq length` prints `5`.
@@ -399,8 +399,9 @@ Recommended outright (not put to you):
 PRs #4 (P3), #5 (P4) and #6 (P5) were opened on 2026-07-10, before this plan, as a stack: #5 targets #4's
 branch and #6 targets #5's. None can merge. #4's Java in-process harness conflicts with D1, D4 and D5,
 and #5 and #6 sit on top of it. They are closed; their branches `feat/p3-eval-harness`,
-`feat/p4-langfuse-tracing` and `feat/p5-blog-loot-ingest` stay as reference until M11 lands. Deleting a
-base branch first would auto-close the PR stacked on it.
+`feat/p4-langfuse-tracing` and `feat/p5-blog-loot-ingest` were kept as reference until M11 landed, then
+deleted (2026-10-10); their commits stay reachable at `refs/pull/4/head`, `refs/pull/5/head` and
+`refs/pull/6/head`.
 
 What each milestone takes from them is written into M1, M2, M3, M8 and M11 above. The rest is discarded:
 the Java eval classes, `corpus.json` and `golden.json` (a synthetic corpus whose repos are almost all
