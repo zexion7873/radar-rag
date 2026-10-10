@@ -55,7 +55,9 @@ request into Langfuse, and **P5** adds the Blog archive (see [docs/stack-plan.md
   source refreshes on its own and reports `{ingested, sources, failed}`; any failed source makes it
   a 502, with the others still synced. The Loot ledgers stay out: the UI keeps them behind a login.
 - `POST /search` — semantic search over the embedded rows, optionally filtered by metadata
-  (`source` / `category` / `language` / `week` exact match, `stars_per_week` ≥ `minStars`).
+  (`source` / `category` / `language` / `week` exact match, `stars_per_week` ≥ `minStars`). Each
+  url comes back once, at its best-scoring row: a repo that charted for several weeks fills one
+  slot, not several.
 - `POST /ask` — ask a question in natural language; the service retrieves the relevant radar
   rows from pgvector, sends them to **Claude** as citable documents, and returns the answer plus
   the rows it actually cites as **citations**. Needs `ANTHROPIC_API_KEY`; `/sync` and `/search` do not. Runs on
@@ -355,9 +357,10 @@ means. A run costs about $3.3.
   when it has none.
 - **Spring AI moves fast.** Versions/artifact ids match the reference docs at scaffold time —
   verify against `start.spring.io` / the current reference when you build.
-- **RAG is grounded, not filtered.** `/ask` retrieves from the same pgvector store `/search` uses
-  (`VectorStoreDocumentRetriever`), sends each row as an Anthropic citation document titled
-  "repo week", and returns only the rows Claude cites. It takes only a question — no
+- **RAG is grounded, not filtered.** `/ask` retrieves exactly what `/search` with `topK` 5 returns,
+  one row per url, sends each row as an Anthropic citation document titled "repo week", with the
+  repo's chart run (weeks charted, first and last) appended for the model only, and returns only
+  the rows Claude cites. It takes only a question — no
   metadata-filter fields — so it has no SQL-filter input surface (unlike `/search`, which validates its filter values). The retriever keeps every
   candidate (similarity threshold 0) and bounds the context by `topK`.
 
