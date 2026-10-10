@@ -28,11 +28,19 @@ class AskControllerTest {
                 "weeks_on_chart", 3, "first_week", "2026-06-18", "last_week", "2026-07-06"));
 
         // In the context, never the citable text: a cited passage shows only the row's own words.
-        assertThat(AskController.citationDocument(charted).toDocumentBlockParam().source().asText().data())
-                .isEqualTo("t");
+        assertThat(AskController.citationDocument(charted).toDocumentBlockParam().source().asContent().content()
+                .asBlockSource()).extracting(c -> c.asText().text()).containsExactly("t");
         assertThat(AskController.citationDocument(charted).toDocumentBlockParam().context())
                 .hasValue("Charted in 3 week(s): first 2026-06-18, last 2026-07-06.");
         assertThat(AskController.citationDocument(BLOG).toDocumentBlockParam().context()).isEmpty();
+    }
+
+    @Test
+    void aRowIsCitableSentenceBySentenceInChineseAndEnglish() {
+        assertThat(AskController.sentences("jamiepine/voicebox\n\n開源 AI 語音工作室，主打複製人聲;首次上榜。\n\n"
+                + "技術門檻越降越低！真的嗎？Yes! It is."))
+                .containsExactly("jamiepine/voicebox", "開源 AI 語音工作室，主打複製人聲;首次上榜。",
+                        "技術門檻越降越低！", "真的嗎？", "Yes!", "It is.");
     }
 
     @Test

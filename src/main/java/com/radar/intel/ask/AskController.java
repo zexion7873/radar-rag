@@ -23,6 +23,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
@@ -114,7 +115,7 @@ public class AskController {
     static AnthropicCitationDocument citationDocument(Document d) {
         Map<String, Object> md = d.getMetadata();
         Object name = md.containsKey("repo") ? md.get("repo") : md.get("title");
-        AnthropicCitationDocument.Builder doc = AnthropicCitationDocument.builder().plainText(d.getText());
+        AnthropicCitationDocument.Builder doc = AnthropicCitationDocument.builder().customContent(sentences(d.getText()));
         // Search keeps one week per repo, so the run it belongs to rides along in `context`, which the
         // model reads but never cites; in the text it would surface as a cited passage.
         if (md.get("weeks_on_chart") instanceof Number weeks) {
@@ -125,6 +126,15 @@ public class AskController {
                 .title(name + " " + md.get("week"))
                 .citationsEnabled(true)
                 .build();
+    }
+
+    // The API chunks plain text into sentences but does not split on a full-width "。", so a Chinese row
+    // went out as one chunk and every citation of it returned the whole row. One block per sentence
+    // lets a citation return only the sentence it rests on.
+    private static final Pattern SENTENCE_END = Pattern.compile("(?<=[。！？!?])|\\n+");
+
+    static String[] sentences(String text) {
+        return SENTENCE_END.splitAsStream(text).map(String::strip).filter(s -> !s.isEmpty()).toArray(String[]::new);
     }
 
     /**
