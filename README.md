@@ -186,6 +186,7 @@ the JVM that trained it.
 
 ```bash
 mvn -B verify   # unit + slice tests, then AskFlowIT; no tokens. CI runs the same on every PR.
+npm ci && npm run typecheck   # tsc checks the page's app.js through its JSDoc types; no build step.
 ```
 
 `AskFlowIT` starts a pgvector container through Testcontainers, so `verify` needs a running Docker.

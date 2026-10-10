@@ -19,6 +19,12 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+      # app.js stays plain JS served as is; tsc only checks its JSDoc types.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci && npm run typecheck
       - uses: actions/setup-java@v6
         with:
           distribution: temurin

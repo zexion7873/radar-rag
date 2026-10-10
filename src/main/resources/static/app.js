@@ -1,18 +1,33 @@
 "use strict";
 
-const $ = (id) => document.getElementById(id);
+/**
+ * A row as /ask returns it: a source, or a citation with the passages cited from it.
+ * @typedef {{ id: string, source: string, repo?: string, title?: string, url?: string, week?: string,
+ *   score?: number, citedText?: string[] }} Row
+ * @typedef {{ answer: string, citations: Row[], sources: Row[],
+ *   usage: { model: string, inputTokens: number, outputTokens: number } }} AskResponse
+ */
+
+/** Every id app.js asks for is in index.html. @param {string} id */
+const $ = (id) => /** @type {HTMLElement} */ (document.getElementById(id));
+const question = () => /** @type {HTMLTextAreaElement} */ ($("q"));
+/** @type {string | null} */
 let siteKey = null;
-let widgetId = null;
+/** @type {string | undefined} */
+let widgetId;
+/** @type {string | null} */
 let token = null;
 
+/** @param {string} text */
 function setStatus(text) {
   $("status").textContent = text;
 }
 
 function updateSubmit() {
-  $("submit").disabled = !token || !$("q").value.trim();
+  /** @type {HTMLButtonElement} */ ($("submit")).disabled = !token || !question().value.trim();
 }
 
+/** @param {number} status */
 function messageFor(status) {
   switch (status) {
     case 429: return "問得太快了，請稍候再試（每人每分鐘 5 題、每天 20 題）。 · Too many questions; wait a moment.";
@@ -27,7 +42,7 @@ function messageFor(status) {
 window.onTurnstileLoad = () => {
   widgetId = window.turnstile.render("#turnstile", {
     sitekey: siteKey,
-    callback: (t) => { token = t; updateSubmit(); },
+    callback: (/** @type {string} */ t) => { token = t; updateSubmit(); },
     "expired-callback": () => { token = null; updateSubmit(); },
     "error-callback": () => {
       token = null;
@@ -38,7 +53,11 @@ window.onTurnstileLoad = () => {
   });
 };
 
-/** Appends text with **bold** and `code` runs as DOM nodes: model output never becomes HTML. */
+/**
+ * Appends text with **bold** and `code` runs as DOM nodes: model output never becomes HTML.
+ * @param {HTMLElement} parent
+ * @param {string} text
+ */
 function appendInline(parent, text) {
   for (const part of text.split(/(\*\*[^*]+\*\*|`[^`]+`)/)) {
     if (part.startsWith("**") && part.endsWith("**") && part.length > 4) {
@@ -55,8 +74,10 @@ function appendInline(parent, text) {
   }
 }
 
+/** @param {HTMLElement} container @param {string} text */
 function renderAnswer(container, text) {
   container.replaceChildren();
+  /** @type {HTMLUListElement | null} */
   let list = null;
   for (const raw of text.split("\n")) {
     const line = raw.trim();
@@ -80,6 +101,7 @@ function renderAnswer(container, text) {
   }
 }
 
+/** @param {Row} row */
 function label(row) {
   return row.repo || row.title || row.url || row.id;
 }
@@ -89,10 +111,12 @@ function label(row) {
 const RADAR_UI = "https://whyisthistrending.vercel.app";
 const PAGE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
+/** @param {unknown} url @returns {url is string} */
 function isHttp(url) {
   return typeof url === "string" && /^https?:\/\//.test(url);
 }
 
+/** @param {string} href @param {string} text */
 function anchor(href, text) {
   const a = document.createElement("a");
   a.href = href;
@@ -102,11 +126,13 @@ function anchor(href, text) {
   return a;
 }
 
+/** @param {Row} row */
 function detailPage(row) {
   if (!PAGE_ID.test(row.id ?? "")) return null;
   return `${RADAR_UI}/${row.source === "blog" ? "blog" : "trending"}/${row.id}`;
 }
 
+/** @param {Row} row */
 function link(row) {
   const name = label(row);
   const page = detailPage(row);
@@ -115,6 +141,7 @@ function link(row) {
   return document.createTextNode(name);
 }
 
+/** @param {HTMLElement} list @param {Row[]} rows @param {boolean} withQuotes */
 function renderRows(list, rows, withQuotes) {
   list.replaceChildren();
   for (const row of rows) {
@@ -138,6 +165,7 @@ function renderRows(list, rows, withQuotes) {
   }
 }
 
+/** @param {AskResponse} data */
 function render(data) {
   renderAnswer($("answer"), data.answer);
   renderRows($("citations"), data.citations, true);
@@ -146,9 +174,10 @@ function render(data) {
   $("result").hidden = false;
 }
 
+/** @param {SubmitEvent} event */
 async function ask(event) {
   event.preventDefault();
-  const q = $("q").value.trim();
+  const q = question().value.trim();
   if (!q || !token) return;
   const used = token;
   token = null;
@@ -180,7 +209,7 @@ async function init() {
   $("q").addEventListener("input", updateSubmit);
   for (const example of document.querySelectorAll(".example")) {
     example.addEventListener("click", () => {
-      $("q").value = example.textContent;
+      question().value = example.textContent ?? "";
       updateSubmit();
     });
   }

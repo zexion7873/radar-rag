@@ -20,3 +20,4 @@ evals/results/latest.json
 evals/results/llm-latest.json
 .deepeval/
 models/
+node_modules/
