@@ -20,8 +20,8 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -73,7 +73,7 @@ public class AskController {
             Double score) {
     }
 
-    /** A retrieved row the answer cites, with every passage cited from it. */
+    /** A retrieved row the answer cites, with each distinct passage cited from it. */
     public record Citation(String id, String source, String repo, String title, String url, String week,
             Double score, List<String> citedText) {
     }
@@ -142,15 +142,16 @@ public class AskController {
     /** One entry per cited row, in order of first citation; documentIndex is the row's position in docs. */
     private static List<Citation> citations(ChatResponseMetadata md, List<Document> docs) {
         List<org.springframework.ai.anthropic.Citation> cited = md.getOrDefault("citations", List.of());
-        Map<Integer, List<String>> textByDoc = new LinkedHashMap<>();
+        // The model can cite one passage several times; the page would show each copy.
+        Map<Integer, LinkedHashSet<String>> textByDoc = new LinkedHashMap<>();
         for (org.springframework.ai.anthropic.Citation c : cited) {
-            textByDoc.computeIfAbsent(c.getDocumentIndex(), i -> new ArrayList<>()).add(c.getCitedText());
+            textByDoc.computeIfAbsent(c.getDocumentIndex(), i -> new LinkedHashSet<>()).add(c.getCitedText());
         }
         return textByDoc.entrySet().stream()
                 .map(e -> {
                     Source s = source(docs.get(e.getKey()));
                     return new Citation(s.id(), s.source(), s.repo(), s.title(), s.url(), s.week(), s.score(),
-                            e.getValue());
+                            e.getValue().stream().toList());
                 })
                 .toList();
     }

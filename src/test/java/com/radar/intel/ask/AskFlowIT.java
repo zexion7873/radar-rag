@@ -146,7 +146,9 @@ class AskFlowIT {
                      {"type":"char_location","cited_text":"second","document_index":0,
                       "document_title":"t","start_char_index":0,"end_char_index":6},
                      {"type":"char_location","cited_text":"third","document_index":2,
-                      "document_title":"t","start_char_index":6,"end_char_index":11}]}],
+                      "document_title":"t","start_char_index":6,"end_char_index":11},
+                     {"type":"char_location","cited_text":"first","document_index":2,
+                      "document_title":"t","start_char_index":0,"end_char_index":5}]}],
                  "stop_reason":"end_turn","usage":{"input_tokens":10,"output_tokens":5}}""");
 
         String body = ask().andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
