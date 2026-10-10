@@ -79,10 +79,14 @@ jobs:
       # Cloud Run's 2 GiB with no swap, so a boot that outgrows it fails here first.
       - name: Start the image with Notion pointed at the stub's port
         run: |
+          # The JDK client's own log, for the occasional sync whose request never reaches the stub
+          # ("header parser received no bytes"); JAVA_TOOL_OPTIONS leaves the image's JAVA_FLAGS, which
+          # the AOT cache was trained with, untouched.
           docker run -d --name radar --network host --memory=2g --memory-swap=2g \
-            -e NOTION_TOKEN=dummy -e NOTION_BASE_URL=http://127.0.0.1:8765 radar-rag:ci
+            -e NOTION_TOKEN=dummy -e NOTION_BASE_URL=http://127.0.0.1:8765 \
+            -e JAVA_TOOL_OPTIONS=-Djdk.httpclient.HttpClient.log=errors,requests,headers radar-rag:ci
           curl -s --retry 90 --retry-connrefused --retry-delay 2 -o /dev/null http://localhost:8080/
-          docker logs radar 2>&1 | grep "Started RadarIntelligenceApplication"
+          docker logs radar 2>&1 | grep -E "Picked up JAVA_TOOL_OPTIONS|Started RadarIntelligenceApplication"
       - name: Sync from the frozen fixture and query the live service
         working-directory: evals
         env:
@@ -154,4 +158,4 @@ jobs:
           path: evals/results/
           if-no-files-found: ignore
       - if: failure()
-        run: docker logs radar 2>&1 | tail -n 200
+        run: docker logs radar 2>&1 | tail -n 600
