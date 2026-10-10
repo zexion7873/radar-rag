@@ -133,7 +133,7 @@ so the eval gates measure the service unthrottled and at medium effort. It adds:
 - **`/ask` needs a Cloudflare Turnstile token** (`X-Turnstile-Token`), checked with siteverify before
   any retrieval or model call: missing or rejected is `403`, siteverify unreachable is `503`. Without
   the prod profile there is no secret and nothing is checked, so local runs and the eval harness ask
-  freely; `/config` gives the page Cloudflare's always-pass test site key.
+  freely; `/config` returns Cloudflare's always-pass test site key.
 - **`/ask` at low effort**, generic error bodies (no `message`), `INFO` logs, no Swagger UI or
   `/v3/api-docs`, and no fallback for `POSTGRES_PASSWORD`.
 
@@ -148,13 +148,14 @@ repository keeps the three most recent images and deletes the rest, so a rollbac
 deploys. The Weekly sync workflow posts `/sync` on Mondays at 03:00 UTC, two hours after the Trending
 routine writes the week's rows.
 
-**[Ask the radar](https://radar-rag-50472171523.asia-east1.run.app)** is the live page: a question in,
-an answer with its cited trending repos and blog posts out. Each source links to its page on
-[github-radar-ui](https://whyisthistrending.vercel.app), a repo's with every week it charted, and to
-GitHub or the original post beside it. The first visit after a quiet spell waits
-for a cold start of about 10 s. Cloud Run's second-generation environment is pinned, because the first
-generation's sandbox tripled the time spent loading the model. `/search` also answers curl; the live
-`/ask` needs the page's Turnstile token:
+**[Ask the radar](https://whyisthistrending.vercel.app/ask)** is the live page, on
+[github-radar-ui](https://github.com/zexion7873/github-radar-ui): a question in, an answer with its
+cited trending repos and blog posts out, each linking to its page on that site. Its browser code calls
+this service's `/ask` (CORS allows that one origin), and this service's root redirects there. The page
+requests `/config` as it loads, so a cold start of about 10 s mostly passes while the visitor types.
+Cloud Run's second-generation environment is pinned, because the first generation's sandbox tripled
+the time spent loading the model. `/search` also answers curl; the live `/ask` needs the page's
+Turnstile token:
 
 ```bash
 curl -X POST https://radar-rag-50472171523.asia-east1.run.app/search \
@@ -186,7 +187,6 @@ the JVM that trained it.
 
 ```bash
 mvn -B verify   # unit + slice tests, then AskFlowIT; no tokens. CI runs the same on every PR.
-npm ci && npm run typecheck   # tsc checks the page's app.js through its JSDoc types; no build step.
 ```
 
 `AskFlowIT` starts a pgvector container through Testcontainers, so `verify` needs a running Docker.
@@ -284,7 +284,9 @@ src/main/java/com/radar/intel/
 ├── ask/
 │   ├── AskController.java              # POST /ask — retrieve, Claude with citation documents, cited rows
 │   ├── TurnstileVerifier.java          # siteverify check of the page's token; a no-op without a secret
-│   └── PageConfigController.java       # GET /config — the page's Turnstile site key
+│   ├── PageConfigController.java       # GET /config — the site key; the page's warm-up request
+│   ├── AskCorsConfig.java              # CORS on POST /ask for github-radar-ui's origin only
+│   └── AskPageRedirect.java            # GET / — 301 to github-radar-ui's /ask
 ├── ratelimit/
 │   └── RateLimitFilter.java            # prod only: per-client token buckets on /ask and /search
 ├── tracing/
@@ -411,8 +413,8 @@ means. A run costs about $3.3.
 
 ~~P1 metadata-filtered search~~ (done) · ~~P2 RAG `/ask` with citations~~ (done) · ~~P3 eval
 harness (retrieval metrics + LLM-as-judge) + CI gates~~ (done) · ~~P4 Langfuse tracing~~ (done) · ~~P5 Blog ingest +
-an "Ask the radar" page served by this service~~ (done; [github-radar-ui](https://github.com/zexion7873/github-radar-ui) only links to it, so it
-stays a pure Notion reader).
+an "Ask the radar" page~~ (done; it lives in [github-radar-ui](https://github.com/zexion7873/github-radar-ui), whose server still reads
+only Notion).
 
 Next: broad questions. golden_v2's answerable hit@5 is 0.583 against golden_v1's 0.738 over every source, because a question
 like "are there chips made for AI now?" rarely ranks the one post that answers it; golden_v2 measures that
