@@ -1,9 +1,9 @@
 """LLM eval: run the golden set through /ask, check each answer in code, score it with a judge.
 
 The gate fails on any /ask error, empty answer, repo named outside the retrieved rows or citation
-outside them, and when a metric's mean falls below FLOOR. Judge scores are noisy, so the floor is a
-coarse tripwire; the run-to-run noise band recorded in docs/stack-plan.md is what later changes are
-judged against.
+outside them, judge call that raised, and when a metric's mean falls below FLOOR. Judge scores are
+noisy, so the floor is a coarse tripwire; the run-to-run noise band recorded in docs/stack-plan.md
+is what later changes are judged against.
 """
 
 import argparse
@@ -12,6 +12,7 @@ import os
 import re
 import sys
 from collections import Counter
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Literal
 
@@ -167,6 +168,8 @@ class ItemResult(BaseModel):
     generator_model: str | None = None
     generator_cost: float = 0.0
     metrics: dict[str, MetricResult] = {}
+    # Metric name to the exception its judge call raised; such a metric is absent from metrics.
+    judge_errors: dict[str, str] = {}
     trace_id: str | None = None
 
 
@@ -241,6 +244,31 @@ def metrics_for(kind: str) -> list[MetricName]:
     return ["abstention"]
 
 
+type Measure = Callable[[ItemResult, MetricName], Awaitable[MetricResult]]
+
+
+async def score_items(
+    results: list[ItemResult], measure: Measure, concurrency: int = 8
+) -> list[ItemResult]:
+    gate = asyncio.Semaphore(concurrency)
+
+    async def score(r: ItemResult) -> ItemResult:
+        if r.answer is None or not r.answer.strip():
+            return r
+        scored: dict[str, MetricResult] = {}
+        errors: dict[str, str] = {}
+        for name in metrics_for(r.kind):
+            # Answers are already paid for: one malformed judge reply must not discard the run.
+            try:
+                async with gate:
+                    scored[name] = await measure(r, name)
+            except Exception as e:
+                errors[name] = f"{type(e).__name__}: {e}"
+        return r.model_copy(update={"metrics": scored, "judge_errors": errors})
+
+    return list(await asyncio.gather(*(score(r) for r in results)))
+
+
 async def judge_items(
     results: list[ItemResult], contexts: dict[str, list[str]], concurrency: int = 8
 ) -> list[ItemResult]:
@@ -284,25 +312,15 @@ async def judge_items(
                     model=judge,
                 )
 
-    gate = asyncio.Semaphore(concurrency)
-
-    async def score(r: ItemResult) -> ItemResult:
-        if r.answer is None or not r.answer.strip():
-            return r
+    async def measure(r: ItemResult, name: MetricName) -> MetricResult:
         case = LLMTestCase(input=r.q, actual_output=r.answer, retrieval_context=contexts[r.id])
-        scored: dict[str, MetricResult] = {}
-        for name in metrics_for(r.kind):
-            metric = build(name)
-            async with gate:
-                await metric.a_measure(case, _show_indicator=False)
-            if metric.score is None or metric.evaluation_cost is None:
-                raise RuntimeError(f"{r.id}: {name} returned no score or cost")
-            scored[name] = MetricResult(
-                score=metric.score, reason=metric.reason, cost=metric.evaluation_cost
-            )
-        return r.model_copy(update={"metrics": scored})
+        metric = build(name)
+        await metric.a_measure(case, _show_indicator=False)
+        if metric.score is None or metric.evaluation_cost is None:
+            raise RuntimeError(f"{r.id}: {name} returned no score or cost")
+        return MetricResult(score=metric.score, reason=metric.reason, cost=metric.evaluation_cost)
 
-    return list(await asyncio.gather(*(score(r) for r in results)))
+    return await score_items(results, measure, concurrency)
 
 
 def means(results: list[ItemResult]) -> dict[str, float]:
@@ -333,6 +351,11 @@ def gate_failures(results: list[ItemResult], metric_means: dict[str, float]) -> 
         if r.stray_citations
     ]
     out += [
+        f"{r.id}: {name} judge failed: {err}"
+        for r in results
+        for name, err in r.judge_errors.items()
+    ]
+    out += [
         f"{name} mean {mean:.3f} < {FLOOR}" for name, mean in metric_means.items() if mean < FLOOR
     ]
     return out
@@ -355,6 +378,7 @@ def summary(result: RunResult) -> str:
             f"{result.citation_precision:.3f} |"
         )
     uncited = sum(1 for r in result.items if r.uncited)
+    judge_errors = sum(len(r.judge_errors) for r in result.items)
     copied = (
         []
         if result.copied_share is None
@@ -370,6 +394,8 @@ def summary(result: RunResult) -> str:
         "",
         f"Answers naming a retrieved repo without citing it: {uncited} (not gated).",
         "",
+        f"Judge calls that raised: {judge_errors} (each fails the gate; means cover scored items).",
+        "",
         *copied,
         f"Cost: generator ${result.generator_cost:.2f} + judge ${result.judge_cost:.2f} "
         f"= ${result.generator_cost + result.judge_cost:.2f}",
@@ -380,7 +406,8 @@ def summary(result: RunResult) -> str:
         lines += [f"- {f}" for f in result.failures]
     else:
         lines.append(
-            "Gate passed: no errors, empty answers or unretrieved repos; every mean ≥ floor."
+            "Gate passed: no errors, empty answers, unretrieved repos or judge failures; "
+            "every mean ≥ floor."
         )
     return "\n".join(lines) + "\n"
 

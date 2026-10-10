@@ -243,7 +243,8 @@ pgvector service container on the same tag as `docker-compose.yml`. The LLM eval
 `eval-llm.yml` only when the repo owner adds the `eval:llm` label to a PR or dispatches it; it reads
 the key from the `ANTHROPIC_API_KEY` repository secret, and with the `LANGFUSE_PUBLIC_KEY` /
 `LANGFUSE_SECRET_KEY` secrets each run is also a Langfuse experiment. It fails on any `/ask` error, empty answer,
-repo named or cited outside the retrieved rows, and when a metric's mean is below 0.7.
+repo named or cited outside the retrieved rows, judge call that raised (the run still scores every
+other item and writes its results), and when a metric's mean is below 0.7.
 
 ---
 

@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import Any
 
@@ -157,6 +158,60 @@ def test_gate_fails_on_errors_empty_answers_uncited_repos_and_low_means() -> Non
         "u: names repos it did not retrieve: a/b",
         "faithfulness mean 0.690 < 0.7",
     ]
+
+
+SCORES = {
+    ("a", "faithfulness"): 1.0,
+    ("a", "answer_relevancy"): 0.8,
+    ("a", "attribution"): 0.9,
+    ("b", "faithfulness"): 0.6,
+    ("b", "attribution"): 0.7,
+}
+
+
+async def _measure(r: llm.ItemResult, name: llm.MetricName) -> llm.MetricResult:
+    if (r.id, name) == ("b", "answer_relevancy"):
+        json.loads("{} x")  # what trim_and_load_json raised on a malformed judge reply
+    return llm.MetricResult(score=SCORES[(r.id, name)], reason=None, cost=0.01)
+
+
+def _unscored(id: str) -> llm.ItemResult:
+    return llm.ItemResult(id=id, kind="answerable", lang="en", q="q", answer="x")
+
+
+def test_a_judge_failure_is_recorded_and_gated_while_the_rest_are_scored() -> None:
+    results = asyncio.run(llm.score_items([_unscored("a"), _unscored("b")], _measure))
+    assert [sorted(r.metrics) for r in results] == [
+        ["answer_relevancy", "attribution", "faithfulness"],
+        ["attribution", "faithfulness"],
+    ]
+    error = "JSONDecodeError: Extra data: line 1 column 4 (char 3)"
+    assert [r.judge_errors for r in results] == [{}, {"answer_relevancy": error}]
+    metric_means = llm.means(results)
+    assert metric_means == pytest.approx(
+        {"answer_relevancy": 0.8, "attribution": 0.8, "faithfulness": 0.8}
+    )
+    failures = llm.gate_failures(results, metric_means)
+    assert failures == [f"b: answer_relevancy judge failed: {error}"]
+    run = llm.RunResult(
+        golden_file="g",
+        golden_sha256="s",
+        fixture_sha256="s",
+        judge_model=llm.JUDGE_MODEL,
+        git_sha="0123456789",
+        floor=llm.FLOOR,
+        items=results,
+        means=metric_means,
+        citation_precision=None,
+        citation_precision_n=0,
+        generator_cost=0.0,
+        judge_cost=0.05,
+        failures=failures,
+    )
+    text = llm.summary(run)
+    assert "| answer_relevancy | 1 | 0.800 |" in text
+    assert "Judge calls that raised: 1 " in text
+    assert "**1 failure(s)**" in text
 
 
 def _service(asks: dict[str, httpx.Response], search_ids: dict[str, list[str]]) -> RadarClient:
