@@ -216,3 +216,12 @@ def test_ask_items_refuses_when_search_and_ask_retrieve_different_rows() -> None
     )
     with pytest.raises(RuntimeError, match="different rows"):
         llm.ask_items(ITEMS[:1], client, ALIASES)
+
+
+def test_copied_share_counts_only_runs_of_twenty_or_more_characters() -> None:
+    twenty = "0123456789ABCDEFGHIJ"
+    assert llm.copied_share(twenty + "-" * 10, ["xx" + twenty + "yy"]) == pytest.approx(20 / 30)
+    assert llm.copied_share(twenty[:19] + "-" * 11, [twenty[:19]]) == 0.0
+    # Whitespace is collapsed on both sides, so a reflowed copy still counts.
+    assert llm.copied_share("0123456789  ABCDEFGHIJ", ["0123456789\nABCDEFGHIJ"]) == 1.0
+    assert llm.copied_share("   ", ["anything"]) is None

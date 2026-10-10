@@ -33,10 +33,13 @@ import java.util.stream.Collectors;
 public class AskController {
 
     private static final String SYSTEM = """
-            You are the analyst for a GitHub "radar" that tracks trending AI/agent repositories.
-            Answer the question using only the retrieved radar context. Be concise and specific,
-            naming the relevant repositories. If the context does not cover the question, say so
-            plainly rather than guessing.""";
+            You are the analyst for a GitHub "radar" that tracks trending AI/agent repositories and
+            blog posts. Answer the question using only the retrieved radar context. Synthesise rather
+            than restate: say in your own words what each relevant source contributes to this
+            question and how the sources differ. Do not copy a source's description; the reader sees
+            the cited passages beside your answer. Be concise and specific, naming the relevant
+            repositories or posts. If the context does not cover the question, say so plainly rather
+            than guessing.""";
 
     private final ChatClient chatClient;
     private final RowSearch rowSearch;
@@ -111,15 +114,14 @@ public class AskController {
     static AnthropicCitationDocument citationDocument(Document d) {
         Map<String, Object> md = d.getMetadata();
         Object name = md.containsKey("repo") ? md.get("repo") : md.get("title");
-        String text = d.getText();
-        // Search keeps one week per repo, so the run it belongs to rides along for the model only;
-        // the embedded text stays the row's own.
+        AnthropicCitationDocument.Builder doc = AnthropicCitationDocument.builder().plainText(d.getText());
+        // Search keeps one week per repo, so the run it belongs to rides along in `context`, which the
+        // model reads but never cites; in the text it would surface as a cited passage.
         if (md.get("weeks_on_chart") instanceof Number weeks) {
-            text += "\n\nCharted in " + weeks + " week(s): first " + md.get("first_week") + ", last "
-                    + md.get("last_week") + ".";
+            doc.context("Charted in " + weeks + " week(s): first " + md.get("first_week") + ", last "
+                    + md.get("last_week") + ".");
         }
-        return AnthropicCitationDocument.builder()
-                .plainText(text)
+        return doc
                 .title(name + " " + md.get("week"))
                 .citationsEnabled(true)
                 .build();

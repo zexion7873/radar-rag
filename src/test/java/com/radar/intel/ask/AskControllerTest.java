@@ -27,10 +27,12 @@ class AskControllerTest {
         Document charted = new Document(TRENDING.getId(), "t", Map.of("source", "trending", "repo", "o/repo",
                 "weeks_on_chart", 3, "first_week", "2026-06-18", "last_week", "2026-07-06"));
 
+        // In the context, never the citable text: a cited passage shows only the row's own words.
         assertThat(AskController.citationDocument(charted).toDocumentBlockParam().source().asText().data())
-                .isEqualTo("t\n\nCharted in 3 week(s): first 2026-06-18, last 2026-07-06.");
-        assertThat(AskController.citationDocument(BLOG).toDocumentBlockParam().source().asText().data())
-                .isEqualTo("b");
+                .isEqualTo("t");
+        assertThat(AskController.citationDocument(charted).toDocumentBlockParam().context())
+                .hasValue("Charted in 3 week(s): first 2026-06-18, last 2026-07-06.");
+        assertThat(AskController.citationDocument(BLOG).toDocumentBlockParam().context()).isEmpty();
     }
 
     @Test
