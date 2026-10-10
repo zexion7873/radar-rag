@@ -12,6 +12,7 @@ import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -30,6 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(SearchController.class)
+@Import(RowSearch.class)
 class SearchControllerTest {
 
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -75,6 +77,29 @@ class SearchControllerTest {
                         .content(JSON.writeValueAsString(Map.of("q", "agents"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value("doc-1"));
+    }
+
+    @Test
+    void aRepoComesBackOnceAtItsBestWeek() throws Exception {
+        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenReturn(List.of(
+                hit("a-sept", "https://github.com/a/one", 0.9),
+                hit("a-june", "https://github.com/a/one", 0.8),
+                hit("b", "https://github.com/b/two", 0.7),
+                hit("c", "https://x.test/post", 0.6)));
+        mvc.perform(post("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(JSON.writeValueAsString(Map.of("q", "agents", "topK", 2))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].id").value("a-sept"))
+                .andExpect(jsonPath("$[1].id").value("b"));
+        ArgumentCaptor<SearchRequest> sent = ArgumentCaptor.forClass(SearchRequest.class);
+        verify(vectorStore).similaritySearch(sent.capture());
+        assertThat(sent.getValue().getTopK()).isEqualTo(10);
+    }
+
+    private static Document hit(String id, String url, double score) {
+        return Document.builder().id(id).text("t").metadata(Map.of("url", url)).score(score).build();
     }
 
     @Test

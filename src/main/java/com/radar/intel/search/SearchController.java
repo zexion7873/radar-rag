@@ -1,8 +1,6 @@
 package com.radar.intel.search;
 
 import org.springframework.ai.document.Document;
-import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.ai.vectorstore.filter.Filter;
 import org.springframework.ai.vectorstore.filter.FilterExpressionBuilder;
 import org.springframework.http.HttpStatus;
@@ -19,10 +17,10 @@ import java.util.regex.Pattern;
 @RestController
 public class SearchController {
 
-    private final VectorStore vectorStore;
+    private final RowSearch rowSearch;
 
-    public SearchController(VectorStore vectorStore) {
-        this.vectorStore = vectorStore;
+    public SearchController(RowSearch rowSearch) {
+        this.rowSearch = rowSearch;
     }
 
     // Spring AI 1.0.0's PgVector filter converter interpolates string filter values into the
@@ -45,9 +43,7 @@ public class SearchController {
     public List<SearchHit> search(@RequestBody SearchQuery req) {
         validate(req);
         int k = (req.topK() != null && req.topK() > 0) ? req.topK() : 10;
-        List<Document> hits = vectorStore.similaritySearch(
-                SearchRequest.builder().query(req.q()).topK(k)
-                        .filterExpression(toFilter(req)).build());
+        List<Document> hits = rowSearch.search(req.q(), k, toFilter(req));
         return hits.stream()
                 .map(d -> new SearchHit(d.getId(), d.getText(), d.getMetadata(), d.getScore()))
                 .toList();
@@ -88,7 +84,7 @@ public class SearchController {
         if (req.minStars() != null) {
             ops.add(b.gte("stars_per_week", req.minStars()));
         }
-        // null = unfiltered; SearchRequest accepts a @Nullable expression.
+        // null = unfiltered.
         return ops.isEmpty() ? null : ops.stream().reduce(b::and).orElseThrow().build();
     }
 

@@ -9,6 +9,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.ResourceAccessException;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -30,6 +31,24 @@ class IngestServiceTest {
                 .containsEntry("source", "trending")
                 .containsEntry("url", "https://github.com/a/one")
                 .containsEntry("week", "2026-09-21");
+    }
+
+    @Test
+    void everyWeekOfARepoCarriesItsWholeChartRun() {
+        TrendingRow other = new TrendingRow("1a2b3c4d-0000-4000-8000-0000000000aa", "b/two", "2026-07-06", 5.0,
+                null, null, "https://github.com/b/two", "desc", "comment");
+        List<Document> docs = IngestService.trending(List.of(
+                row(SEPT_PAGE, "2026-09-21", "desc"), row(JUNE_PAGE, "2026-06-18", "desc"), other));
+
+        assertThat(docs.get(0).getMetadata())
+                .containsEntry("weeks_on_chart", 2)
+                .containsEntry("first_week", "2026-06-18")
+                .containsEntry("last_week", "2026-09-21");
+        assertThat(docs.get(1).getMetadata()).containsEntry("weeks_on_chart", 2);
+        assertThat(docs.get(2).getMetadata())
+                .containsEntry("weeks_on_chart", 1)
+                .containsEntry("first_week", "2026-07-06")
+                .containsEntry("last_week", "2026-07-06");
     }
 
     @Test

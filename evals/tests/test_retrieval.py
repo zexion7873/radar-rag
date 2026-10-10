@@ -121,6 +121,20 @@ def test_aggregate_keeps_adversarial_items_out_of_language_and_script_groups() -
     assert agg["script:cjk-only"]["n"] == 1
 
 
+def test_another_week_of_a_labelled_repo_is_a_hit_and_no_flip(
+    tmp_path: Path, service: FakeService
+) -> None:
+    golden_path, fixture_path = _write_inputs(tmp_path, ITEMS)
+    assert _main(tmp_path, golden_path, fixture_path, "--write-baseline") == 0
+    service.answers["向量資料庫"] = [X, (A[0], "2026-09-14")]
+    assert _main(tmp_path, golden_path, fixture_path) == 0
+    written = retrieval.RunResult.model_validate_json((tmp_path / "results.json").read_text())
+    zh = next(r for r in written.items if r.id == "zh-1")
+    assert zh.url is not None and zh.url.hit == 1.0
+    assert zh.row is not None and zh.row.hit == 0.0
+    assert written.aggregates["lang:zh-TW"]["hit"] == 1.0
+
+
 def _write_inputs(tmp_path: Path, items: list[golden.GoldenItem]) -> tuple[Path, Path]:
     pages = [
         FrozenPage(

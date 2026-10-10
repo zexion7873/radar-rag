@@ -55,7 +55,9 @@ request into Langfuse, and **P5** adds the Blog archive (see [docs/stack-plan.md
   source refreshes on its own and reports `{ingested, sources, failed}`; any failed source makes it
   a 502, with the others still synced. The Loot ledgers stay out: the UI keeps them behind a login.
 - `POST /search` — semantic search over the embedded rows, optionally filtered by metadata
-  (`source` / `category` / `language` / `week` exact match, `stars_per_week` ≥ `minStars`).
+  (`source` / `category` / `language` / `week` exact match, `stars_per_week` ≥ `minStars`). Each
+  url comes back once, at its best-scoring row: a repo that charted for several weeks fills one
+  slot, not several.
 - `POST /ask` — ask a question in natural language; the service retrieves the relevant radar
   rows from pgvector, sends them to **Claude** as citable documents, and returns the answer plus
   the rows it actually cites as **citations**. Needs `ANTHROPIC_API_KEY`; `/sync` and `/search` do not. Runs on
@@ -291,7 +293,8 @@ src/main/java/com/radar/intel/
 
 ## 📊 Results
 
-All numbers come from the CI runner: hit@5, recall@5 and MRR at the (url, week) level. Until the
+All numbers come from the CI runner: hit@5, recall@5 and MRR at the (url, week) level, except the
+per-repo paragraph, which counts per url as the gate now does. Until the
 golden_v2 paragraph they use golden_v1 (62 items, trending only), on its 42 answerable items unless
 the column says otherwise.
 
@@ -317,6 +320,12 @@ first hit higher (MRR) but finds one fewer zh-TW item, so paraphrase ships.
 against golden_v1's 0.786 on trending alone. Its questions are broader than golden_v1's ("are there
 chips made for AI now?"), and for 10 of the 12 the post the question was written from was outside the
 top 30; improving that ranking is the next step, and this gate measures it.
+
+**One row per repo** (golden_v1, answerable): in 44 of 62 items the top 5 repeated a repo, one row
+per week it charted. `/search` and `/ask` now return each url once, at its best-scoring week, and the
+gate counts hits per url. hit@5 0.786 → 0.857, R@5 0.404 → 0.579, MRR 0.633 → 0.669, zh-TW hit@5
+0.762 → 0.810, English 0.810 → 0.905: the slots a repeat held now go to other repos. golden_v2 stays at
+0.583; blog posts never repeat.
 
 **Answer quality** (`/ask` on `claude-opus-5-5` with native citations, judged by
 `claude-sonnet-5-5` through DeepEval; two runs on one commit, all 62 golden_v1 items, measured before
@@ -357,9 +366,10 @@ means. A run costs about $3.3.
   when it has none.
 - **Spring AI moves fast.** Versions/artifact ids match the reference docs at scaffold time —
   verify against `start.spring.io` / the current reference when you build.
-- **RAG is grounded, not filtered.** `/ask` retrieves from the same pgvector store `/search` uses
-  (`VectorStoreDocumentRetriever`), sends each row as an Anthropic citation document titled
-  "repo week", and returns only the rows Claude cites. It takes only a question — no
+- **RAG is grounded, not filtered.** `/ask` retrieves exactly what `/search` with `topK` 5 returns,
+  one row per url, sends each row as an Anthropic citation document titled "repo week", with the
+  repo's chart run (weeks charted, first and last) appended for the model only, and returns only
+  the rows Claude cites. It takes only a question — no
   metadata-filter fields — so it has no SQL-filter input surface (unlike `/search`, which validates its filter values). The retriever keeps every
   candidate (similarity threshold 0) and bounds the context by `topK`.
 
@@ -391,7 +401,7 @@ harness (retrieval metrics + LLM-as-judge) + CI gates~~ (done) · ~~P4 Langfuse 
 an "Ask the radar" page served by this service~~ (done; [github-radar-ui](https://github.com/zexion7873/github-radar-ui) only links to it, so it
 stays a pure Notion reader).
 
-Next: broad questions. golden_v2's answerable hit@5 is 0.583 against golden_v1's 0.786, because a question
+Next: broad questions. golden_v2's answerable hit@5 is 0.583 against golden_v1's 0.857, because a question
 like "are there chips made for AI now?" rarely ranks the one post that answers it; golden_v2 measures that
 gap.
 

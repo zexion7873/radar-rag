@@ -3,7 +3,7 @@
  "golden_sha256": "71bb35713920cebf43e527ad55552717faf936a462e77a0071c8679fdef12ef9",
  "fixture_sha256": "dbf6a51b12bddcad510c0fa318b67a6984d84bad0e711c2f2d482ce0a81e2c52",
  "model_id": "paraphrase-multilingual-MiniLM-L12-v2",
- "git_sha": "1f35ca623eeda30e3e29175242587d183e6cbe8d",
+ "git_sha": "8eab2af3b9230787dd98e6d5bee4d55ba4fc75d8",
  "top_k": 5,
  "items": [
   {
@@ -563,10 +563,6 @@
      "2026-06-27"
     ],
     [
-     "https://github.com/jamiepine/voicebox",
-     "2026-06-29"
-    ],
-    [
      "https://research.google/blog/advancing-amie-towards-expert-level-audio-visual-clinical-consultations",
      "2026-08-11"
     ],
@@ -577,21 +573,25 @@
     [
      "https://www.latent.space/p/aiewf-daily-dispatch-agency",
      "2026-07-02"
+    ],
+    [
+     "https://simonwillison.net/2026/Aug/2/open-letters",
+     "2026-08-02"
     ]
    ],
    "row": {
     "hit": 1.0,
-    "precision": 0.6,
-    "recall": 0.5,
+    "precision": 0.4,
+    "recall": 0.3333333333333333,
     "mrr": 1.0,
-    "ndcg": 0.773468039695752
+    "ndcg": 0.5919819915518812
    },
    "url": {
     "hit": 1.0,
     "precision": 0.4,
     "recall": 0.4,
     "mrr": 1.0,
-    "ndcg": 0.5906222333696757
+    "ndcg": 0.6421755823489528
    }
   },
   {
@@ -1119,16 +1119,16 @@
      "2026-07-29"
     ],
     [
-     "https://github.com/Nutlope/hallmark",
-     "2026-07-27"
-    ],
-    [
      "https://huggingface.co/blog/nvidia/state-of-simulation-for-physical-ai",
      "2026-07-21"
     ],
     [
      "https://www.langchain.com/blog/towards-automating-eval-engineering",
      "2026-07-22"
+    ],
+    [
+     "https://github.com/different-ai/openwork",
+     "2026-08-03"
     ]
    ],
    "row": null,
@@ -1217,20 +1217,20 @@
      "2026-09-14"
     ],
     [
-     "https://github.com/debpalash/VoiceStudio",
-     "2026-09-21"
-    ],
-    [
-     "https://github.com/debpalash/VoiceStudio",
-     "2026-09-07"
-    ],
-    [
      "https://huggingface.co/blog/nvidia/magpie-tts-multilingual-voice-agents",
      "2026-08-10"
     ],
     [
      "https://huggingface.co/blog/PaddlePaddle/pp-ocrv6",
      "2026-06-22"
+    ],
+    [
+     "https://github.com/jamiepine/voicebox",
+     "2026-06-29"
+    ],
+    [
+     "https://openai.com/index/introducing-gpt-live-1-in-the-api",
+     "2026-09-10"
     ]
    ],
    "row": {
@@ -1337,10 +1337,10 @@
   "all": {
    "n": 28.0,
    "hit": 0.5714285714285714,
-   "precision": 0.24285714285714288,
-   "recall": 0.3157738095238095,
+   "precision": 0.23571428571428574,
+   "recall": 0.3181547619047619,
    "mrr": 0.4238095238095238,
-   "ndcg": 0.30640072054408635
+   "ndcg": 0.3044724620173596
   },
   "kind:adversarial": {
    "n": 4.0,
@@ -1353,42 +1353,42 @@
   "kind:answerable": {
    "n": 24.0,
    "hit": 0.5833333333333334,
-   "precision": 0.26666666666666666,
-   "recall": 0.28506944444444443,
+   "precision": 0.25833333333333336,
+   "recall": 0.2878472222222222,
    "mrr": 0.4388888888888889,
-   "ndcg": 0.29496750730143406
+   "ndcg": 0.2927178723535862
   },
   "lang:en": {
    "n": 12.0,
    "hit": 0.5833333333333334,
-   "precision": 0.3,
-   "recall": 0.30763888888888885,
+   "precision": 0.2833333333333334,
+   "recall": 0.3034722222222222,
    "mrr": 0.43333333333333335,
-   "ndcg": 0.32128059440182843
+   "ndcg": 0.31200196860888385
   },
   "lang:zh-TW": {
    "n": 12.0,
    "hit": 0.5833333333333334,
    "precision": 0.23333333333333336,
-   "recall": 0.2625,
+   "recall": 0.2722222222222222,
    "mrr": 0.4444444444444444,
-   "ndcg": 0.26865442020103975
+   "ndcg": 0.2734337760982886
   },
   "script:latin": {
    "n": 12.0,
    "hit": 0.5833333333333334,
-   "precision": 0.3,
-   "recall": 0.30763888888888885,
+   "precision": 0.2833333333333334,
+   "recall": 0.3034722222222222,
    "mrr": 0.43333333333333335,
-   "ndcg": 0.32128059440182843
+   "ndcg": 0.31200196860888385
   },
   "script:mixed": {
    "n": 12.0,
    "hit": 0.5833333333333334,
    "precision": 0.23333333333333336,
-   "recall": 0.2625,
+   "recall": 0.2722222222222222,
    "mrr": 0.4444444444444444,
-   "ndcg": 0.26865442020103975
+   "ndcg": 0.2734337760982886
   }
  }
 }
