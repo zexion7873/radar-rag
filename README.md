@@ -211,6 +211,10 @@ uv run radar-evals --golden golden_v1.jsonl --fixture fixtures/trending.json \
   --fixture fixtures/blog.json --source trending \
   --model-id paraphrase-multilingual-MiniLM-L12-v2 --out results/latest.json --baseline results/baseline.json --write-baseline
 
+# golden_v2 (33 items, trending and blog labels) queries every source, with its own baseline.
+uv run radar-evals --golden golden_v2.jsonl --fixture fixtures/trending.json --fixture fixtures/blog.json \
+  --model-id paraphrase-multilingual-MiniLM-L12-v2 --out results/latest_v2.json --baseline results/baseline_v2.json
+
 # LLM eval (paid, ~$3 per full run): /ask on every golden item, code checks (no empty answer, no
 # repo named or cited outside the retrieved rows), citation precision
 # against the golden labels, then DeepEval metrics judged by claude-sonnet-5-5. The service and
@@ -358,8 +362,6 @@ means. A run costs about $3.3.
   per-client limit and the Anthropic workspace's monthly spend cap bound what that costs.
 - **Two sources.** Trending and Blog. The Loot ledgers stay out: the UI shows them only after a
   login, and this service and repository are public.
-- **Some blog posts appear twice.** The Blog table holds 22 posts recorded twice (same URL and date,
-  two pages); each is embedded twice, so a search can return one post in two of its slots.
 - **Small, hand-labelled golden set.** 62 items. The retrieval gate catches any flipped hit, but the
   LLM metrics move by up to ~0.03 between identical runs, so only a drop beyond that reads as a
   regression.

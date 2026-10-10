@@ -36,7 +36,7 @@ import static org.mockito.Mockito.when;
 
 /**
  * /sync from the frozen Notion fixtures into a real pgvector: trending (190 rows, 190 distinct (url, week)
- * pairs over 111 urls) and blog (669 rows). Counts come from SQL, because /sync reports rows ingested,
+ * pairs over 111 urls) and blog (645 rows). Counts come from SQL, because /sync reports rows ingested,
  * not the table's size.
  */
 @SpringBootTest
@@ -90,8 +90,8 @@ class SyncIT {
         IngestService.SyncResult result = ingest.sync();
 
         assertThat(result.failed()).isEmpty();
-        assertThat(result.sources()).containsExactly(Map.entry("trending", 190), Map.entry("blog", 669));
-        assertThat(result.ingested()).isEqualTo(859);
+        assertThat(result.sources()).containsExactly(Map.entry("trending", 190), Map.entry("blog", 645));
+        assertThat(result.ingested()).isEqualTo(835);
     }
 
     @Test
@@ -110,7 +110,7 @@ class SyncIT {
         trending.remove(0);
         serve(TRENDING, trending);
 
-        assertThat(ingest.sync().sources()).containsEntry("trending", 189).containsEntry("blog", 669);
+        assertThat(ingest.sync().sources()).containsEntry("trending", 189).containsEntry("blog", 645);
         assertThat(rows("trending")).isEqualTo(189L);
     }
 
@@ -122,7 +122,7 @@ class SyncIT {
 
         assertThat(result.failed()).containsEntry("trending", "sync failed").containsEntry("blog", "sync failed");
         assertThat(rows("trending")).isEqualTo(190L);
-        assertThat(rows("blog")).isEqualTo(669L);
+        assertThat(rows("blog")).isEqualTo(645L);
     }
 
     @Test
@@ -138,7 +138,7 @@ class SyncIT {
         assertThat(result.sources()).containsExactly(Map.entry("trending", 189));
         assertThat(result.failed()).containsExactly(Map.entry("blog", "upstream 404"));
         assertThat(rows("trending")).isEqualTo(189L);
-        assertThat(rows("blog")).isEqualTo(669L);
+        assertThat(rows("blog")).isEqualTo(645L);
     }
 
     private long rows(String source) {
