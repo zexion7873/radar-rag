@@ -32,7 +32,8 @@ window.onTurnstileLoad = () => {
     "error-callback": () => {
       token = null;
       updateSubmit();
-      setStatus("機器人驗證載入失敗，請重新整理頁面。 · The bot check failed to load; reload the page.");
+      // Also fires when Cloudflare judges the browser automated (600xxx), where a reload rarely helps.
+      setStatus("機器人驗證沒有通過，請重新整理，或換一個瀏覽器試試。 · The bot check did not pass; reload, or try another browser.");
     },
   });
 };
