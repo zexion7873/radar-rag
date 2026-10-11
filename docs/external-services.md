@@ -31,7 +31,7 @@ Embedding 由 ONNX 模型在程式內計算，不呼叫任何 embedding API。
 | 服務 | 用途 |
 |---|---|
 | Hugging Face | `scripts/fetch-models.sh` 下載固定版本的 embedding 模型，並驗證 sha256 |
-| Docker Hub | 基底映像：`maven`、`eclipse-temurin`、`pgvector/pgvector` |
+| Docker Hub | 只拉取基底映像：`maven`、`eclipse-temurin`、`pgvector/pgvector`；本專案的映像只推到 Artifact Registry |
 | Maven Central | Java 相依套件 |
 | PyPI | eval harness 的相依套件，透過 `uv` 安裝 |
 
