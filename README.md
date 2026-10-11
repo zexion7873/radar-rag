@@ -76,6 +76,9 @@ Embeddings run **locally in-process** (ONNX `paraphrase-multilingual-MiniLM-L12-
 API key. `scripts/fetch-models.sh` downloads the model (~480 MB) once, at a pinned Hugging Face
 revision with a sha256 check; the service loads it from `models/` and will not start without it.
 
+Every external service the code calls, runs on or builds from is listed in
+[docs/external-services.md](docs/external-services.md) (in Chinese).
+
 ---
 
 ## 🏃 Run

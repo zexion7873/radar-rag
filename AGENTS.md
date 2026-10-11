@@ -64,4 +64,5 @@ comment, the commit body or the stack plan.
 - **Langfuse orgs created on or after 2026-09-16 have no legacy read API.** Read traces through
   `GET /api/public/v2/observations` with explicit `fields`.
 - **Docs move with the code.** A milestone's status line in `docs/stack-plan.md`, the README, and
-  `SECURITY.md` / `PRIVACY.md` when exposure or data flow changes.
+  `SECURITY.md` / `PRIVACY.md` when exposure or data flow changes, `docs/external-services.md` when a
+  service is added or dropped.
