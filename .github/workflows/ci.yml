@@ -14,7 +14,30 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # All three jobs are required checks on main, so a docs-only PR skips them by `if` (a skipped job
+  # passes) rather than by a workflow `paths` filter, which would leave them pending forever.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.diff.outputs.code }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 2
+      # A PR checks out its merge commit, whose first parent is the base; a push to main runs everything.
+      - id: diff
+        run: |
+          if [ "${{ github.event_name }}" != pull_request ] \
+             || git diff --name-only HEAD^1 HEAD | grep -qvE '\.md$|^docs/'; then
+            echo code=true >> "$GITHUB_OUTPUT"
+          else
+            echo code=false >> "$GITHUB_OUTPUT"
+          fi
+
   build:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -27,6 +50,8 @@ jobs:
       - run: mvn -B verify
 
   evals:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     defaults:
@@ -44,6 +69,8 @@ jobs:
       - run: uv run pytest
 
   eval-retrieval:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
