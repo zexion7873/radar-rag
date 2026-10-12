@@ -334,6 +334,28 @@ Done when:
 ### M15: Answers synthesise rather than restate (RAG, ~0.5 day)
 **Status: done (2026-10-11).** Reported by the owner on the live `/ask`: answers repeated their cited passages, which the page shows right under them. Archive rows are one to three sentences and plain-text documents are cited by sentence, so a citation spans the whole row, and the prompt asked only for a concise answer naming the repos. The harness now reports `copied_share`, the share of answer characters inside a run of 20+ characters found verbatim in a retrieved row (ungated). Found here: M12's chart run sat in the citable text and surfaced in cited passages; it moves to the citation document's `context`, which the model reads but never cites. Rule fixed before the second run: a revision ships only if `copied_share` falls below 0.15 and no quality mean drops more than 0.03 below the first revision's. The first revision (what each source contributes and how they differ, in the model's own words; the reader sees the passages) took `copied_share` from 0.303 to 0.205 with quality flat (Faithfulness 0.995, AnswerRelevancy 0.922, Attribution 0.890, Abstention 0.860), but answers grew 25% and the model still pasted a description after its own sentence. The second (a direct answer, then one own-words sentence per source, no quoting or close paraphrase) failed the rule: `copied_share` 0.196, AnswerRelevancy 0.888; reverted. Found after: much of the repetition is not the model's. Replaying a question against the API showed each cited text block quoting a few words ("首次上榜") while its `cited_text` was the whole row, and a probe confirmed that plain-text chunking does not split on the full-width "。": an English or ". "-separated row cites one sentence, a "。"-separated row cites all of it. So every Chinese citation returned the whole row. Each row now goes out as a custom content document, one block per sentence (split after 。！？!? and at line breaks), so a citation returns only the sentences it rests on; the embedded text, and so retrieval, is unchanged.
 
+### M16: Streamed /ask answers (UI, ~1 day here, ~1 day in github-radar-ui)
+**Status: planned (2026-10-12).** `/ask` blocks until the whole answer exists (~4-6 s warm, ~12 s cold) while the page shows only a spinner. Agreed with the github-radar-ui session: `/ask` streams Server-Sent Events when asked to, and keeps its JSON response otherwise. Beat: a hard switch to SSE, which breaks the eval harness and any page bundle loaded before github-radar-ui deploys, and forces a deploy order. Spring AI 2.0.1's Anthropic `stream()` emits text deltas as they arrive and puts citations, `stop_reason` and usage on its final response, so citations keep today's shape; a refusal is known only at that final response, after text may already have been sent.
+
+The contract, added to both repositories' `AGENTS.md` when this ships:
+- The request is unchanged. `Accept: text/event-stream` selects the stream; anything else gets today's JSON.
+- Every failure before the model call (400, 403, 429, retrieval) keeps its HTTP status and JSON body: the `200` and `text/event-stream` headers are committed only once the model call starts.
+- Events, each `data` a JSON object: `sources` (the retrieved rows, sent before the model call), `delta` (`{"text"}`), `done` (`{answer, citations, usage}`), `error` (`{status: 502|503, message?}`). `sources` plus `done` is exactly today's `AskResponse`; deltas are a preview and `done.answer` is canonical.
+- `done` is the only success signal. On `error`, or a stream that ends without `done`, the page withdraws the partial answer: it carries no citations and may stop at a refusal. No `id:`, `retry:` or heartbeats.
+- One POST is one rate-limit token, however many events it carries.
+
+Changes:
+- `/ask` negotiates on `Accept`; the streaming path uses `ChatClient.stream()` and maps a `refusal` stop reason or an upstream failure to an `error` event.
+- Tests for both paths, the refusal-after-text case included.
+- README, `AGENTS.md`, and `PRIVACY.md` if the chat span's content changes on the streaming path.
+
+Done when:
+- `curl -N` against the live URL shows `sources`, then deltas arriving over time, then `done`, and a request without the `Accept` header still gets today's JSON.
+- A client that disconnects mid-answer stops the Anthropic stream: the trace's output tokens fall short of a full answer.
+- The CORS preflight from github-radar-ui's origin still passes with the new `Accept` header.
+- The chat span still carries the prompt and answer, or `PRIVACY.md` says what changed.
+- The retrieval gate passes unchanged, since the harness reads the JSON path.
+
 ## 4. Do-not-add list
 
 | Item | Why | Durable / deferred | Flip-when |
