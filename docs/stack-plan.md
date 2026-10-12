@@ -362,7 +362,7 @@ Done when:
 - The retrieval gate passes unchanged, since the harness reads the JSON path.
 
 ### M17: Category and recency questions (RAG, size set after the measurement below)
-**Status: built, LLM gate pending (2026-10-12).** Reported by the owner on the live `/ask`: "最近 apps 類有哪些值得看的 repo？" answered that the radar has no "apps" category and cited June rows. The cause is in three places. A trending row's embedded text is its repo, description and comment; `category` and `week` are metadata only. `/ask` retrieves with no metadata filter, while `/search` already takes a `category` filter. The citation document names the repo and week, never the category, so the model's answer is true of what it sees. "最近" has the same gap: retrieval keeps each repo's best-scoring week, not its latest. github-radar-ui took that question off the page's examples.
+**Status: built and gated, live on merge (2026-10-12).** radar-rag PR #66. Reported by the owner on the live `/ask`: "最近 apps 類有哪些值得看的 repo？" answered that the radar has no "apps" category and cited June rows. The cause is in three places. A trending row's embedded text is its repo, description and comment; `category` and `week` are metadata only. `/ask` retrieves with no metadata filter, while `/search` already takes a `category` filter. The citation document names the repo and week, never the category, so the model's answer is true of what it sees. "最近" has the same gap: retrieval keeps each repo's best-scoring week, not its latest. github-radar-ui took that question off the page's examples.
 
 golden_v3 (2026-10-12): 4 zh-TW items, three written by the owner for three situations (a category, a category with recency, recency alone) plus the reported question; no English twins, since this set measures category and recency, not language. Labels come from the trending fixture by rule, decided with the owner: every row of the named category is relevant, and "最近" means the latest four chart weeks (2026-08-31 to 2026-09-21), graded 2 there and 1 for older rows of the same category; the recency-only item labels the latest four weeks alone. "紅的" and "值得看" are not labelled. One question says "tools" for the `tooling` category, so a category detector needs synonyms, not exact names.
 
@@ -404,6 +404,8 @@ Same dev machine, after: golden_v1 (trending only and every source) and golden_v
 | mean | 0.35 / 0.29 | 0.65 / 0.58 |
 
 v3q04, the reported question, now leads with the apps rows of 2026-08-31 and 2026-09-14. v3q02 lost a row: with no category read, the bonus lifted recent rows of other categories over a June tooling repo. The bonus was not tuned on these four items.
+
+On CI's runner (PR #66): golden_v3 mean P@5 0.650 and nDCG@5 0.577, the dev machine's numbers exactly, and the three retrieval gates passed. The paid LLM run (CI run 38262690341, $4.23) passed its gate with Faithfulness 0.996, AnswerRelevancy 0.929, Attribution 0.893 and Abstention 0.860, against M15's shipped 0.995 / 0.922 / 0.890 / 0.860: inside the four-run band, so the category in the citation context moved no quality mean.
 
 Done when (thresholds set by the owner after the measurement; the proposed P@5 0.8 and nDCG@5 0.6 needed v3q02, which only a looser rule or a model call reads):
 - golden_v3 over every source, measured on CI's runner, keeps mean P@5 0.65 and nDCG@5 0.58.
