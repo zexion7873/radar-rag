@@ -35,6 +35,16 @@ class AskControllerTest {
         assertThat(AskController.citationDocument(BLOG).toDocumentBlockParam().context()).isEmpty();
     }
 
+    // Without it the model answered a question naming "apps" with "the radar has no apps category".
+    @Test
+    void aCitationDocumentTellsTheModelItsRepoCategory() {
+        Document charted = new Document(TRENDING.getId(), "t", Map.of("source", "trending", "repo", "o/repo",
+                "category", "apps", "weeks_on_chart", 1, "first_week", "2026-09-21", "last_week", "2026-09-21"));
+
+        assertThat(AskController.citationDocument(charted).toDocumentBlockParam().context())
+                .hasValue("Category: apps. Charted in 1 week(s): first 2026-09-21, last 2026-09-21.");
+    }
+
     @Test
     void aRowIsCitableSentenceBySentenceInChineseAndEnglish() {
         assertThat(AskController.sentences("jamiepine/voicebox\n\n開源 AI 語音工作室，主打複製人聲;首次上榜。\n\n"

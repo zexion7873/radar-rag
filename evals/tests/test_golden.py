@@ -96,6 +96,7 @@ def test_rotten_labels_are_the_ones_missing_from_the_fixture() -> None:
 
 GOLDEN_V1 = Path(__file__).resolve().parents[1] / "golden_v1.jsonl"
 GOLDEN_V2 = Path(__file__).resolve().parents[1] / "golden_v2.jsonl"
+GOLDEN_V3 = Path(__file__).resolve().parents[1] / "golden_v3.jsonl"
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "trending.json"
 
 
@@ -108,6 +109,11 @@ def test_golden_v2_labels_all_exist_in_the_fixtures() -> None:
     ]
     present = set().union(*(f.keys() for f in fixtures))
     assert golden.rotten_labels(golden.load(GOLDEN_V2), present) == []
+
+
+def test_golden_v3_labels_all_exist_in_the_fixture() -> None:
+    fixture = NotionFixture.model_validate_json(FIXTURE.read_text(encoding="utf-8"))
+    assert golden.rotten_labels(golden.load(GOLDEN_V3), fixture.keys()) == []
 
 
 def test_golden_v1_labels_all_exist_in_the_fixture() -> None:

@@ -178,6 +178,17 @@ jobs:
             echo "::error::No results/baseline_v1_all.json committed; commit the one in the retrieval-eval artifact."
             exit 1
           fi
+      # Every golden_v3 item hits at 5, so a flip gate says nothing; the summary's precision and nDCG are
+      # M17's measure, read on this runner.
+      - name: Retrieval report over golden_v3 (category and recency), not a gate
+        working-directory: evals
+        env:
+          EVAL_SERVICE_URL: http://localhost:8080
+          EVAL_NOTION_STUB_PORT: "8765"
+        run: |
+          uv run radar-evals --golden golden_v3.jsonl --fixture fixtures/trending.json \
+            --fixture fixtures/blog.json --model-id paraphrase-multilingual-MiniLM-L12-v2 \
+            --out results/latest_v3.json
       - if: always()
         uses: actions/upload-artifact@v7
         with:
