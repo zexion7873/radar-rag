@@ -28,6 +28,7 @@ import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -45,11 +46,14 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.hamcrest.Matchers.startsWith;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.request;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
@@ -256,6 +260,159 @@ class AskFlowIT {
         mvc.perform(post("/ask").header("Origin", "https://evil.test").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"q\":\"agents\"}"))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void anyAcceptOtherThanEventStreamGetsTheJsonAnswer() throws Exception {
+        stubMessages(200, """
+                {"id":"msg_j","type":"message","role":"assistant","model":"claude-opus-5-5",
+                 "content":[{"type":"text","text":"ok"}],
+                 "stop_reason":"end_turn","usage":{"input_tokens":1,"output_tokens":1}}""");
+
+        for (String accept : List.of("*/*", "application/json", "application/json, */*")) {
+            mvc.perform(post("/ask").contentType(MediaType.APPLICATION_JSON).header("Accept", accept)
+                            .content("{\"q\":\"agents\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(header().string("Content-Type", "application/json"))
+                    .andExpect(jsonPath("$.answer").value("ok"));
+        }
+    }
+
+    @Test
+    void streamsSourcesThenDeltasThenDoneCarryingTheWholeAnswer() throws Exception {
+        stubStream(textBlock("Grounded ", "answer."), citation(2, "first"), "end_turn");
+
+        List<String[]> events = askStream();
+
+        assertThat(events).extracting(e -> e[0]).containsExactly("sources", "delta", "delta", "done");
+        assertThat(JSON.readTree(events.get(0)[1])).hasSize(5);
+        assertThat(JSON.readTree(events.get(1)[1]).path("text").asString()).isEqualTo("Grounded ");
+        JsonNode done = JSON.readTree(events.get(3)[1]);
+        assertThat(done.path("answer").asString()).isEqualTo("Grounded answer.");
+        assertThat(done.path("citations")).hasSize(1);
+        assertThat(done.path("citations").get(0).path("citedText").get(0).asString()).isEqualTo("first");
+        assertThat(done.path("usage").path("model").asString()).isEqualTo("claude-opus-5-5");
+        assertThat(done.path("usage").path("inputTokens").asInt()).isEqualTo(10);
+        assertThat(done.path("usage").path("outputTokens").asInt()).isEqualTo(5);
+
+        JsonNode sent = JSON.readTree(onlyRequest().getBodyAsString());
+        assertThat(sent.path("stream").asBoolean()).isTrue();
+        assertThat(sent.path("output_config").path("effort").asString()).isEqualTo("medium");
+    }
+
+    @Test
+    void aRefusalAfterStreamedTextEndsInErrorAndNeverDone() throws Exception {
+        stubStream(textBlock("Here is how to "), "", "refusal");
+
+        List<String[]> events = askStream();
+
+        assertThat(events).extracting(e -> e[0]).containsExactly("sources", "delta", "error");
+        assertThat(JSON.readTree(events.get(2)[1]).path("status").asInt()).isEqualTo(502);
+    }
+
+    @Test
+    void aStreamWithNoTextEndsInError() throws Exception {
+        stubStream("", "", "end_turn");
+
+        assertThat(askStream()).extracting(e -> e[0]).containsExactly("sources", "error");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "400, 502, 1",
+            "529, 503, 2",
+    })
+    void anUpstreamFailureAfterSourcesIsAnErrorEventWithoutTheUpstreamBody(
+            int upstream, int expected, int attempts) throws Exception {
+        stubMessages(upstream, "{\"type\":\"error\",\"error\":{\"message\":\"" + UPSTREAM_SECRET + "\"}}");
+
+        List<String[]> events = askStream();
+
+        assertThat(events).extracting(e -> e[0]).containsExactly("sources", "error");
+        assertThat(JSON.readTree(events.get(1)[1]).path("status").asInt()).isEqualTo(expected);
+        assertThat(events.get(1)[1]).doesNotContain(UPSTREAM_SECRET);
+        ANTHROPIC.verify(attempts, postRequestedFor(urlEqualTo("/v1/messages")));
+    }
+
+    @Test
+    void aFailedBotCheckOnTheStreamIsStill403AndNeverReachesTheModel() throws Exception {
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN, "bot check failed"))
+                .when(turnstile).check("bad-token");
+
+        mvc.perform(post("/ask").contentType(MediaType.APPLICATION_JSON).accept(MediaType.TEXT_EVENT_STREAM)
+                        .header("X-Turnstile-Token", "bad-token").content("{\"q\":\"agents\"}"))
+                .andExpect(status().isForbidden());
+
+        assertThat(ANTHROPIC.findAll(postRequestedFor(urlEqualTo("/v1/messages")))).isEmpty();
+    }
+
+    /** Each event as {name, data}, in order. */
+    private List<String[]> askStream() throws Exception {
+        MvcResult started = mvc.perform(post("/ask").contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.TEXT_EVENT_STREAM).content("{\"q\":\"agents\"}"))
+                .andExpect(request().asyncStarted())
+                .andReturn();
+        String body = mvc.perform(asyncDispatch(started))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type", startsWith("text/event-stream")))
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+        List<String[]> events = new ArrayList<>();
+        for (String frame : body.split("\n\n")) {
+            String name = null;
+            StringBuilder data = new StringBuilder();
+            for (String line : frame.split("\n")) {
+                if (line.startsWith("event:")) {
+                    name = line.substring("event:".length());
+                } else if (line.startsWith("data:")) {
+                    data.append(line.substring("data:".length()));
+                }
+            }
+            if (name != null) {
+                events.add(new String[] {name, data.toString()});
+            }
+        }
+        return events;
+    }
+
+    /** A text content block's events, one text delta per chunk, or none for an empty answer. */
+    private static String textBlock(String... chunks) {
+        if (chunks.length == 0 || chunks[0].isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder(sse("content_block_start",
+                "{\"type\":\"content_block_start\",\"index\":0,\"content_block\":{\"type\":\"text\",\"text\":\"\"}}"));
+        for (String chunk : chunks) {
+            sb.append(sse("content_block_delta", "{\"type\":\"content_block_delta\",\"index\":0,"
+                    + "\"delta\":{\"type\":\"text_delta\",\"text\":\"" + chunk + "\"}}"));
+        }
+        return sb.toString();
+    }
+
+    private static String citation(int documentIndex, String citedText) {
+        return sse("content_block_delta", "{\"type\":\"content_block_delta\",\"index\":0,\"delta\":"
+                + "{\"type\":\"citations_delta\",\"citation\":{\"type\":\"char_location\",\"cited_text\":\""
+                + citedText + "\",\"document_index\":" + documentIndex + ",\"document_title\":\"t\","
+                + "\"start_char_index\":0,\"end_char_index\":5}}}");
+    }
+
+    /** Anthropic's streaming wire format around the given content block events. */
+    private static void stubStream(String textBlock, String citations, String stopReason) {
+        String body = sse("message_start", """
+                {"type":"message_start","message":{"id":"msg_s","type":"message","role":"assistant",\
+                "model":"claude-opus-5-5","content":[],"stop_reason":null,"stop_sequence":null,\
+                "usage":{"input_tokens":10,"output_tokens":1}}}""")
+                + textBlock + citations
+                + (textBlock.isEmpty() ? "" : sse("content_block_stop", "{\"type\":\"content_block_stop\",\"index\":0}"))
+                + sse("message_delta", "{\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"" + stopReason
+                        + "\",\"stop_sequence\":null},\"usage\":{\"output_tokens\":5}}")
+                + sse("message_stop", "{\"type\":\"message_stop\"}");
+        ANTHROPIC.stubFor(WireMock.post(urlEqualTo("/v1/messages"))
+                .willReturn(aResponse().withStatus(200)
+                        .withHeader("Content-Type", "text/event-stream").withBody(body)));
+    }
+
+    private static String sse(String event, String data) {
+        return "event: " + event + "\ndata: " + data + "\n\n";
     }
 
     private ResultActions ask() throws Exception {

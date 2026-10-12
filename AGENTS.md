@@ -63,7 +63,10 @@ comment, the commit body or the stack plan.
   site host means changing both). The request (`{q}` plus `X-Turnstile-Token`), the response shape
   (`answer`, `citations`, `sources`, `usage`; each row's `id` a Notion page id) and the statuses it
   maps (403 bot check, 429 rate limit, 502/503 model) are its contract: change them only after
-  messaging the github-radar-ui session.
+  messaging the github-radar-ui session. So is the stream an `Accept` naming `text/event-stream`
+  selects: events `sources`, `delta`, then one `done` or `error`, and `done` is the only success
+  signal (a refusal ends in `error`). The JSON mapping must keep no `produces` condition: that is what
+  keeps `*/*` (the harness, httpx's default) on JSON.
 - **Langfuse orgs created on or after 2026-09-16 have no legacy read API.** Read traces through
   `GET /api/public/v2/observations` with explicit `fields`.
 - **Docs move with the code.** A milestone's status line in `docs/stack-plan.md`, the README, and
