@@ -146,7 +146,7 @@ public class AskController {
         }
         turnstile.check(turnstileToken);
         // /search with topK 5 returns exactly these rows; the eval harness relies on that.
-        return rowSearch.balanced(req.q(), 5, null);
+        return rowSearch.balanced(req.q(), 5, null, false);
     }
 
     private ChatClient.ChatClientRequestSpec prompt(AskRequest req, List<Document> docs) {
@@ -219,10 +219,12 @@ public class AskController {
         Object name = md.containsKey("repo") ? md.get("repo") : md.get("title");
         AnthropicCitationDocument.Builder doc = AnthropicCitationDocument.builder().customContent(sentences(d.getText()));
         // Search keeps one week per repo, so the run it belongs to rides along in `context`, which the
-        // model reads but never cites; in the text it would surface as a cited passage.
+        // model reads but never cites; in the text it would surface as a cited passage. A trending row's
+        // category goes there too, or a question naming one reads as if the radar had none.
         if (md.get("weeks_on_chart") instanceof Number weeks) {
-            doc.context("Charted in " + weeks + " week(s): first " + md.get("first_week") + ", last "
-                    + md.get("last_week") + ".");
+            String category = md.get("category") instanceof String c ? "Category: " + c + ". " : "";
+            doc.context(category + "Charted in " + weeks + " week(s): first " + md.get("first_week")
+                    + ", last " + md.get("last_week") + ".");
         }
         return doc
                 .title(name + " " + md.get("week"))

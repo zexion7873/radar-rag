@@ -361,6 +361,55 @@ Done when:
 - The chat span still carries the prompt and answer, or `PRIVACY.md` says what changed.
 - The retrieval gate passes unchanged, since the harness reads the JSON path.
 
+### M17: Category and recency questions (RAG, size set after the measurement below)
+**Status: built, LLM gate pending (2026-10-12).** Reported by the owner on the live `/ask`: "最近 apps 類有哪些值得看的 repo？" answered that the radar has no "apps" category and cited June rows. The cause is in three places. A trending row's embedded text is its repo, description and comment; `category` and `week` are metadata only. `/ask` retrieves with no metadata filter, while `/search` already takes a `category` filter. The citation document names the repo and week, never the category, so the model's answer is true of what it sees. "最近" has the same gap: retrieval keeps each repo's best-scoring week, not its latest. github-radar-ui took that question off the page's examples.
+
+golden_v3 (2026-10-12): 4 zh-TW items, three written by the owner for three situations (a category, a category with recency, recency alone) plus the reported question; no English twins, since this set measures category and recency, not language. Labels come from the trending fixture by rule, decided with the owner: every row of the named category is relevant, and "最近" means the latest four chart weeks (2026-08-31 to 2026-09-21), graded 2 there and 1 for older rows of the same category; the recency-only item labels the latest four weeks alone. "紅的" and "值得看" are not labelled. One question says "tools" for the `tooling` category, so a category detector needs synonyms, not exact names.
+
+Baseline on a dev machine (arm64, so CI's x86 run may reorder near-ties), at `ff38fe7`. Every item hits at 5, because the labels are broad, so hit@5 says nothing here; precision@5 at url level (the share of the top 5 in the asked category) and nDCG@5 at (url, week) level (which also rewards recent weeks) are the measures.
+
+| item | trending only: P@5 / nDCG | every source, as `/ask` retrieves: P@5 / nDCG |
+|---|---|---|
+| v3q01 agents | 0.60 / 0.51 | 0.40 / 0.47 |
+| v3q02 recent tooling | 0.60 / 0.41 | 0.40 / 0.30 |
+| v3q03 recent, any category | 0.40 / 0.34 | 0.20 / 0.21 |
+| v3q04 recent apps | 0.40 / 0.28 | 0.40 / 0.18 |
+| mean | 0.50 / 0.38 | 0.35 / 0.29 |
+
+v3q04 reproduces the report: its two apps rows are from June and July, and none of the seven apps rows of the latest four weeks is retrieved. Found here: `/ask` takes sources in turns, so its top 5 holds three trending rows and two blog rows, and a question about repos cannot pass P@5 0.6 on that path.
+
+Fix options, to be chosen against these numbers:
+- (a) The category in the citation document's `context`: the model can name it, retrieval is unchanged. It changes what the model reads, so the paid LLM eval runs.
+- (b) The category in the embedded text: retrieval matches it, but every vector moves, both retrieval gates re-baseline and the service re-syncs.
+- (c) A category named in the question (synonyms included) becomes a metadata filter or a boost; vectors stay bit-identical.
+- (d) A category question searches trending alone, lifting the 0.6 ceiling; blog rows carry `official` / `individual`, not these categories.
+- (e) "最近" in the question prefers the latest weeks, by filter or by boost.
+Recommended order: (c) with (d) and (e), then (a); (b) last, since it moves every vector for what (c) gets without moving any.
+
+Built (2026-10-12), with the owner: (c), (d), (e) and (a); (b) not done. Decided:
+- (c) is a strict rule: a category word counts only beside 類 / 類型 / 類別 / category / 分類, and "類似" never. golden_v1 says "agent" or "tools" in 22 questions that ask about a topic; a looser rule turns them into category filters. Beat: asking a small model to classify each question, which reads "tools套件" too, but puts a paid, non-deterministic call in front of every `/ask` and in the CI retrieval gate. Cost: v3q02 ("tools套件", no 類) is not read as a category.
+- (d) needs no code of its own: a detected category filters both sources, blog rows carry other categories, and the turns hand trending every slot.
+- (e) is a ranking bonus of 0.1 on a source's last 28 days, counted back from its newest row so a run on any date retrieves the same rows; recent rows are also searched alone so they compete when older ones fill the first candidates. Beat: a hard filter, which would leave a "最近" question no older row at all. Which source leads the turns is now decided by each source's most similar row, not its first: under the bonus the first row is the best recent one, and recency then chose the source.
+- The reading lives in the shared retrieval path, so `/search` without a source does it too and the harness still measures `/ask`'s rows; a `category` in a `/search` request wins over one in the question. The trending-only golden_v1 run passes a source and is untouched.
+- (a): a trending row's citation `context` now starts with its category.
+
+Same dev machine, after: golden_v1 (trending only and every source) and golden_v2 report no hit→miss flips against the committed baselines.
+
+| item | P@5 / nDCG@5 before | after |
+|---|---|---|
+| v3q01 agents | 0.40 / 0.47 | 1.00 / 1.00 |
+| v3q02 recent tooling | 0.40 / 0.30 | 0.20 / 0.17 |
+| v3q03 recent, any category | 0.20 / 0.21 | 0.40 / 0.36 |
+| v3q04 recent apps | 0.40 / 0.18 | 1.00 / 0.78 |
+| mean | 0.35 / 0.29 | 0.65 / 0.58 |
+
+v3q04, the reported question, now leads with the apps rows of 2026-08-31 and 2026-09-14. v3q02 lost a row: with no category read, the bonus lifted recent rows of other categories over a June tooling repo. The bonus was not tuned on these four items.
+
+Done when (thresholds set by the owner after the measurement; the proposed P@5 0.8 and nDCG@5 0.6 needed v3q02, which only a looser rule or a model call reads):
+- golden_v3 over every source, measured on CI's runner, keeps mean P@5 0.65 and nDCG@5 0.58.
+- golden_v1 and golden_v2 report no hit→miss flips, in either source mode.
+- If (a) ships, the LLM gate stays within the four-run band.
+
 ## 4. Do-not-add list
 
 | Item | Why | Durable / deferred | Flip-when |

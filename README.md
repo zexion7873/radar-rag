@@ -57,7 +57,10 @@ request into Langfuse, and **P5** adds the Blog archive (see [docs/stack-plan.md
 - `POST /search` — semantic search over the embedded rows, optionally filtered by metadata
   (`source` / `category` / `language` / `week` exact match, `stars_per_week` ≥ `minStars`). Each
   url comes back once, at its best-scoring row: a repo that charted for several weeks fills one
-  slot, not several.
+  slot, not several. Without a `source` it searches both sources in turns, as `/ask` does, and reads
+  the question: a trending category named as one ("apps 類", "infra category") filters to it unless
+  the request sets `category`, and "最近" / "latest" ranks each source's last 28 days higher (the
+  returned `score` stays the plain similarity).
 - `POST /ask` — ask a question in natural language; the service retrieves the relevant radar
   rows from pgvector, sends them to **Claude** as citable documents, and returns the answer plus
   the rows it actually cites as **citations**. Needs `ANTHROPIC_API_KEY`; `/sync` and `/search` do not. Runs on
@@ -243,6 +246,11 @@ uv run radar-evals --golden golden_v1.jsonl --fixture fixtures/trending.json --f
 # golden_v2 (33 items, trending and blog labels) queries every source, with its own baseline.
 uv run radar-evals --golden golden_v2.jsonl --fixture fixtures/trending.json --fixture fixtures/blog.json \
   --model-id paraphrase-multilingual-MiniLM-L12-v2 --out results/latest_v2.json --baseline results/baseline_v2.json
+
+# golden_v3 (4 category and recency questions, M17) runs in CI as a report, not a gate: every item
+# hits at 5, so read its precision and nDCG, not its flips.
+uv run radar-evals --golden golden_v3.jsonl --fixture fixtures/trending.json --fixture fixtures/blog.json \
+  --model-id paraphrase-multilingual-MiniLM-L12-v2 --out results/latest_v3.json
 
 # LLM eval (paid, ~$3 per full run): /ask on every golden item, code checks (no empty answer, no
 # repo named or cited outside the retrieved rows), citation precision

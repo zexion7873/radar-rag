@@ -50,6 +50,10 @@ comment, the commit body or the stack plan.
   (`baseline_v1_all.json`); it and golden_v2 measure `/ask`'s retrieval. The trending-only run's
   fixture stamp then covers `trending.json` alone, which is why the baseline survived blog's arrival.
   Re-freezing `trending.json` moves that baseline; re-freezing `blog.json` does not.
+- **Retrieval without a source reads the question.** A category counts only beside 類 / category
+  (`QueryHints`): golden_v1 says "agent" or "tools" in 22 topic questions, and a looser rule filters
+  their answers away. Recency is a ranking bonus, so the trending-only golden_v1 run, which passes a
+  source, never sees either. golden_v3 measures both by precision and nDCG; every item hits at 5.
 - **The live `/ask` takes no harness traffic.** Under `prod` it needs a Turnstile token from github-radar-ui's page,
   so evals run against a local or CI service, which has no Turnstile secret and checks nothing.
 - **The `prod` profile is invisible to the gates.** Only the deployment activates it: low effort, rate
