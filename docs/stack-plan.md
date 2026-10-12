@@ -342,6 +342,7 @@ The contract, added to both repositories' `AGENTS.md` when this ships:
 - Every failure before the model call (400, 403, 429, retrieval) keeps its HTTP status and JSON body: the `200` and `text/event-stream` headers are committed only once the model call starts.
 - Events, each `data` a JSON object: `sources` (the retrieved rows, sent before the model call), `delta` (`{"text"}`), `done` (`{answer, citations, usage}`), `error` (`{status: 502|503, message?}`). `sources` plus `done` is exactly today's `AskResponse`; deltas are a preview and `done.answer` is canonical.
 - `done` is the only success signal. On `error`, or a stream that ends without `done`, the page withdraws the partial answer: it carries no citations and may stop at a refusal. No `id:`, `retry:` or heartbeats.
+- The stop reason decides the last event as the JSON path decides the status: `refusal` (or no text at all) ends with `error` `{status: 502}` and never `done`; every other stop reason, `max_tokens` included, ends with `done`, as the JSON path returns a `max_tokens` answer as a 200 today.
 - One POST is one rate-limit token, however many events it carries.
 
 Changes:
