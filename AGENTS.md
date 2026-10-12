@@ -21,7 +21,9 @@ comment, the commit body or the stack plan.
   `refs/heads/main` and nothing else, so a PR cannot try a deploy. Weekly sync (`sync.yml`) posts
   `/sync` with `SYNC_SECRET` to `vars.RADAR_URL`.
 - CI `eval-retrieval` builds and runs the image and gates on hit@5 flips against
-  `evals/results/baseline.json`. CI `eval-llm` is paid (~$3.3) and runs only on the owner's `eval:llm`
+  `evals/results/baseline.json`. A PR that touches only `*.md` and `docs/` skips `build`, `evals`
+  and `eval-retrieval` by job `if`; they are required checks, so a workflow `paths` filter would
+  leave them pending and the PR unmergeable. CI `eval-llm` is paid (~$3.3) and runs only on the owner's `eval:llm`
   label or dispatch: never trigger it without the owner's yes.
 
 ## Traps
