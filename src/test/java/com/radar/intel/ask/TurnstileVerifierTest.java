@@ -22,7 +22,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class TurnstileVerifierTest {
 
     private static TurnstileVerifier verifier(WireMockRuntimeInfo wm, String secret) {
-        return new TurnstileVerifier(secret, wm.getHttpBaseUrl() + "/siteverify");
+        return verifier(wm, secret, null);
+    }
+
+    private static TurnstileVerifier verifier(WireMockRuntimeInfo wm, String secret, String hostname) {
+        return new TurnstileVerifier(secret, hostname, wm.getHttpBaseUrl() + "/siteverify");
     }
 
     @Test
@@ -47,6 +51,22 @@ class TurnstileVerifierTest {
                 okJson("{\"success\":false,\"error-codes\":[\"timeout-or-duplicate\"]}")));
 
         assertStatus(() -> verifier(wm, "s3cret").check("used-token"), HttpStatus.FORBIDDEN);
+    }
+
+    @Test
+    void aTokenFromTheExpectedHostnamePasses(WireMockRuntimeInfo wm) {
+        stubFor(post("/siteverify").willReturn(
+                okJson("{\"success\":true,\"error-codes\":[],\"hostname\":\"ask.example\"}")));
+
+        assertThatCode(() -> verifier(wm, "s3cret", "ask.example").check("tok")).doesNotThrowAnyException();
+    }
+
+    @Test
+    void anAcceptedTokenFromAnotherHostnameIs403(WireMockRuntimeInfo wm) {
+        stubFor(post("/siteverify").willReturn(
+                okJson("{\"success\":true,\"error-codes\":[],\"hostname\":\"evil.test\"}")));
+
+        assertStatus(() -> verifier(wm, "s3cret", "ask.example").check("tok"), HttpStatus.FORBIDDEN);
     }
 
     @Test

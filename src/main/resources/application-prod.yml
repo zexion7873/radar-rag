@@ -35,6 +35,8 @@ radar:
     effort: low
     allowed-origins: https://whyisthistrending.vercel.app
   turnstile:
-    # The widget accepts the run.app hostname and github-radar-ui's, whose /ask page renders it too. The secret is required: /ask checks every token.
+    # The secret is required: /ask checks every token. Only github-radar-ui's /ask page renders the widget
+    # (the run.app root 301s there), so a token issued on any other host is refused.
     site-key: 0x4AAAAAAFTDvuuo53zguas_
     secret: ${TURNSTILE_SECRET}
+    hostname: whyisthistrending.vercel.app

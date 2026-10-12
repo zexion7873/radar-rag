@@ -134,7 +134,8 @@ so the eval gates measure the service unthrottled and at medium effort. It adds:
   `429` with `Retry-After`. The client is the right-most `X-Forwarded-For` entry (the address Cloud
   Run's front end appends), an IPv6 client its /64.
 - **`/ask` needs a Cloudflare Turnstile token** (`X-Turnstile-Token`), checked with siteverify before
-  any retrieval or model call: missing or rejected is `403`, siteverify unreachable is `503`. Without
+  any retrieval or model call: missing, rejected or issued on a host other than github-radar-ui's is
+  `403`, siteverify unreachable is `503`. Without
   the prod profile there is no secret and nothing is checked, so local runs and the eval harness ask
   freely; `/config` returns Cloudflare's always-pass test site key.
 - **`/ask` at low effort**, generic error bodies (no `message`), `INFO` logs, no Swagger UI or

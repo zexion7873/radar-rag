@@ -57,7 +57,8 @@ comment, the commit body or the stack plan.
   `/trending/<page id>` or `/blog/<page id>`; re-keying documents breaks those links. github-radar-ui
   keeps both routes and messages this repo before changing them.
 - **`/ask` is a cross-repo contract.** github-radar-ui's `/ask` page calls `POST /ask` from the browser
-  (CORS for its origin only). The request (`{q}` plus `X-Turnstile-Token`), the response shape
+  (CORS for its origin only; `prod` also refuses a Turnstile token issued on any other host, so a new
+  site host means changing both). The request (`{q}` plus `X-Turnstile-Token`), the response shape
   (`answer`, `citations`, `sources`, `usage`; each row's `id` a Notion page id) and the statuses it
   maps (403 bot check, 429 rate limit, 502/503 model) are its contract: change them only after
   messaging the github-radar-ui session.
