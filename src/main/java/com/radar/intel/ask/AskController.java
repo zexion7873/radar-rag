@@ -1,7 +1,12 @@
 package com.radar.intel.ask;
 
+import com.anthropic.errors.AnthropicIoException;
+import com.anthropic.errors.InternalServerException;
+import com.anthropic.errors.RateLimitException;
 import com.anthropic.models.messages.OutputConfig;
 import com.radar.intel.search.RowSearch;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.anthropic.AnthropicChatOptions;
 import org.springframework.ai.anthropic.AnthropicCitationDocument;
 import org.springframework.ai.chat.client.ChatClient;
@@ -12,11 +17,16 @@ import org.springframework.ai.chat.model.Generation;
 import org.springframework.ai.document.Document;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.publisher.SynchronousSink;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -32,6 +42,8 @@ import java.util.stream.Collectors;
  */
 @RestController
 public class AskController {
+
+    private static final Logger log = LoggerFactory.getLogger(AskController.class);
 
     private static final String SYSTEM = """
             You are the analyst for a GitHub "radar" that tracks trending AI/agent repositories and
@@ -81,22 +93,23 @@ public class AskController {
     public record AskResponse(String answer, List<Citation> citations, List<Source> sources, Usage usage) {
     }
 
+    /** A piece of the answer as the model writes it. */
+    public record Delta(String text) {
+    }
+
+    /** The last event of a streamed answer that succeeded; with {@code sources} it is an {@link AskResponse}. */
+    public record Done(String answer, List<Citation> citations, Usage usage) {
+    }
+
+    /** The last event of a streamed answer that failed after the stream started. */
+    public record StreamError(int status, String message) {
+    }
+
     @PostMapping("/ask")
     public AskResponse ask(@RequestBody AskRequest req,
             @RequestHeader(value = "X-Turnstile-Token", required = false) String turnstileToken) {
-        if (req.q() == null || req.q().isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "q is required");
-        }
-        turnstile.check(turnstileToken);
-        // /search with topK 5 returns exactly these rows; the eval harness relies on that.
-        List<Document> docs = rowSearch.balanced(req.q(), 5, null);
-        ChatResponse resp = chatClient.prompt()
-                .options(AnthropicChatOptions.builder()
-                        .effort(effort)
-                        .citationDocuments(docs.stream().map(AskController::citationDocument).toList()))
-                .user(req.q())
-                .call()
-                .chatResponse();
+        List<Document> docs = retrieve(req, turnstileToken);
+        ChatResponse resp = prompt(req, docs).call().chatResponse();
 
         List<Generation> generations = resp.getResults();
         // A refusal comes back as HTTP 200 with no text; without this it reads as an empty answer.
@@ -104,12 +117,101 @@ public class AskController {
         // that stops before any text has no finish reason to read.
         if (generations.isEmpty()
                 || generations.stream().anyMatch(g -> "refusal".equals(g.getMetadata().getFinishReason()))) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "llm declined the request");
+            throw declined();
         }
         ChatResponseMetadata md = resp.getMetadata();
-        Usage usage = new Usage(md.getModel(), md.getUsage().getPromptTokens(), md.getUsage().getCompletionTokens());
-        return new AskResponse(answerText(generations), citations(md, docs),
-                docs.stream().map(AskController::source).toList(), usage);
+        return new AskResponse(answerText(generations), citations(md, docs), sources(docs), usage(md));
+    }
+
+    /**
+     * The same answer as Server-Sent Events: {@code sources} before the model call, a {@code delta} per text
+     * chunk, then exactly one of {@code done} or {@code error}. Only an explicit {@code Accept:
+     * text/event-stream} lands here; the JSON mapping has no produces condition, so {@code *}{@code /*} and
+     * a missing Accept match it exactly and stay on JSON. Failures before the model call keep their status.
+     */
+    @PostMapping(path = "/ask", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<Object>> askStream(@RequestBody AskRequest req,
+            @RequestHeader(value = "X-Turnstile-Token", required = false) String turnstileToken) {
+        List<Document> docs = retrieve(req, turnstileToken);
+        StringBuilder answer = new StringBuilder();
+        Flux<ServerSentEvent<Object>> model = prompt(req, docs).stream().chatResponse()
+                .<ServerSentEvent<Object>>handle((resp, sink) -> streamed(resp, docs, answer, sink))
+                .onErrorResume(e -> Mono.just(event("error", streamError(e))));
+        return Flux.concat(Mono.just(event("sources", sources(docs))), model);
+    }
+
+    private List<Document> retrieve(AskRequest req, String turnstileToken) {
+        if (req.q() == null || req.q().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "q is required");
+        }
+        turnstile.check(turnstileToken);
+        // /search with topK 5 returns exactly these rows; the eval harness relies on that.
+        return rowSearch.balanced(req.q(), 5, null);
+    }
+
+    private ChatClient.ChatClientRequestSpec prompt(AskRequest req, List<Document> docs) {
+        return chatClient.prompt()
+                .options(AnthropicChatOptions.builder()
+                        .effort(effort)
+                        .citationDocuments(docs.stream().map(AskController::citationDocument).toList()))
+                .user(req.q());
+    }
+
+    /**
+     * Text chunks become deltas; the final response, the only one with a finish reason, carries the
+     * citations and usage. A refusal is known only there, after its text may have streamed, so it ends in
+     * {@code error} and never {@code done}; the page withdraws what it showed.
+     */
+    private static void streamed(ChatResponse resp, List<Document> docs, StringBuilder answer,
+            SynchronousSink<ServerSentEvent<Object>> sink) {
+        String finish = resp.getResults().stream()
+                .map(g -> g.getMetadata().getFinishReason())
+                .filter(f -> f != null && !f.isEmpty())
+                .findFirst().orElse(null);
+        if (finish == null) {
+            String text = answerText(resp.getResults());
+            if (!text.isEmpty()) {
+                answer.append(text);
+                sink.next(event("delta", new Delta(text)));
+            }
+            return;
+        }
+        if ("refusal".equals(finish) || answer.isEmpty()) {
+            sink.error(declined());
+            return;
+        }
+        ChatResponseMetadata md = resp.getMetadata();
+        sink.next(event("done", new Done(answer.toString(), citations(md, docs), usage(md))));
+    }
+
+    /** ApiErrorHandler's split: a transient failure the SDK already retried is 503, any other 502. */
+    private static StreamError streamError(Throwable e) {
+        if (e instanceof RateLimitException || e instanceof InternalServerException
+                || e instanceof AnthropicIoException) {
+            log.warn("LLM stream failed after retry", e);
+            return new StreamError(503, "llm temporarily unavailable");
+        }
+        if (e instanceof ResponseStatusException) {
+            return new StreamError(502, "llm declined the request");
+        }
+        log.warn("LLM stream failed", e);
+        return new StreamError(502, "llm upstream error");
+    }
+
+    private static ResponseStatusException declined() {
+        return new ResponseStatusException(HttpStatus.BAD_GATEWAY, "llm declined the request");
+    }
+
+    private static ServerSentEvent<Object> event(String name, Object data) {
+        return ServerSentEvent.builder(data).event(name).build();
+    }
+
+    private static List<Source> sources(List<Document> docs) {
+        return docs.stream().map(AskController::source).toList();
+    }
+
+    private static Usage usage(ChatResponseMetadata md) {
+        return new Usage(md.getModel(), md.getUsage().getPromptTokens(), md.getUsage().getCompletionTokens());
     }
 
     static AnthropicCitationDocument citationDocument(Document d) {

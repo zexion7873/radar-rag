@@ -63,6 +63,7 @@ request into Langfuse, and **P5** adds the Blog archive (see [docs/stack-plan.md
   the rows it actually cites as **citations**. Needs `ANTHROPIC_API_KEY`; `/sync` and `/search` do not. Runs on
   `claude-opus-5-5`. A model refusal returns 502; an Anthropic failure returns 502 (client error,
   e.g. a bad key) or 503 (rate limit or overload, after one retry), without the upstream body.
+  With `Accept: text/event-stream` the same answer streams as Server-Sent Events.
 
 ---
 
@@ -112,6 +113,11 @@ export ANTHROPIC_API_KEY=sk-ant-...
 curl -X POST localhost:8080/ask \
   -H 'Content-Type: application/json' \
   -d '{"q":"which trending repos are about agent skills, and what do they do?"}'
+
+# The same answer as it is written (Server-Sent Events)
+curl -N -X POST localhost:8080/ask \
+  -H 'Content-Type: application/json' -H 'Accept: text/event-stream, application/json' \
+  -d '{"q":"which trending repos are about agent skills, and what do they do?"}'
 ```
 
 `/search` returns each hit's document `id`, `text`, `metadata` (source/repo/week/category/language/url),
@@ -119,6 +125,14 @@ and a similarity `score`. `/ask` returns `{answer, citations, sources, usage}`. 
 retrieved rows (`id` / `repo` / `url` / `week` / retrieval `score`); `citations` are the sources the
 answer cites, each with the passages it quoted (`citedText`); `usage` is the call's `model`,
 `inputTokens` and `outputTokens` (thinking included).
+
+A request whose `Accept` names `text/event-stream` gets the answer as Server-Sent Events, each `data` a
+JSON object: `sources` (the retrieved rows, before the model call), `delta` (`{text}`, as the model
+writes), then exactly one of `done` (`{answer, citations, usage}`; with `sources` it is the JSON answer)
+or `error` (`{status, message}`, 502 or 503). `done` is the only success signal: a refusal is known only
+at the end, after its text has streamed, so it ends in `error`. A failure before the model call (400,
+403, 429) keeps its status; list `application/json` after `text/event-stream` to get its JSON body,
+which an event-stream-only `Accept` gets empty. `*/*` and a missing `Accept` get JSON.
 
 The OpenAPI spec is at `/v3/api-docs` and Swagger UI at `/swagger-ui.html`, both generated from the
 controllers. The prod profile turns both off.
