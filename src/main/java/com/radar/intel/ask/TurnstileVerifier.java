@@ -20,7 +20,8 @@ import java.util.List;
 /**
  * Checks a Cloudflare Turnstile token with siteverify before /ask spends on the model. Without
  * {@code radar.turnstile.secret} it checks nothing, so local runs and the eval harness ask freely; the
- * prod profile requires the secret.
+ * prod profile requires the secret. With {@code radar.turnstile.hostname} set, a token must also have
+ * been issued on that page host; local pages run on other hosts, so only prod sets it.
  */
 @Component
 public class TurnstileVerifier {
@@ -31,13 +32,16 @@ public class TurnstileVerifier {
     private static final int MAX_TOKEN = 2048;
 
     private final String secret;
+    private final String hostname;
     private final String verifyUrl;
     private final RestClient http;
 
     public TurnstileVerifier(@Value("${radar.turnstile.secret:#{null}}") String secret,
+            @Value("${radar.turnstile.hostname:#{null}}") String hostname,
             @Value("${radar.turnstile.verify-url:https://challenges.cloudflare.com/turnstile/v0/siteverify}")
             String verifyUrl) {
         this.secret = secret;
+        this.hostname = hostname;
         this.verifyUrl = verifyUrl;
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(
                 HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5)).build());
@@ -45,7 +49,7 @@ public class TurnstileVerifier {
         this.http = RestClient.builder().requestFactory(factory).build();
     }
 
-    record Siteverify(boolean success, @JsonProperty("error-codes") List<String> errorCodes) {
+    record Siteverify(boolean success, @JsonProperty("error-codes") List<String> errorCodes, String hostname) {
     }
 
     /** 403 unless Cloudflare accepts the token; 503 when siteverify cannot answer, so a bot gets nothing. */
@@ -69,6 +73,10 @@ public class TurnstileVerifier {
         }
         if (result == null || !result.success()) {
             log.info("Turnstile rejected a token: {}", result == null ? "no body" : result.errorCodes());
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "bot check failed");
+        }
+        if (hostname != null && !hostname.equals(result.hostname())) {
+            log.info("Turnstile token from unexpected hostname: {}", result.hostname());
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "bot check failed");
         }
     }

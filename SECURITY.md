@@ -28,7 +28,8 @@ Worth knowing before you decide whether something is in scope.
   `SYNC_SECRET`, compared in constant time; boot fails without it, and an empty one refuses every call.
   `/ask` and `/search` are rate-limited per client, keyed on the right-most `X-Forwarded-For` entry
   (an IPv6 client by its /64). `/ask` needs a Cloudflare Turnstile token, checked with siteverify
-  before any retrieval or model call; a missing or rejected token is `403`, and an unreachable
+  before any retrieval or model call; a missing or rejected token, or one issued on a host other than
+  github-radar-ui's, is `403`, and an unreachable
   siteverify `503`, never a pass. Error bodies carry no message, logs are `INFO`, Swagger UI and
   `/v3/api-docs` are off, and `POSTGRES_PASSWORD` has no fallback.
 - **No page here.** `/` redirects (301) to github-radar-ui's `/ask`, which renders the answers; this
