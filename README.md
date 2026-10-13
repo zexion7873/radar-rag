@@ -444,6 +444,9 @@ text was a run of 20+ characters copied from a retrieved row, now 20.5%, at abou
   per-client limit and the Anthropic workspace's monthly spend cap bound what that costs.
 - **Two sources.** Trending and Blog. The Loot ledgers stay out: the UI shows them only after a
   login, and this service and repository are public.
+- **Broad questions retrieve worse.** golden_v2's answerable hit@5 is 0.583 against golden_v1's 0.738
+  over every source: a question like "are there chips made for AI now?" rarely ranks the one post that
+  answers it.
 - **Small golden sets.** golden_v1 has 62 items and golden_v2 33. The owner wrote the zh-TW
   questions (the English twins are literal translations) and confirmed every label from candidate
   lists. The retrieval gates catch any flipped hit, but the LLM metrics move by up to ~0.03 between
@@ -452,24 +455,6 @@ text was a run of 20+ characters copied from a retrieved row, now 20.5%, at abou
   needs an index and a filter strategy first.
 - **amd64 image, 2 GiB.** The image targets Cloud Run's architecture, and ONNX Runtime keeps ~1.1 GB
   of the model in native memory.
-
----
-
-## 🗺️ Next
-
-~~P1 metadata-filtered search~~ (done) · ~~P2 RAG `/ask` with citations~~ (done) · ~~P3 eval
-harness (retrieval metrics + LLM-as-judge) + CI gates~~ (done) · ~~P4 Langfuse tracing~~ (done) · ~~P5 Blog ingest +
-an "Ask the radar" page~~ (done; it lives in [github-radar-ui](https://github.com/zexion7873/github-radar-ui), whose server still reads
-only Notion) · ~~answers that synthesise instead of restating their citations~~ (done, M15) · ~~streamed
-answers~~ (done, M16) · ~~category and recency questions~~ (done, M17: golden_v3's precision@5 over every
-source 0.35 → 0.65).
-
-Next: broad questions. golden_v2's answerable hit@5 is 0.583 against golden_v1's 0.738 over every source, because a question
-like "are there chips made for AI now?" rarely ranks the one post that answers it; golden_v2 measures that
-gap.
-
-The target stack and the milestone order (M0–M17, each with a checkable done-when) are in
-[docs/stack-plan.md](docs/stack-plan.md).
 
 ---
 
