@@ -10,7 +10,7 @@ spring:
     username: ${POSTGRES_USER:radar}
     password: ${POSTGRES_PASSWORD:radar}
   ai:
-    # P2: Claude generates the grounded /ask answers. Empty key still boots (only /ask calls fail),
+    # Claude generates the grounded /ask answers. Empty key still boots (only /ask calls fail),
     # so /sync and /search stay usable without an Anthropic key.
     anthropic:
       api-key: ${ANTHROPIC_API_KEY:}
@@ -43,9 +43,8 @@ management:
         enabled: false
 
 radar:
-  # Local in-process ONNX embeddings: paraphrase-multilingual-MiniLM-L12-v2 (384-d, mean pooling), the
-  # M4 A/B winner. scripts/fetch-models.sh puts it in models/ at a pinned Hugging Face revision,
-  # sha256-checked; the eval gate reads any rank change under a moving model as a regression.
+  # In-process ONNX paraphrase-multilingual-MiniLM-L12-v2 (384-d), pinned and sha256-checked by
+  # scripts/fetch-models.sh: the eval gate reads any rank change under a moving model as a regression.
   embedding:
     model: models/paraphrase/model.onnx
     tokenizer: models/paraphrase/tokenizer.json
@@ -73,11 +72,10 @@ radar:
 
 server:
   # Loopback by default: /ask spends Anthropic credit and none of the endpoints authenticate, so a
-  # dev run must not be reachable from the LAN. A container sets SERVER_ADDRESS=0.0.0.0 (M9/M10).
+  # dev run must not be reachable from the LAN. A container sets SERVER_ADDRESS=0.0.0.0.
   address: ${SERVER_ADDRESS:127.0.0.1}
   error:
-    # Internal service: surface the validation reason (e.g. "q is required") in the JSON body,
-    # matching ApiErrorHandler's expose-the-cause stance. Don't enable on a public-facing app.
+    # Outside prod the JSON body names the validation reason (e.g. "q is required"); prod sets never.
     include-message: always
 
 logging:

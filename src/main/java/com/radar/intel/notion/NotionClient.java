@@ -10,9 +10,8 @@ import java.util.Map;
 import java.util.function.Function;
 
 /**
- * Minimal Notion REST reader — the same recipe github-radar-ui's lib/notion.ts uses:
- * resolve a data-source id, then page through {@code POST /data_sources/{id}/query}.
- * No plan-limited MCP query tools involved.
+ * Minimal Notion REST reader: resolve a data-source id, then page through
+ * {@code POST /data_sources/{id}/query}.
  */
 @Component
 public class NotionClient {
@@ -69,7 +68,7 @@ public class NotionClient {
     /**
      * The configured uuid already IS a data-source id under the 2025-09-03 API; a GET
      * confirms it. Fall back to the legacy database endpoint if it turns out to be a
-     * database id (data_sources[0].id) — mirrors the routine's resolve step.
+     * database id (data_sources[0].id).
      */
     private String resolveDataSourceId(String uuid) {
         try {

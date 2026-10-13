@@ -7,8 +7,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * The Ask page lives on github-radar-ui; this service's root used to serve it, so old links (the
- * profile README, shared URLs) land there instead.
+ * Sends this service's root to github-radar-ui's Ask page; old links to the root (the profile README,
+ * shared URLs) break without it.
  */
 @RestController
 class AskPageRedirect {

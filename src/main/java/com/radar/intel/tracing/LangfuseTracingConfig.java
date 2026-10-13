@@ -12,7 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 /**
- * P4: exports the Micrometer observations (HTTP server, chat client, vector store, chat model) to
+ * Exports the Micrometer observations (HTTP server, chat client, vector store, chat model) to
  * Langfuse over OTLP. Without keys the exporter is an empty composite, so a keyless run (CI's
  * eval-retrieval, a local dev run) traces nothing outward.
  */

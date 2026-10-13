@@ -39,8 +39,8 @@ Worth knowing before you decide whether something is in scope.
   `Content-Type` and `X-Turnstile-Token` headers. Every other path and origin keeps the browser's
   same-origin default. Preflights are not rate-limited, so each question costs one request from the
   limit. The Turnstile token and the rate limit apply as to any other caller.
-- **Validates filters.** `/search` rejects filter values that could break out of the vector store's
-  filter expression before building it.
+- **Validates filters.** `/search` rejects filter values containing quotes or backslashes before
+  building the vector store's filter expression, which Spring AI also escapes into its SQL.
 - **Bounds each request.** `/search` and `/ask` refuse a question over 1,000 characters, and `/search` a
   `topK` over 50, so one request can neither read an unbounded number of rows nor send an unbounded
   question to the model.

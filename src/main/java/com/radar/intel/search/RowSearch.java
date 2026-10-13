@@ -27,7 +27,7 @@ public class RowSearch {
     private static final int CANDIDATES_PER_SLOT = 5;
 
     // The `source` values IngestService writes. Blog has 3x trending's rows and broader text, so one
-    // pooled ranking gave it two thirds of the slots and pushed out the repos questions ask about.
+    // pooled ranking gives it two thirds of the slots and pushes out the repos questions ask about.
     private static final List<String> SOURCES = List.of("trending", "blog");
 
     // The longest question /search and /ask take; github-radar-ui's page lets a visitor type 500 characters.
