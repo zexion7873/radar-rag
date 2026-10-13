@@ -9,6 +9,9 @@
 **Ask the GitHub Radar archive a question, in Chinese or English, and get an answer grounded
 in the weekly trending rows and the blog archive, with citations back to the rows it used.**
 
+**[Try it live →](https://whyisthistrending.vercel.app/ask)** (the first question after a quiet spell
+waits 10–15 s for a cold start)
+
 [![License: MIT](https://img.shields.io/github/license/zexion7873/radar-rag?style=flat)](LICENSE)
 [![Java 25](https://img.shields.io/badge/Java-25-orange?style=flat)](#-prerequisites)
 [![Evals: gated in CI](https://img.shields.io/badge/evals-gated%20in%20CI-brightgreen?style=flat)](#-results)
@@ -447,13 +450,15 @@ text was a run of 20+ characters copied from a retrieved row, now 20.5%, at abou
 ~~P1 metadata-filtered search~~ (done) · ~~P2 RAG `/ask` with citations~~ (done) · ~~P3 eval
 harness (retrieval metrics + LLM-as-judge) + CI gates~~ (done) · ~~P4 Langfuse tracing~~ (done) · ~~P5 Blog ingest +
 an "Ask the radar" page~~ (done; it lives in [github-radar-ui](https://github.com/zexion7873/github-radar-ui), whose server still reads
-only Notion).
+only Notion) · ~~answers that synthesise instead of restating their citations~~ (done, M15) · ~~streamed
+answers~~ (done, M16) · ~~category and recency questions~~ (done, M17: golden_v3's precision@5 over every
+source 0.35 → 0.65).
 
 Next: broad questions. golden_v2's answerable hit@5 is 0.583 against golden_v1's 0.738 over every source, because a question
 like "are there chips made for AI now?" rarely ranks the one post that answers it; golden_v2 measures that
 gap.
 
-The target stack and the milestone order (M0–M15, each with a checkable done-when) are in
+The target stack and the milestone order (M0–M17, each with a checkable done-when) are in
 [docs/stack-plan.md](docs/stack-plan.md).
 
 ---
