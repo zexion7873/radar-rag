@@ -30,6 +30,9 @@ public class RowSearch {
     // pooled ranking gives it two thirds of the slots and pushes out the repos questions ask about.
     private static final List<String> SOURCES = List.of("trending", "blog");
 
+    // The longest question /search and /ask take; github-radar-ui's page lets a visitor type 500 characters.
+    public static final int MAX_QUESTION_LENGTH = 1000;
+
     // Added to a recent row's similarity when the question asks for recent ones: enough to lift a recent
     // row over most older ones, not enough to lift an off-topic one over the question's topic.
     static final double RECENCY_BONUS = 0.1;

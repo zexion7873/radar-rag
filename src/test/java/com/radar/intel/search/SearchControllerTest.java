@@ -62,6 +62,16 @@ class SearchControllerTest {
     }
 
     @Test
+    void aTopKPastFiftyOrAQuestionPastAThousandCharactersIsRejectedBeforeTheStore() throws Exception {
+        search(Map.of("q", "agents", "topK", 51), 400);
+        search(Map.of("q", "agents", "topK", 429496730), 400);
+        search(Map.of("q", "a".repeat(1001)), 400);
+        verifyNoInteractions(vectorStore);
+
+        search(Map.of("q", "a".repeat(1000), "topK", 50), 200);
+    }
+
+    @Test
     void aCleanFilterReachesTheStore() throws Exception {
         search(Map.of("q", "agents", "source", "trending", "week", "2026-09-21", "language", "Python"), 200);
         ArgumentCaptor<SearchRequest> sent = ArgumentCaptor.forClass(SearchRequest.class);

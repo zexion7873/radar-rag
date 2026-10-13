@@ -143,6 +143,10 @@ public class AskController {
         if (req.q() == null || req.q().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "q is required");
         }
+        if (req.q().length() > RowSearch.MAX_QUESTION_LENGTH) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "q must be at most " + RowSearch.MAX_QUESTION_LENGTH + " characters");
+        }
         turnstile.check(turnstileToken);
         // /search with topK 5 returns exactly these rows; the eval harness relies on that.
         return rowSearch.balanced(req.q(), 5, null, false);
