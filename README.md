@@ -9,9 +9,12 @@
 **Ask the GitHub Radar archive a question, in Chinese or English, and get an answer grounded
 in the weekly trending rows and the blog archive, with citations back to the rows it used.**
 
-[![License: MIT](https://img.shields.io/github/license/zexion7873/radar-rag?style=flat)](LICENSE)
+[![Live site](https://img.shields.io/badge/live-whyisthistrending.vercel.app%2Fask-black?style=flat)](https://whyisthistrending.vercel.app/ask)
 [![Java 25](https://img.shields.io/badge/Java-25-orange?style=flat)](#-prerequisites)
 [![Evals: gated in CI](https://img.shields.io/badge/evals-gated%20in%20CI-brightgreen?style=flat)](#-results)
+[![License: MIT](https://img.shields.io/github/license/zexion7873/radar-rag?style=flat)](LICENSE)
+
+<sub>The live page's first question after a quiet spell waits 10–15 s for a cold start.</sub>
 
 No embedding API. No vector database service. No PyTorch. One JVM, one pgvector table, and a Python
 harness that gates every pull request.
@@ -20,35 +23,18 @@ harness that gates every pull request.
 
 ---
 
-## 🧭 How it fits together
-
-```mermaid
-flowchart LR
-  notion[(Notion<br/>Trending + Blog)] -->|POST /sync| ingest[Ingest]
-  ingest -->|embed| onnx[OnnxEmbeddingModel<br/>multilingual, in-process]
-  onnx --> pg[(pgvector)]
-  user([caller]) -->|POST /search| pg
-  user -->|POST /ask| retrieve[Retrieve top 5]
-  retrieve --> pg
-  retrieve -->|rows as citable documents| claude[Claude Opus 5.5]
-  claude -->|answer + citations| user
-  evals[Python eval harness<br/>CI gates] -.->|HTTP, black box| user
-  claude -.->|OTLP traces| langfuse[(Langfuse)]
-```
-
----
-
 ## 🌐 What it gives you
 
 A standalone Java / Spring Boot service that adds LLM-powered intelligence on top of the
-[GitHub Radar](https://whyisthistrending.vercel.app) Notion archive written by the `ai-assistant` routines. **P0** stands up the
+[GitHub Radar](https://whyisthistrending.vercel.app) Notion archive that a set of Claude Code routines
+writes every week ([case study](https://github.com/zexion7873/github-radar-ui/blob/main/docs/case-study.md)). **P0** stands up the
 skeleton: pgvector, Notion ingestion of the **Trending** table, and a semantic `/search`
 endpoint. **P1** adds metadata-filtered search. **P2** adds a RAG `/ask` endpoint —
 grounded Q&A with citations. **P3** adds a Python eval harness with CI gates, and **P4** traces every
 request into Langfuse, and **P5** adds the Blog archive (see [docs/stack-plan.md](docs/stack-plan.md)).
 
 > Not a proxy in front of Notion — it exposes *new* capabilities (semantic search and
-> grounded Q&A) that the pure-reader [`github-radar-ui`](https://github.com/zexion7873/github-radar-ui) cannot do.
+> grounded Q&A) that the read-mostly [`github-radar-ui`](https://github.com/zexion7873/github-radar-ui) cannot do.
 
 - `POST /sync` — pull the Trending and Blog archives from Notion and replace each one's rows in
   pgvector: one document per Notion row (a repo's week, or a post), keyed by the Notion page id. Each
@@ -70,6 +56,24 @@ request into Langfuse, and **P5** adds the Blog archive (see [docs/stack-plan.md
 
 ---
 
+## 🧭 How it fits together
+
+```mermaid
+flowchart LR
+  notion[(Notion<br/>Trending + Blog)] -->|POST /sync| ingest[Ingest]
+  ingest -->|embed| onnx[OnnxEmbeddingModel<br/>multilingual, in-process]
+  onnx --> pg[(pgvector)]
+  user([caller]) -->|POST /search| pg
+  user -->|POST /ask| retrieve[Retrieve top 5]
+  retrieve --> pg
+  retrieve -->|rows as citable documents| claude[Claude Opus 5.5]
+  claude -->|answer + citations| user
+  evals[Python eval harness<br/>CI gates] -.->|HTTP, black box| user
+  claude -.->|OTLP traces| langfuse[(Langfuse)]
+```
+
+---
+
 ## 📋 Prerequisites
 
 - Java 25 or newer (CI builds on Temurin 25)
@@ -85,7 +89,14 @@ Every external service the code calls, runs on or builds from is listed in
 
 ---
 
-## 🏃 Run
+## 🏃 Run it yourself
+
+> [!NOTE]
+> A clone runs without access to the Notion archive. Start the service with
+> `NOTION_TOKEN=dummy NOTION_BASE_URL=http://127.0.0.1:8765`, and a retrieval eval (see Evals below)
+> syncs the frozen Trending and Blog fixtures from a local stub, as CI's retrieval gate does;
+> `/search` then answers over them, and `/ask` too with an Anthropic key. A real Notion token is
+> needed only to sync the live tables.
 
 ```bash
 # 0. Fetch the embedding model (once; re-runs skip files that already match)
@@ -159,7 +170,7 @@ so the eval gates measure the service unthrottled and at medium effort. It adds:
 - **`/ask` at low effort**, generic error bodies (no `message`), `INFO` logs, no Swagger UI or
   `/v3/api-docs`, and no fallback for `POSTGRES_PASSWORD`.
 
-### ☁️ Deploy
+### 🚀 Deploy
 
 A push to `main` that touches the service runs the Deploy workflow: it builds the image, pushes it to
 Artifact Registry and deploys it to Cloud Run in asia-east1 (2 GiB, at most one instance, the prod
@@ -172,7 +183,9 @@ routine writes the week's rows.
 
 **[Ask the radar](https://whyisthistrending.vercel.app/ask)** is the live page, on
 [github-radar-ui](https://github.com/zexion7873/github-radar-ui): a question in, an answer with its
-cited trending repos and blog posts out, each linking to its page on that site. Its browser code calls
+cited trending repos and blog posts out, each linking to its page on that site. Every row's `id` is its
+Notion page id, which the page links as `/trending/<id>` or `/blog/<id>`; any week's id of a repo
+resolves. Its browser code calls
 this service's `/ask` (CORS allows that one origin), and this service's root redirects there. The page
 requests `/config` as it loads, so a cold start of about 10 s mostly passes while the visitor types.
 Cloud Run's second-generation environment is pinned, because the first generation's sandbox tripled
@@ -205,15 +218,17 @@ the JVM that trained it.
 
 ---
 
-## 🧪 Test
+## 🛠️ Develop
 
 ```bash
-mvn -B verify   # unit + slice tests, then AskFlowIT; no tokens. CI runs the same on every PR.
+mvn -B verify   # unit and slice tests, then the integration tests; no tokens
 ```
 
-`AskFlowIT` starts a pgvector container through Testcontainers, so `verify` needs a running Docker.
-On macOS, Docker Desktop must expose its default socket, or set
-`DOCKER_HOST=unix://$HOME/.docker/run/docker.sock`.
+CI runs the same on every pull request (one that touches only `.md` files or `docs/` skips it), beside
+the eval jobs below. The integration tests start a pgvector container through Testcontainers, so
+`verify` needs a running Docker; on macOS, Docker Desktop must expose its default socket, or set
+`DOCKER_HOST=unix://$HOME/.docker/run/docker.sock`. [CONTRIBUTING.md](CONTRIBUTING.md) has the traps
+worth knowing first; [AGENTS.md](AGENTS.md) has the rest.
 
 ---
 
@@ -286,43 +301,6 @@ When the same keys are set for `radar-evals-llm`, the run mirrors the golden set
 dataset `golden_v1`, runs it as an experiment, passes `traceparent` to `/ask` so the service's spans
 nest under each item, and attaches the judge's scores and citation precision to each item. Such a
 run needs the full golden set: a subset run against the fuller dataset is refused.
-
----
-
-## 🗂️ Layout
-
-```
-src/main/java/com/radar/intel/
-├── RadarIntelligenceApplication.java   # boot + @ConfigurationPropertiesScan
-├── notion/
-│   ├── NotionProperties.java           # radar.notion.* config
-│   ├── NotionClient.java               # resolve data source + paginated query (mirrors lib/notion.ts)
-│   ├── NotionProps.java                # typed property extractors
-│   ├── TrendingRow.java
-│   └── BlogRow.java
-├── ingest/
-│   ├── IngestService.java              # Notion rows -> Documents; each source refreshed on its own
-│   └── IngestController.java           # POST /sync, behind a bearer secret when one is set
-├── embedding/
-│   ├── EmbeddingProperties.java        # radar.embedding.* config (model and tokenizer paths)
-│   ├── EmbeddingConfig.java            # the EmbeddingModel bean
-│   └── OnnxEmbeddingModel.java         # ONNX Runtime + DJL tokenizer, mean pooling in Java
-├── search/
-│   └── SearchController.java           # POST /search
-├── ask/
-│   ├── AskController.java              # POST /ask — retrieve, Claude with citation documents, cited rows
-│   ├── TurnstileVerifier.java          # siteverify check of the page's token; a no-op without a secret
-│   ├── PageConfigController.java       # GET /config — the site key; the page's warm-up request
-│   ├── AskCorsConfig.java              # CORS on POST /ask for github-radar-ui's origin only
-│   └── AskPageRedirect.java            # GET / — 301 to github-radar-ui's /ask
-├── ratelimit/
-│   └── RateLimitFilter.java            # prod only: per-client token buckets on /ask and /search
-├── tracing/
-│   ├── LangfuseProperties.java         # radar.langfuse.* config
-│   ├── LangfuseTracingConfig.java      # OTLP span exporter to Langfuse; a no-op without keys
-│   └── ChatContentObservationFilter.java  # prompt and answer onto the chat model span
-└── ApiErrorHandler.java                # upstream failures -> 502/503 with a generic body; causes logged
-```
 
 ---
 
@@ -412,8 +390,6 @@ text was a run of 20+ characters copied from a retrieved row, now 20.5%, at abou
   embed leaves that source's old rows in place. Ids are Notion page ids: trending has one row per
   repo per week, blog one per post. A blog post's week is its publication date, or its archive date
   when it has none.
-- **Spring AI moves fast.** Versions/artifact ids match the reference docs at scaffold time —
-  verify against `start.spring.io` / the current reference when you build.
 - **RAG is grounded, not filtered.** `/ask` retrieves exactly what `/search` with `topK` 5 and no
   `source` returns, one row per url, each source searched on its own and taken in turns, sends each row as an Anthropic citation document titled "repo week", with the
   repo's chart run (weeks charted, first and last) appended for the model only, and returns only
@@ -431,6 +407,9 @@ text was a run of 20+ characters copied from a retrieved row, now 20.5%, at abou
   per-client limit and the Anthropic workspace's monthly spend cap bound what that costs.
 - **Two sources.** Trending and Blog. The Loot ledgers stay out: the UI shows them only after a
   login, and this service and repository are public.
+- **Broad questions retrieve worse.** golden_v2's answerable hit@5 is 0.583 against golden_v1's 0.738
+  over every source: a question like "are there chips made for AI now?" rarely ranks the one post that
+  answers it.
 - **Small golden sets.** golden_v1 has 62 items and golden_v2 33. The owner wrote the zh-TW
   questions (the English twins are literal translations) and confirmed every label from candidate
   lists. The retrieval gates catch any flipped hit, but the LLM metrics move by up to ~0.03 between
@@ -442,22 +421,9 @@ text was a run of 20+ characters copied from a retrieved row, now 20.5%, at abou
 
 ---
 
-## 🗺️ Next
-
-~~P1 metadata-filtered search~~ (done) · ~~P2 RAG `/ask` with citations~~ (done) · ~~P3 eval
-harness (retrieval metrics + LLM-as-judge) + CI gates~~ (done) · ~~P4 Langfuse tracing~~ (done) · ~~P5 Blog ingest +
-an "Ask the radar" page~~ (done; it lives in [github-radar-ui](https://github.com/zexion7873/github-radar-ui), whose server still reads
-only Notion).
-
-Next: broad questions. golden_v2's answerable hit@5 is 0.583 against golden_v1's 0.738 over every source, because a question
-like "are there chips made for AI now?" rarely ranks the one post that answers it; golden_v2 measures that
-gap.
-
-The target stack and the milestone order (M0–M15, each with a checkable done-when) are in
-[docs/stack-plan.md](docs/stack-plan.md).
-
----
-
 ## ⚖️ License
 
 [MIT](LICENSE).
+
+Unofficial personal project. Not affiliated with, endorsed by, or sponsored by
+GitHub, Notion, Anthropic, Google Cloud or Cloudflare.
