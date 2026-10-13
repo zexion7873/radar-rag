@@ -45,6 +45,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.hamcrest.Matchers.startsWith;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
@@ -219,6 +220,16 @@ class AskFlowIT {
                 .andExpect(status().isForbidden());
 
         verify(turnstile).check("bad-token");
+        assertThat(ANTHROPIC.findAll(postRequestedFor(urlEqualTo("/v1/messages")))).isEmpty();
+    }
+
+    @Test
+    void aQuestionPastAThousandCharactersIs400AndNeverReachesTheBotCheckOrTheModel() throws Exception {
+        mvc.perform(post("/ask").contentType(MediaType.APPLICATION_JSON).header("X-Turnstile-Token", "t")
+                        .content("{\"q\":\"" + "a".repeat(1001) + "\"}"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(turnstile);
         assertThat(ANTHROPIC.findAll(postRequestedFor(urlEqualTo("/v1/messages")))).isEmpty();
     }
 

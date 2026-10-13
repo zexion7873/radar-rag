@@ -127,7 +127,8 @@ curl -N -X POST localhost:8080/ask \
 and a similarity `score`. `/ask` returns `{answer, citations, sources, usage}`. `sources` are the 5
 retrieved rows (`id` / `repo` / `url` / `week` / retrieval `score`); `citations` are the sources the
 answer cites, each with the passages it quoted (`citedText`); `usage` is the call's `model`,
-`inputTokens` and `outputTokens` (thinking included).
+`inputTokens` and `outputTokens` (thinking included). Both refuse a `q` over 1,000 characters, and
+`/search` a `topK` over 50, with a 400.
 
 A request whose `Accept` names `text/event-stream` gets the answer as Server-Sent Events, each `data` a
 JSON object: `sources` (the retrieved rows, before the model call), `delta` (`{text}`, as the model

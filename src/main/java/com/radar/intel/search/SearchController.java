@@ -29,6 +29,9 @@ public class SearchController {
     // quotes or backslashes, so we reject those at the boundary.
     private static final Pattern UNSAFE_FILTER = Pattern.compile("[\"'\\\\]");
 
+    // RowSearch reads k * 5 candidates per source: bounds that work, and keeps the product from overflowing.
+    private static final int MAX_TOP_K = 50;
+
     /** P1: the string filters are exact matches on ingest metadata; minStars is a lower bound (stars_per_week >= minStars). */
     public record SearchQuery(String q, Integer topK,
                               String source, String category, String language, String week,
@@ -55,6 +58,13 @@ public class SearchController {
     private static void validate(SearchQuery req) {
         if (!hasText(req.q())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "q is required");
+        }
+        if (req.q().length() > RowSearch.MAX_QUESTION_LENGTH) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "q must be at most " + RowSearch.MAX_QUESTION_LENGTH + " characters");
+        }
+        if (req.topK() != null && req.topK() > MAX_TOP_K) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "topK must be at most " + MAX_TOP_K);
         }
         rejectUnsafe("source", req.source());
         rejectUnsafe("category", req.category());
