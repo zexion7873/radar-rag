@@ -53,8 +53,7 @@ class SearchControllerTest {
                         .map(value -> Arguments.of(field, value)));
     }
 
-    // Spring AI 1.0.0's pgvector filter converter splices string values into SQL unescaped,
-    // so this 400 is the only thing between a filter value and the query.
+    // A second layer over Spring AI's own escaping: a value no ingested row holds never reaches the store.
     @ParameterizedTest(name = "{0}={1}")
     @MethodSource("unsafeFilters")
     void quoteOrBackslashInAFilterIsRejectedBeforeTheStore(String field, String value) throws Exception {

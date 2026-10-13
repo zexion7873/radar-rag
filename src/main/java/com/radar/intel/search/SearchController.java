@@ -23,13 +23,11 @@ public class SearchController {
         this.rowSearch = rowSearch;
     }
 
-    // Spring AI 1.0.0's PgVector filter converter interpolates string filter values into the
-    // jsonpath SQL literal WITHOUT escaping, so a quote in a value breaks out of the SQL string
-    // (injection / 500). These filters are enum-like metadata that never legitimately contains
-    // quotes or backslashes, so we reject those at the boundary.
+    // Spring AI 2.0.1 escapes filter values into its SQL literal; without this, a converter regression
+    // would reach SQL from a public endpoint. No ingested metadata value holds these characters.
     private static final Pattern UNSAFE_FILTER = Pattern.compile("[\"'\\\\]");
 
-    /** P1: the string filters are exact matches on ingest metadata; minStars is a lower bound (stars_per_week >= minStars). */
+    /** The string filters are exact matches on ingest metadata; minStars is a lower bound (stars_per_week >= minStars). */
     public record SearchQuery(String q, Integer topK,
                               String source, String category, String language, String week,
                               Double minStars) {

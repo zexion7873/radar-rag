@@ -107,7 +107,7 @@ public class IngestService {
 
     /**
      * Maps one Trending row to its embedded Document, keyed by the Notion page id: the table holds one
-     * row per repo per week, so a url-derived id let a repo's weeks overwrite each other.
+     * row per repo per week, so a url-derived id would let a repo's weeks overwrite each other.
      *
      * @return the Document, or null when the row has no embeddable text.
      */

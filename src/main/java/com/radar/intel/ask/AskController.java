@@ -37,7 +37,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
- * P2: grounded Q&A over the radar archive. Retrieve relevant rows from pgvector, send them to Claude
+ * Grounded Q&A over the radar archive. Retrieve relevant rows from pgvector, send them to Claude
  * as citation documents, and return the rows Claude cites along with the text it cited.
  */
 @RestController
@@ -112,9 +112,8 @@ public class AskController {
         ChatResponse resp = prompt(req, docs).call().chatResponse();
 
         List<Generation> generations = resp.getResults();
-        // A refusal comes back as HTTP 200 with no text; without this it reads as an empty answer.
-        // Spring AI 2.0.1 turns a response with empty content into no Generation at all, so a refusal
-        // that stops before any text has no finish reason to read.
+        // A refusal is an HTTP 200: before any text Spring AI 2.0.1 returns no Generation, after some a
+        // "refusal" finish reason. Without this check both read as an empty or partial answer.
         if (generations.isEmpty()
                 || generations.stream().anyMatch(g -> "refusal".equals(g.getMetadata().getFinishReason()))) {
             throw declined();
@@ -218,9 +217,8 @@ public class AskController {
         Map<String, Object> md = d.getMetadata();
         Object name = md.containsKey("repo") ? md.get("repo") : md.get("title");
         AnthropicCitationDocument.Builder doc = AnthropicCitationDocument.builder().customContent(sentences(d.getText()));
-        // Search keeps one week per repo, so the run it belongs to rides along in `context`, which the
-        // model reads but never cites; in the text it would surface as a cited passage. A trending row's
-        // category goes there too, or a question naming one reads as if the radar had none.
+        // In `context`, which the model reads but never cites: in the text the chart run would surface as a
+        // cited passage, and without the category a question naming one reads as if the radar had none.
         if (md.get("weeks_on_chart") instanceof Number weeks) {
             String category = md.get("category") instanceof String c ? "Category: " + c + ". " : "";
             doc.context(category + "Charted in " + weeks + " week(s): first " + md.get("first_week")
@@ -232,20 +230,15 @@ public class AskController {
                 .build();
     }
 
-    // The API chunks plain text into sentences but does not split on a full-width "。", so a Chinese row
-    // went out as one chunk and every citation of it returned the whole row. One block per sentence
-    // lets a citation return only the sentence it rests on.
+    // The API splits plain text into sentences but not on a full-width "。": without one block per sentence,
+    // every citation of a Chinese row returns the whole row.
     private static final Pattern SENTENCE_END = Pattern.compile("(?<=[。！？!?])|\\n+");
 
     static String[] sentences(String text) {
         return SENTENCE_END.splitAsStream(text).map(String::strip).filter(s -> !s.isEmpty()).toArray(String[]::new);
     }
 
-    /**
-     * Joins the text blocks. Spring AI turns each thinking block into its own Generation, marked by a
-     * "signature" (or, redacted, "data") metadata key; Opus 5.5 always thinks, so the first Generation
-     * is usually a thinking block with empty text.
-     */
+    /** Joins the text blocks; Spring AI makes each thinking block a Generation keyed "signature" (redacted: "data"). */
     private static String answerText(List<Generation> generations) {
         return generations.stream()
                 .map(Generation::getOutput)
