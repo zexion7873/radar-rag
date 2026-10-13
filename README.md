@@ -218,15 +218,17 @@ the JVM that trained it.
 
 ---
 
-## 🧪 Test
+## 🛠️ Develop
 
 ```bash
-mvn -B verify   # unit + slice tests, then AskFlowIT; no tokens. CI runs the same on every PR.
+mvn -B verify   # unit and slice tests, then the integration tests; no tokens
 ```
 
-`AskFlowIT` starts a pgvector container through Testcontainers, so `verify` needs a running Docker.
-On macOS, Docker Desktop must expose its default socket, or set
-`DOCKER_HOST=unix://$HOME/.docker/run/docker.sock`.
+CI runs the same on every pull request (one that touches only `.md` files or `docs/` skips it), beside
+the eval jobs below. The integration tests start a pgvector container through Testcontainers, so
+`verify` needs a running Docker; on macOS, Docker Desktop must expose its default socket, or set
+`DOCKER_HOST=unix://$HOME/.docker/run/docker.sock`. [CONTRIBUTING.md](CONTRIBUTING.md) has the traps
+worth knowing first; [AGENTS.md](AGENTS.md) has the rest.
 
 ---
 
@@ -299,43 +301,6 @@ When the same keys are set for `radar-evals-llm`, the run mirrors the golden set
 dataset `golden_v1`, runs it as an experiment, passes `traceparent` to `/ask` so the service's spans
 nest under each item, and attaches the judge's scores and citation precision to each item. Such a
 run needs the full golden set: a subset run against the fuller dataset is refused.
-
----
-
-## 🗂️ Layout
-
-```
-src/main/java/com/radar/intel/
-├── RadarIntelligenceApplication.java   # boot + @ConfigurationPropertiesScan
-├── notion/
-│   ├── NotionProperties.java           # radar.notion.* config
-│   ├── NotionClient.java               # resolve data source + paginated query (mirrors lib/notion.ts)
-│   ├── NotionProps.java                # typed property extractors
-│   ├── TrendingRow.java
-│   └── BlogRow.java
-├── ingest/
-│   ├── IngestService.java              # Notion rows -> Documents; each source refreshed on its own
-│   └── IngestController.java           # POST /sync, behind a bearer secret when one is set
-├── embedding/
-│   ├── EmbeddingProperties.java        # radar.embedding.* config (model and tokenizer paths)
-│   ├── EmbeddingConfig.java            # the EmbeddingModel bean
-│   └── OnnxEmbeddingModel.java         # ONNX Runtime + DJL tokenizer, mean pooling in Java
-├── search/
-│   └── SearchController.java           # POST /search
-├── ask/
-│   ├── AskController.java              # POST /ask — retrieve, Claude with citation documents, cited rows
-│   ├── TurnstileVerifier.java          # siteverify check of the page's token; a no-op without a secret
-│   ├── PageConfigController.java       # GET /config — the site key; the page's warm-up request
-│   ├── AskCorsConfig.java              # CORS on POST /ask for github-radar-ui's origin only
-│   └── AskPageRedirect.java            # GET / — 301 to github-radar-ui's /ask
-├── ratelimit/
-│   └── RateLimitFilter.java            # prod only: per-client token buckets on /ask and /search
-├── tracing/
-│   ├── LangfuseProperties.java         # radar.langfuse.* config
-│   ├── LangfuseTracingConfig.java      # OTLP span exporter to Langfuse; a no-op without keys
-│   └── ChatContentObservationFilter.java  # prompt and answer onto the chat model span
-└── ApiErrorHandler.java                # upstream failures -> 502/503 with a generic body; causes logged
-```
 
 ---
 
@@ -425,8 +390,6 @@ text was a run of 20+ characters copied from a retrieved row, now 20.5%, at abou
   embed leaves that source's old rows in place. Ids are Notion page ids: trending has one row per
   repo per week, blog one per post. A blog post's week is its publication date, or its archive date
   when it has none.
-- **Spring AI moves fast.** Versions/artifact ids match the reference docs at scaffold time —
-  verify against `start.spring.io` / the current reference when you build.
 - **RAG is grounded, not filtered.** `/ask` retrieves exactly what `/search` with `topK` 5 and no
   `source` returns, one row per url, each source searched on its own and taken in turns, sends each row as an Anthropic citation document titled "repo week", with the
   repo's chart run (weeks charted, first and last) appended for the model only, and returns only
