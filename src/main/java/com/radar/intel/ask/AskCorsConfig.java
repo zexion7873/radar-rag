@@ -18,8 +18,8 @@ import java.util.List;
 @Configuration
 class AskCorsConfig {
 
-    // A filter, not MVC's CORS mapping, and ahead of RateLimitFilter (unordered, so last): MVC's CORS runs
-    // after every filter, so a 429 lost the allow-origin header and the page saw a network failure.
+    // A filter ahead of RateLimitFilter (unordered, so last), not MVC's CORS mapping, which runs after every
+    // filter: without it a 429 carries no allow-origin header and the page sees a network failure.
     @Bean
     FilterRegistrationBean<CorsFilter> askCorsFilter(@Value("${radar.ask.allowed-origins}") String[] allowedOrigins) {
         CorsConfiguration cors = new CorsConfiguration().applyPermitDefaultValues();
