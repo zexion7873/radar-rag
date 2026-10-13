@@ -41,6 +41,9 @@ Worth knowing before you decide whether something is in scope.
   limit. The Turnstile token and the rate limit apply as to any other caller.
 - **Validates filters.** `/search` rejects filter values that could break out of the vector store's
   filter expression before building it.
+- **Bounds each request.** `/search` and `/ask` refuse a question over 1,000 characters, and `/search` a
+  `topK` over 50, so one request can neither read an unbounded number of rows nor send an unbounded
+  question to the model.
 - **Downloads nothing at runtime.** The image carries the model and every native library, pinned and
   checked at build time.
 - **Automation.** The repository's `@claude` workflow runs only for comments, reviews and issues written
