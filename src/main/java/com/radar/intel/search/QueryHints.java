@@ -1,11 +1,13 @@
 package com.radar.intel.search;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
- * What a question asks for beyond its topic: a trending category it names as a category, and recency.
+ * What a question asks for beyond its topic: the one trending category it names as a category and does
+ * not exclude, and recency.
  * A category word counts only beside a word that makes it one ("apps 類", "agent類型", "infra
  * category"): golden_v1 says "agent" or "tools" in 22 questions that ask about a topic, not a category.
  */
@@ -35,14 +37,21 @@ record QueryHints(String category, boolean recent) {
                 Pattern.CASE_INSENSITIVE)));
     }
 
+    // A question that excludes a category or names two would lose the rows it wants under one category's filter.
+    private static final Pattern EXCLUSION = Pattern.compile(
+            "不要|不想|不含|不包括|除了|排除|以外|之外"
+                    + "|\\bnot\\b|n't\\b|\\bexcept\\b|\\bexclud(?:e|es|ing)\\b|\\bwithout\\b|\\bother than\\b|\\bbesides\\b",
+            Pattern.CASE_INSENSITIVE);
+
     private static final Pattern RECENT = Pattern.compile(
             "最近|近期|最新|\\brecent(?:ly)?\\b|\\blatest\\b|\\blately\\b", Pattern.CASE_INSENSITIVE);
 
     static QueryHints of(String q) {
-        String category = CATEGORY_PATTERNS.entrySet().stream()
+        List<String> named = CATEGORY_PATTERNS.entrySet().stream()
                 .filter(e -> e.getValue().matcher(q).find())
                 .map(Map.Entry::getKey)
-                .findFirst().orElse(null);
+                .toList();
+        String category = named.size() == 1 && !EXCLUSION.matcher(q).find() ? named.getFirst() : null;
         return new QueryHints(category, RECENT.matcher(q).find());
     }
 }

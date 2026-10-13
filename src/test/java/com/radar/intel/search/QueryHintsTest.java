@@ -23,6 +23,20 @@ class QueryHintsTest {
         assertThat(QueryHints.of(q)).isEqualTo(new QueryHints(category, recent));
     }
 
+    // A single-category filter would return the rows the question excludes, or one of the two it compares.
+    @ParameterizedTest(name = "{0}")
+    @CsvSource(delimiter = '|', textBlock = """
+            不要 agents 類，其他都可以
+            除了 apps 類以外還有什麼？
+            Which repos are not in the agents category?
+            Anything except the tools category?
+            比較 apps 類和 models 類的 repo
+            Compare the apps category with the models category.
+            """)
+    void anExcludedOrSecondCategoryIsNoFilter(String q) {
+        assertThat(QueryHints.of(q).category()).isNull();
+    }
+
     // golden_v1 asks about topics with these words; reading them as categories would filter its answers away.
     @ParameterizedTest(name = "{0}")
     @CsvSource(delimiter = '|', textBlock = """
