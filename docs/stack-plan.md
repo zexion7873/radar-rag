@@ -362,7 +362,7 @@ Done when:
 - The retrieval gate passes unchanged, since the harness reads the JSON path.
 
 ### M17: Category and recency questions (RAG, size set after the measurement below)
-**Status: built and gated, live on merge (2026-10-12).** radar-rag PR #66. Reported by the owner on the live `/ask`: "最近 apps 類有哪些值得看的 repo？" answered that the radar has no "apps" category and cited June rows. The cause is in three places. A trending row's embedded text is its repo, description and comment; `category` and `week` are metadata only. `/ask` retrieves with no metadata filter, while `/search` already takes a `category` filter. The citation document names the repo and week, never the category, so the model's answer is true of what it sees. "最近" has the same gap: retrieval keeps each repo's best-scoring week, not its latest. github-radar-ui took that question off the page's examples.
+**Status: done (2026-10-12).** radar-rag PR #66, merged and deployed the same day (Deploy run 38265453896, smoke test green); PR #67 (deployed 2026-10-13) added the rule that a question excluding a category or naming two gets no category filter. Reported by the owner on the live `/ask`: "最近 apps 類有哪些值得看的 repo？" answered that the radar has no "apps" category and cited June rows. The cause is in three places. A trending row's embedded text is its repo, description and comment; `category` and `week` are metadata only. `/ask` retrieves with no metadata filter, while `/search` already takes a `category` filter. The citation document names the repo and week, never the category, so the model's answer is true of what it sees. "最近" has the same gap: retrieval keeps each repo's best-scoring week, not its latest. github-radar-ui took that question off the page's examples.
 
 golden_v3 (2026-10-12): 4 zh-TW items, three written by the owner for three situations (a category, a category with recency, recency alone) plus the reported question; no English twins, since this set measures category and recency, not language. Labels come from the trending fixture by rule, decided with the owner: every row of the named category is relevant, and "最近" means the latest four chart weeks (2026-08-31 to 2026-09-21), graded 2 there and 1 for older rows of the same category; the recency-only item labels the latest four weeks alone. "紅的" and "值得看" are not labelled. One question says "tools" for the `tooling` category, so a category detector needs synonyms, not exact names.
 
@@ -458,18 +458,20 @@ Done when (thresholds set by the owner after the measurement; the proposed P@5 0
 
 ## 5. Open decisions
 
-| # | Decision | Recommendation | Alternatives | Needed by |
-|---|---|---|---|---|
-| 1 | Monthly spend limit for the dedicated `radar-eval` Anthropic workspace | **$40/month while M5-M7 run, then $15.** M5 needs 2 runs, M6 and M7 at least 1 each, at $4.5-8.5 per run (estimate, from [pricing](https://platform.claude.com/docs/en/about-claude/pricing)), plus dev calls. | $15 flat: fewer reruns, and the M5 noise band might wait a month. $60: more headroom. The demo workspace budget, decided at M10: $10/month. | M1 (you create the key) |
-| 2 | How the golden set gets written | **You write all 60 questions and confirm every label. Claude first lists candidate (url, week) rows for each question from the fixture, and you accept, reject or add.** About 2 h instead of 3-4 h, and the questions never copy row wording. The catch: a relevant row missing from the candidate list may go unlabelled. | Fully by hand: 3-4 h, the strongest line in an interview. Claude drafting the questions is rejected (the Synthesizer problem). | M2 (done: you wrote every zh-TW question from a plain-language scenario per repo and confirmed every label; the English twins are Claude's literal translations, because you read English only as technical terms) |
-| 3 | When radar-rag goes public, and whether to keep the personal Gmail in the 11 existing commits | **Flip after M4 (the A/B table is the README headline). Keep the existing commit metadata, and set future commits to your GitHub noreply address.** Before the flip: gitleaks and the stripped fixture. Flip github-radar-ui and ai-assistant at the same time only after they pass the same scan; otherwise remove the README cross-links. | Rewrite the history. That needs a force-push to main, done by hand. Or stay private until M10. | after M4 (M5 no longer depends on it) |
+None open (2026-10-15). The three decisions put to you, and the five recommended outright, were all settled by the milestones above:
+
+| # | Decision | Outcome | Where decided |
+|---|---|---|---|
+| 1 | Monthly spend limit for the dedicated `radar-eval` Anthropic workspace | You created `radar-eval` with an $80 monthly limit and put its key in the local `.env`, above the recommended $40/month while M5-M7 ran, then $15. LLM runs measured $2.5-4.2 each (M5-M17), against the $4.5-8.5 estimate that recommendation was sized on. The demo's `radar-demo` workspace: $10/month. | M1 (workspace), M5 (measured run cost), M10 (`radar-demo`) |
+| 2 | How the golden set gets written | You wrote every zh-TW question from a plain-language scenario per repo and confirmed every label from Claude's candidate rows; the English twins are Claude's literal translations, because you read English only as technical terms. golden_v2 followed the same split; golden_v3's labels come from a rule you set with Claude. | M2; golden_v2 in M11, golden_v3 in M17 |
+| 3 | When radar-rag goes public, and whether to keep the personal Gmail in the existing commits | Flipped after M4, on 2026-10-10, following PR #31's audit (gitleaks across all refs, 65 commits, no leaks; no `.env` ever committed; the fixture holds public repo data only). History was not rewritten. github-radar-ui is public too; ai-assistant stays private, and neither README links to it. Not followed: commits still carry the personal Gmail rather than the noreply address. | radar-rag PR #31; M10 and M11 rely on the public repo |
 
 Recommended outright (not put to you):
-- The harness lives in `evals/` inside radar-rag. D6 covers the three existing repos, and a fourth repo would need cross-repo triggers for the gate.
-- Set max-tokens to 16000. It is a ceiling; effort and the workspace limit control what is actually spent.
+- The harness lives in `evals/` inside radar-rag, since D6 covers the three existing repos and a fourth repo would need cross-repo triggers for the gate. Done in M2.
+- max-tokens 16000, a ceiling; effort and the workspace limit control what is actually spent. Done in M1, kept through M6's flattened `spring.ai.anthropic.chat.*` keys.
 - Collapsing multiple weeks of one repo: deferred through M4 on the reasoning that it would not add a hit at k=5, which held only for the repos already in the top 5; dropping a repeat lets a new repo in. Done in M12 for /search and /ask alike, so D1's equivalence holds.
-- Langfuse region: JP, the nearest to Taiwan, if Hobby is offered there; otherwise EU. Retention is 30 days, so a later switch is cheap.
-- Deploy target: Cloud Run, unless a count of the Taiwan postings you already read shows Azure or AWS clearly ahead. The image is portable, so only the deploy job would change.
+- Langfuse region: JP. Done in M8 (Hobby was offered there).
+- Deploy target: Cloud Run. Done in M10 (asia-east1, with Neon in Singapore).
 
 ## 6. Risks and unknowns
 
