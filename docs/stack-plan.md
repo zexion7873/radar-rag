@@ -413,7 +413,7 @@ Done when (thresholds set by the owner after the measurement; the proposed P@5 0
 - If (a) ships, the LLM gate stays within the four-run band.
 
 ### M18: Broad questions find their posts (RAG, ~1 day)
-**Status: built; gated on CI once golden_v2's baseline is rewritten from the CI artifact (2026-10-15).** golden_v2's answerable hit@5 was 0.583 against golden_v1's 0.857, and the README named its ranking as the next step. Of its 10 answerable misses, 2 were the turns (blog's labelled post at blog rank 4 while blog held 2 of the 5 slots) and 8 the embedding: "現在有針對AI做的晶片嗎？" put OpenAI's inference-chip post 31st among blog rows, and "AI chips" put it outside the top 50. A blog row is a title, a Chinese brief and a comment; 368 of the 645 are longer than the 128 tokens the model reads, and the mean over the rest blurs the one word ("晶片", "本機", "家電") a broad question turns on, while "AI" and "文章" match every post.
+**Status: built and gated, live on merge (2026-10-15).** radar-rag PR #72. golden_v2's answerable hit@5 was 0.583 against golden_v1's 0.857, and the README named its ranking as the next step. Of its 10 answerable misses, 2 were the turns (blog's labelled post at blog rank 4 while blog held 2 of the 5 slots) and 8 the embedding: "現在有針對AI做的晶片嗎？" put OpenAI's inference-chip post 31st among blog rows, and "AI chips" put it outside the top 50. A blog row is a title, a Chinese brief and a comment; 368 of the 645 are longer than the 128 tokens the model reads, and the mean over the rest blurs the one word ("晶片", "本機", "家電") a broad question turns on, while "AI" and "文章" match every post.
 
 Measured with a Python copy of `balanced` over the dumped vectors, which reproduced all three committed baselines item for item before any change. Tried and dropped: RRF of the dense and keyword lists (golden_v1 lost items in both source modes), the keyword score on trending too (+3 on trending-only golden_v1, but three golden_v1 items lost over every source), an idf-weighted share of the question's terms (smaller gain), and letting blog lead when the question says 文章 / article (no hit changes: the missed post sat at blog rank 4).
 
@@ -429,6 +429,8 @@ Local run (x86, the committed baselines reproduced exactly first):
 | golden_v3 mean P@5 / nDCG@5 | 0.650 / 0.577 | 0.650 / 0.577 |
 
 Gained: v2q02 and v2q10 in both languages (chips; local versus cloud), and adversarial v2a2 and v2a3. Lost: adversarial v2a1, whose GLM-5.3 post drops from blog rank 3 to 5 behind two posts that also name GLM-5.3 and open weights; a bonus of 0.05 already flips it, so no weight keeps it. Accepted by the owner, so golden_v2's baseline is rewritten from CI. Still missed: surveys (問卷 against a post about simulating people), smart home appliances, and English questions whose post is described only in Chinese. The stop words and the 0.2 were chosen while reading golden_v2, so its gain is optimistic; any weight from 0.15 to 0.25 gives 0.750-0.792. /search's median latency rose by about 15-30 ms (one more vector query, the digest and the scoring).
+
+On CI's runner (run 38786240277): the local numbers exactly, all three retrieval gates passed, and golden_v3 kept mean P@5 0.650 and nDCG@5 0.577. The baseline committed for golden_v2 came from the local run, since the CI artifact's storage host was unreachable from the authoring session; the runner's printed table matched it on every group and metric.
 
 Done when:
 - golden_v2's answerable hit@5 on CI's runner is at least 0.750, against a baseline rewritten from that run's artifact.
