@@ -37,12 +37,21 @@ public class RowSearch {
     // row over most older ones, not enough to lift an off-topic one over the question's topic.
     static final double RECENCY_BONUS = 0.1;
 
+    // Added to a blog row's similarity in proportion to its keyword (BM25) score over the question's best:
+    // a post naming the question's rare words climbs past posts that only share its broad AI vocabulary.
+    // Trending rows are a repo name and two sentences, where the embedding already finds the topic.
+    static final double KEYWORD_BONUS = 0.2;
+
+    private static final String KEYWORD_SOURCE = "blog";
+
     private final VectorStore vectorStore;
     private final RecentWeeks recentWeeks;
+    private final KeywordIndex keywordIndex;
 
-    public RowSearch(VectorStore vectorStore, RecentWeeks recentWeeks) {
+    public RowSearch(VectorStore vectorStore, RecentWeeks recentWeeks, KeywordIndex keywordIndex) {
         this.vectorStore = vectorStore;
         this.recentWeeks = recentWeeks;
+        this.keywordIndex = keywordIndex;
     }
 
     /**
@@ -50,7 +59,7 @@ public class RowSearch {
      * a source that runs out leaves the rest to the other. filter null = no restriction beyond source.
      * A category the question names becomes a filter unless the caller gave one (categoryGiven); blog
      * rows carry other categories, so trending then fills every slot. A question asking for recent rows
-     * ranks each source's last 28 days higher.
+     * ranks each source's last 28 days higher. Blog rows that share the question's rarer words rank higher.
      */
     public List<Document> balanced(String q, int k, Filter.Expression filter, boolean categoryGiven) {
         QueryHints hints = QueryHints.of(q);
@@ -60,7 +69,10 @@ public class RowSearch {
         List<List<Document>> perSource = new ArrayList<>();
         for (String source : SOURCES) {
             Filter.Expression only = and(narrowed, b.eq("source", source).build());
-            perSource.add(hints.recent() ? search(q, k, only, recentWeeks.of(source)) : search(q, k, only));
+            List<String> weeks = hints.recent() ? recentWeeks.of(source) : List.of();
+            KeywordIndex.Match keywords = source.equals(KEYWORD_SOURCE)
+                    ? keywordIndex.match(source, q, k * CANDIDATES_PER_SLOT) : KeywordIndex.Match.NONE;
+            perSource.add(search(q, k, only, weeks, keywords));
         }
         // By the best similarity, not the first row: under a recency boost the first row is the best recent
         // one, and recency would then decide which source leads.
@@ -89,18 +101,28 @@ public class RowSearch {
 
     /**
      * Also searches the recent weeks alone, so recent rows compete even when older ones fill the first
-     * candidates, then ranks by similarity plus RECENCY_BONUS on recent rows. Each url keeps its best row
-     * by that rank, so a repo that charted recently comes back at its recent week.
+     * candidates, and the keyword match's best rows, so a post the embedding ranks far down still competes.
+     * Then ranks by similarity plus RECENCY_BONUS on recent rows plus KEYWORD_BONUS scaled by the row's
+     * keyword score. Each url keeps its best row by that rank, so a repo that charted recently comes back at
+     * its recent week. Each row's score stays its plain similarity.
      */
-    private List<Document> search(String q, int k, Filter.Expression filter, List<String> weeks) {
-        if (weeks.isEmpty()) {
+    private List<Document> search(String q, int k, Filter.Expression filter, List<String> weeks,
+                                  KeywordIndex.Match keywords) {
+        if (weeks.isEmpty() && keywords.score().isEmpty()) {
             return search(q, k, filter);
         }
+        FilterExpressionBuilder b = new FilterExpressionBuilder();
         List<Document> pool = new ArrayList<>(candidates(q, k, filter));
-        pool.addAll(candidates(q, k, and(filter,
-                new FilterExpressionBuilder().in("week", new ArrayList<Object>(weeks)).build())));
+        if (!weeks.isEmpty()) {
+            pool.addAll(candidates(q, k, and(filter, b.in("week", new ArrayList<Object>(weeks)).build())));
+        }
+        if (!keywords.urls().isEmpty()) {
+            pool.addAll(candidates(q, k, and(filter, b.in("url", keywords.urls()).build())));
+        }
         pool.sort(Comparator.comparingDouble((Document d) -> d.getScore()
-                + (weeks.contains(String.valueOf(d.getMetadata().get("week"))) ? RECENCY_BONUS : 0)).reversed());
+                + (weeks.contains(String.valueOf(d.getMetadata().get("week"))) ? RECENCY_BONUS : 0)
+                + (keywords.max() > 0 ? KEYWORD_BONUS * keywords.score().getOrDefault(d.getId(), 0.0) / keywords.max() : 0))
+                .reversed());
         return bestPerUrl(pool, k);
     }
 

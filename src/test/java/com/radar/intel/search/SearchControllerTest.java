@@ -1,6 +1,7 @@
 package com.radar.intel.search;
 
 import tools.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -24,6 +25,8 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -46,6 +49,14 @@ class SearchControllerTest {
 
     @MockitoBean
     private RecentWeeks recentWeeks;
+
+    @MockitoBean
+    private KeywordIndex keywordIndex;
+
+    @BeforeEach
+    void noKeywordMatches() {
+        when(keywordIndex.match(anyString(), anyString(), anyInt())).thenReturn(KeywordIndex.Match.NONE);
+    }
 
     static Stream<Arguments> unsafeFilters() {
         return Stream.of("source", "category", "language", "week")
@@ -185,6 +196,33 @@ class SearchControllerTest {
                         .content(JSON.writeValueAsString(Map.of("q", "最近有哪些？", "topK", 4))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].id").value(contains("t-new", "b-new", "t-old", "b-old")));
+    }
+
+    @Test
+    void aBlogPostNamingTheQuestionsRareWordClimbsPastOnesSharingOnlyItsTheme() throws Exception {
+        when(keywordIndex.match("blog", "AI 晶片的文章？", 15)).thenReturn(new KeywordIndex.Match(
+                Map.of("b-chip", 8.0, "b-theme", 1.0), 8.0, List.of("https://x.test/chip")));
+        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenAnswer(inv -> {
+            String filter = String.valueOf(inv.getArgument(0, SearchRequest.class).getFilterExpression());
+            if (filter.contains("trending")) {
+                return List.of(hit("t1", "https://github.com/a/one", 0.60));
+            }
+            // The embedding ranks the chip post below the first candidates; only the keyword search finds it.
+            return filter.contains("x.test/chip") ? List.of(hit("b-chip", "https://x.test/chip", 0.50))
+                    : List.of(hit("b-theme", "https://x.test/theme", 0.62), hit("b-other", "https://x.test/other", 0.61));
+        });
+        mvc.perform(post("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(JSON.writeValueAsString(Map.of("q", "AI 晶片的文章？", "topK", 3))))
+                .andExpect(status().isOk())
+                // 0.50 + 0.2 > 0.62 + 0.2 / 8; blog leads on its most similar row (0.62 > 0.60), scores stay plain.
+                .andExpect(jsonPath("$[*].id").value(contains("b-chip", "t1", "b-theme")))
+                .andExpect(jsonPath("$[0].score").value(0.50));
+        ArgumentCaptor<SearchRequest> sent = ArgumentCaptor.forClass(SearchRequest.class);
+        verify(vectorStore, times(3)).similaritySearch(sent.capture());
+        FilterExpressionBuilder b = new FilterExpressionBuilder();
+        assertThat(sent.getAllValues().get(2).getFilterExpression()).isEqualTo(
+                b.and(b.eq("source", "blog"), b.in("url", "https://x.test/chip")).build());
     }
 
     private static Document week(String id, String url, double score, String week) {
