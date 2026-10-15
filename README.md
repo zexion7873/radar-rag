@@ -45,8 +45,9 @@ request into Langfuse, and **P5** adds the Blog archive (see [docs/stack-plan.md
   url comes back once, at its best-scoring row: a repo that charted for several weeks fills one
   slot, not several. Without a `source` it searches both sources in turns, as `/ask` does, and reads
   the question: a trending category named as one ("apps 類", "infra category") filters to it unless
-  the request sets `category`, and "最近" / "latest" ranks each source's last 28 days higher (the
-  returned `score` stays the plain similarity).
+  the request sets `category`, "最近" / "latest" ranks each source's last 28 days higher, and blog
+  posts that share the question's rarer words ("晶片", "chips") rank higher (the returned `score`
+  stays the plain similarity).
 - `POST /ask` — ask a question in natural language; the service retrieves the relevant radar
   rows from pgvector, sends them to **Claude** as citable documents, and returns the answer plus
   the rows it actually cites as **citations**. Needs `ANTHROPIC_API_KEY`; `/sync` and `/search` do not. Runs on
@@ -347,6 +348,15 @@ on its own and the rows taken in turns: golden_v1 over every source 0.619 → 0.
 0.583 → 0.583 (one hit swapped), golden_v2 R@5 0.288 → 0.245, since questions labelled with several
 posts get fewer blog slots. Chosen by a rule fixed before the runs, over two fixed quotas and a two-per-
 source floor.
+
+**Keywords for broad questions** (golden_v2, every source): the embedding reads 128 tokens of a blog
+row, and 368 of 645 are longer; the mean blurs the one word a broad question turns on, so "are there
+chips made for AI now?" put the chip post 31st among blog rows. Blog rows now gain up to 0.2 similarity
+by their BM25 score against the question, and the keyword match's best rows join the candidates.
+Measured locally against the committed baselines: golden_v2 answerable hit@5 0.583 → 0.750, R@5 0.245 →
+0.358, MRR 0.439 → 0.507; golden_v1 unchanged in both source modes; one adversarial item lost (v2a1, its
+post now behind two others naming the same model). The weight was chosen on golden_v2, so the gain is
+optimistic ([M18](docs/stack-plan.md)).
 
 **Answer quality** (`/ask` on `claude-opus-5-5` with native citations, judged by
 `claude-sonnet-5-5` through DeepEval; two runs on one commit, all 62 golden_v1 items, measured before
