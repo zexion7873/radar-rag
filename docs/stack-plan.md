@@ -477,11 +477,11 @@ Recommended outright (not put to you):
 
 - **Can 1.0.0 parse an Opus 5.5 response?** Yes: M1's live call parsed a thinking-plus-text response (2026-10-09).
 - **Tokenizer loading:** resolved in M4: DJL loads the XLM-R-family `tokenizer.json` of both multilingual arms.
-- **Deploy sizing:** the shipped paraphrase model (~470 MB fp32) likely needs 2 GiB on Cloud Run, which halves the free GiB-seconds. Images of ~1 GB exceed Artifact Registry's 0.5 GB free tier; the cost is small but unverified.
-- **Cost estimates:** measured at M5: an LLM-gate run costs about $2.5 and the dearest /ask answer was $0.017 on the golden set (the $0.33 worst case assumed a full 16K-token output). Langfuse units per run (~900) are still an estimate; replace them after M8.
-- **Cold starts:** a Cloud Run JVM (3-10 s, secondary source) plus Neon resuming after 5 idle minutes. The AOT cache and CPU boost reduce it; on interview days, set min-instances to 1.
-- **Unconfirmed guesses:** trace linking depends on `http.server.requests` staying on (inferred; M8 checks it). Whether delete + add stays atomic inside `@Transactional` is unverified (M3 checks it).
-- **Langfuse on Boot 4.1 is off the documented road.** Langfuse's Spring AI guide targets Spring AI 1.0.x with `opentelemetry-spring-boot-starter`; this plan uses Boot 4.1's `spring-boot-starter-opentelemetry`. M8's done-when is the test, and D1's flip-when covers a failure.
+- **Deploy sizing:** settled in M9 and M10: the service runs on 2 GiB, which halves the free GiB-seconds. Images of ~1 GB exceed Artifact Registry's 0.5 GB free tier; that cost is still unverified.
+- **Cost estimates:** measured at M5: an LLM-gate run costs about $2.5 and the dearest /ask answer was $0.017 on the golden set (the $0.33 worst case assumed a full 16K-token output). M8 measured the dollar cost of a keyed run ($3.26) but not its Langfuse units, so ~900 per run is still an estimate against Hobby's 50k a month.
+- **Cold starts:** measured in M11 at 19-28 s on Cloud Run's first-generation environment and ~14.4 s on gen2, which deploys now pin; Neon also resumes after 5 idle minutes. On interview days, set min-instances to 1.
+- **Former guesses, now settled:** delete + add is atomic inside `@Transactional` (M3: PgVectorStore's JdbcTemplate joins the transaction, and the sync IT's rollback case fails without it). Trace linking works with `http.server.requests` on (M8: the Java spans nest under each eval item).
+- **Langfuse on Boot 4.1 is off the documented road.** Langfuse's Spring AI guide targets Spring AI 1.0.x; this service uses Boot 4.1's `spring-boot-starter-opentelemetry`. It works (M8: non-null input, output and usage on the chat span), but a Langfuse or Boot upgrade is not covered by their docs.
 - **Startup memory:** settled in M9: 2 GiB with no swap holds, with ONNX Runtime's native copy of the model as the bulk.
 - **D1's first flip-when:** nothing in this plan measures it; it is tracked outside this repo.
 
