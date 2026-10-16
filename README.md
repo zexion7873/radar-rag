@@ -417,9 +417,10 @@ text was a run of 20+ characters copied from a retrieved row, now 20.5%, at abou
   per-client limit and the Anthropic workspace's monthly spend cap bound what that costs.
 - **Two sources.** Trending and Blog. The Loot ledgers stay out: the UI shows them only after a
   login, and this service and repository are public.
-- **Broad questions retrieve worse.** golden_v2's answerable hit@5 is 0.583 against golden_v1's 0.738
-  over every source: a question like "are there chips made for AI now?" rarely ranks the one post that
-  answers it.
+- **Broad questions still miss some posts.** Keyword ranking lifted golden_v2's answerable hit@5 to
+  0.750, but its weight and stop words were chosen on golden_v2, and a question still misses when its
+  post never names the word it turns on (問卷 against a post about simulating people) or is described
+  only in Chinese while the question is English.
 - **Small golden sets.** golden_v1 has 62 items and golden_v2 33. The owner wrote the zh-TW
   questions (the English twins are literal translations) and confirmed every label from candidate
   lists. The retrieval gates catch any flipped hit, but the LLM metrics move by up to ~0.03 between
