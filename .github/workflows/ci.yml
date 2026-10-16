@@ -59,7 +59,7 @@ jobs:
         working-directory: evals
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.2.0
+      - uses: astral-sh/setup-uv@v10.3.0
         with:
           working-directory: evals
       - run: uv sync --locked
@@ -90,7 +90,7 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v10.2.0
+      - uses: astral-sh/setup-uv@v10.3.0
         with:
           working-directory: evals
       # The gate runs the image that ships. Layers, including the ~480 MB model, come from the GHA cache.
