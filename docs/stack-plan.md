@@ -438,6 +438,25 @@ Done when:
 - golden_v2's answerable hit@5 on CI's runner is at least 0.750, against a baseline rewritten from that run's artifact.
 - golden_v1, in either source mode, reports no hit→miss flips; golden_v3 keeps mean P@5 0.65 and nDCG@5 0.58.
 
+### M19: A question asking for a repo takes trending first (RAG, ~half a day)
+**Status: built, gated locally (2026-10-16); CI pending.** Of the 17 answerable misses across golden_v1 (every source) and golden_v2, `/search` at topK 20 ranks 12 at 6-20 and leaves 5 out of the top 20 (recall@20 0.929 and 0.917; the top 5 of topK 20 equals topK 5 on all 66 items). Most golden_v1 misses ask for a 套件 and their trending row sits at an even rank: blog led the turns and held 3 of the 5 slots. Four of the five absent ones are English questions.
+
+Built: `QueryHints.asksForRepos` reads 套件, 函式庫, repo(s), repository, package(s) or library; such a question takes trending first, otherwise the source with the most similar row leads as before. Left out: 工具 / tools (golden_v1's topic questions), 開源 / open source (open-weight model news is blog's), project. Beat: a reranker over 20 candidates (the do-not-add flip-when is met, but an LLM reranker adds a call per question and ranks the gate cannot reproduce, and a cross-encoder is a second in-process model) and contextual retrieval (aimed at the five absent ones, not the twelve ranked low); both stay open.
+
+Measured on the native arm64 build, which reproduced all three committed result sets item for item before the change (golden_v2 33/33, golden_v1 over every source 62/62):
+
+| run | before | after |
+|---|---|---|
+| golden_v1 every source, answerable hit@5 / R@5 / MRR / nDCG@5 | 0.738 / 0.422 / 0.478 / 0.373 | 0.762 / 0.454 / 0.536 / 0.410 |
+| golden_v2 | 0.750 | unchanged |
+| golden_v3 mean P@5 / nDCG@5 | 0.650 / 0.577 | unchanged |
+
+Gained q003-en (rank 6 to 5); q008-en, q010-en, q011-en and q013 move their labelled repo from 2 to 1; no item ranks lower. q009 (課程) and q018 (工具) stay at rank 6, since neither names a repo word. The word list was read off golden_v1, so its gain is optimistic. No `/ask` prompt, model or citation change.
+
+Done when:
+- golden_v1 over every source reports no hit→miss flips on CI's runner and its baseline is rewritten from that run's artifact, so q003-en's hit is gated.
+- golden_v2 and golden_v3 unchanged.
+
 ## 4. Do-not-add list
 
 | Item | Why | Durable / deferred | Flip-when |
@@ -451,7 +470,7 @@ Done when:
 | HNSW / IVFFlat index | Exact search is trivial at 190 rows, and the approximate index filters after the scan ([pgvector](https://github.com/pgvector/pgvector/blob/master/README.md)) | Deferred | Over ~50k rows, or /search p95 over 100 ms. Then use HNSW with `iterative_scan`. |
 | Postgres 17 / 18 | No feature needed; 16 is supported to 2028-11-09 ([versioning](https://www.postgresql.org/support/versioning/)) | Deferred | A needed extension or feature requires it, or EOL gets close. |
 | CJK keyword extensions + RRF (pg_bigm, PGroonga, zhparser) | Custom images for what M18's in-process BM25 bonus on blog rows already does at this size (hundreds of rows) | Deferred | Golden queries on exact repo names fail and ILIKE / pg_trgm on ASCII names does not fix them. |
-| Reranker (cross-encoder or LLM) | With topK 5, the generator already reads every candidate | Deferred | Recall@20 is high but nDCG@5 / P@5 are low. |
+| Reranker (cross-encoder or LLM) | With topK 5, the generator already reads every candidate. The flip-when held in M19 (recall@20 0.92, 12 of 17 misses ranked 6-20); M19 took the cheaper fix of which source leads | Deferred | Recall@20 is high but nDCG@5 / P@5 are low, and a change to the turns no longer moves the misses. |
 | Chunking | Rows are at most 160 tokens (median 86) | Deferred | P5 must answer from Blog Summary detail that Title + Brief lack. |
 | Anthropic prompt caching on /ask | The only stable prefix is the ~80-token system prompt, below the cache minimum (512 tokens on Opus 5.5 per Anthropic's [prompt-caching documentation](https://platform.claude.com/docs/en/build-with-claude/prompt-caching)) | Deferred | A stable prefix above the minimum appears (multi-turn history, a long few-shot prompt). |
 | `search_result` blocks through the raw SDK | Bypasses ChatClient and the observations P4 needs | Deferred | Spring AI exposes `search_result` blocks. |

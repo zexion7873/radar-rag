@@ -44,6 +44,8 @@ public class RowSearch {
 
     private static final String KEYWORD_SOURCE = "blog";
 
+    private static final String REPO_SOURCE = "trending";
+
     private final VectorStore vectorStore;
     private final RecentWeeks recentWeeks;
     private final KeywordIndex keywordIndex;
@@ -55,8 +57,9 @@ public class RowSearch {
     }
 
     /**
-     * The top k of each source, taken in turns, starting with the source whose most similar row scores higher;
-     * a source that runs out leaves the rest to the other. filter null = no restriction beyond source.
+     * The top k of each source, taken in turns, starting with trending when the question asks for a repo and
+     * otherwise with the source whose most similar row scores higher; a source that runs out leaves the rest
+     * to the other. filter null = no restriction beyond source.
      * A category the question names becomes a filter unless the caller gave one (categoryGiven); blog
      * rows carry other categories, so trending then fills every slot. A question asking for recent rows
      * ranks each source's last 28 days higher. Blog rows that share the question's rarer words rank higher.
@@ -66,18 +69,25 @@ public class RowSearch {
         FilterExpressionBuilder b = new FilterExpressionBuilder();
         Filter.Expression narrowed = categoryGiven || hints.category() == null ? filter
                 : and(filter, b.eq("category", hints.category()).build());
-        List<List<Document>> perSource = new ArrayList<>();
+        Map<String, List<Document>> bySource = new LinkedHashMap<>();
         for (String source : SOURCES) {
             Filter.Expression only = and(narrowed, b.eq("source", source).build());
             List<String> weeks = hints.recent() ? recentWeeks.of(source) : List.of();
             KeywordIndex.Match keywords = source.equals(KEYWORD_SOURCE)
                     ? keywordIndex.match(source, q, k * CANDIDATES_PER_SLOT) : KeywordIndex.Match.NONE;
-            perSource.add(search(q, k, only, weeks, keywords));
+            bySource.put(source, search(q, k, only, weeks, keywords));
         }
-        // By the best similarity, not the first row: under a recency boost the first row is the best recent
-        // one, and recency would then decide which source leads.
-        perSource.sort(Comparator.comparingDouble((List<Document> l) -> l.stream()
-                .mapToDouble(Document::getScore).max().orElse(0.0)).reversed());
+        // A question asking for a repo gets trending first: led by blog, it would hold 2 of 5 slots.
+        // Otherwise by the best similarity, not the first row: under a recency boost the first row is the best
+        // recent one, and recency would then decide which source leads.
+        boolean repos = QueryHints.asksForRepos(q);
+        List<List<Document>> perSource = bySource.entrySet().stream()
+                .sorted(Comparator.comparing((Map.Entry<String, List<Document>> e) ->
+                                !(repos && e.getKey().equals(REPO_SOURCE)))
+                        .thenComparing(Comparator.comparingDouble((Map.Entry<String, List<Document>> e) ->
+                                e.getValue().stream().mapToDouble(Document::getScore).max().orElse(0.0)).reversed()))
+                .map(Map.Entry::getValue)
+                .toList();
         List<Document> out = new ArrayList<>();
         for (int i = 0; out.size() < k; i++) {
             boolean any = false;

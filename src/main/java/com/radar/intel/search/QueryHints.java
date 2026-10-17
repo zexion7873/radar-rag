@@ -46,6 +46,16 @@ record QueryHints(String category, boolean recent) {
     private static final Pattern RECENT = Pattern.compile(
             "最近|近期|最新|\\brecent(?:ly)?\\b|\\blatest\\b|\\blately\\b", Pattern.CASE_INSENSITIVE);
 
+    // Words that ask for a repository, which only trending holds. Not 工具 / tools (topic questions say them
+    // too), 開源 / open source (open-weight model news is blog's) or project.
+    private static final Pattern REPOS = Pattern.compile(
+            "套件|函式庫|\\brepos?\\b|\\brepositor(?:y|ies)\\b|\\bpackages?\\b|\\blibrar(?:y|ies)\\b",
+            Pattern.CASE_INSENSITIVE);
+
+    static boolean asksForRepos(String q) {
+        return REPOS.matcher(q).find();
+    }
+
     static QueryHints of(String q) {
         List<String> named = CATEGORY_PATTERNS.entrySet().stream()
                 .filter(e -> e.getValue().matcher(q).find())

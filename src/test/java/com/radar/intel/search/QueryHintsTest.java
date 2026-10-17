@@ -52,4 +52,21 @@ class QueryHintsTest {
     void aTopicWordIsNotACategory(String q) {
         assertThat(QueryHints.of(q)).isEqualTo(new QueryHints(null, false));
     }
+
+    // Only trending holds repos; golden_v2's blog questions ask for 文章 / articles and must keep their lead.
+    @ParameterizedTest(name = "{0}")
+    @CsvSource(delimiter = '|', textBlock = """
+            有剪片的套件嗎？                                  | true
+            Any packages for editing videos?                 | true
+            最近 apps 類有哪些值得看的 repo？                  | true
+            Is there a library for parsing PDFs?             | true
+            有能統一管理Agent的工具嗎？                        | false
+            Any tools for weather forecasting?               | false
+            有沒有 AI 晶片的相關文章？                          | false
+            Are there articles about open-source models?     | false
+            Which projects use Rust?                         | false
+            """)
+    void aQuestionAsksForReposOnlyByAWordForOne(String q, boolean repos) {
+        assertThat(QueryHints.asksForRepos(q)).isEqualTo(repos);
+    }
 }
