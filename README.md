@@ -45,9 +45,10 @@ request into Langfuse, and **P5** adds the Blog archive (see [docs/stack-plan.md
   url comes back once, at its best-scoring row: a repo that charted for several weeks fills one
   slot, not several. Without a `source` it searches both sources in turns, as `/ask` does, and reads
   the question: a trending category named as one ("apps 類", "infra category") filters to it unless
-  the request sets `category`, "最近" / "latest" ranks each source's last 28 days higher, and blog
+  the request sets `category`, "最近" / "latest" ranks each source's last 28 days higher, blog
   posts that share the question's rarer words ("晶片", "chips") rank higher (the returned `score`
-  stays the plain similarity).
+  stays the plain similarity), and a question asking for a repo ("套件", "package", "library") takes
+  trending first.
 - `POST /ask` — ask a question in natural language; the service retrieves the relevant radar
   rows from pgvector, sends them to **Claude** as citable documents, and returns the answer plus
   the rows it actually cites as **citations**. Needs `ANTHROPIC_API_KEY`; `/sync` and `/search` do not. Runs on

@@ -54,6 +54,8 @@ comment, the commit body or the stack plan.
   and only when the question names one and does not exclude it (`QueryHints`): golden_v1 says "agent"
   or "tools" in 22 topic questions, and a looser rule filters their answers away. Recency is a ranking bonus, so the trending-only golden_v1 run, which passes a
   source, never sees either. golden_v3 measures both by precision and nDCG; every item hits at 5.
+  A question naming 套件 / package / repo / library takes trending first; 工具 / tools does not, for the
+  same 22 questions. 35 of golden_v1's 62 say 套件 or packages, so that word list moves golden_v1 over every source.
 - **The live `/ask` takes no harness traffic.** Under `prod` it needs a Turnstile token from github-radar-ui's page,
   so evals run against a local or CI service, which has no Turnstile secret and checks nothing.
 - **The `prod` profile is invisible to the gates.** Only the deployment activates it: low effort, rate

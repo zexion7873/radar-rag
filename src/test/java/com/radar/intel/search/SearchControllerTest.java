@@ -115,6 +115,22 @@ class SearchControllerTest {
     }
 
     @Test
+    void aQuestionAskingForARepoLeadsWithTrendingThoughBlogScoresHigher() throws Exception {
+        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenAnswer(inv -> {
+            String filter = String.valueOf(inv.getArgument(0, SearchRequest.class).getFilterExpression());
+            return filter.contains("trending")
+                    ? List.of(hit("t1", "https://github.com/a/one", 0.9), hit("t2", "https://github.com/b/two", 0.8),
+                            hit("t3", "https://github.com/c/three", 0.7))
+                    : List.of(hit("b1", "https://x.test/1", 0.95), hit("b2", "https://x.test/2", 0.5));
+        });
+        mvc.perform(post("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(JSON.writeValueAsString(Map.of("q", "有能剪片的套件嗎？", "topK", 5))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].id").value(contains("t1", "b1", "t2", "b2", "t3")));
+    }
+
+    @Test
     void aCategoryTheQuestionNamesFiltersBothSourcesSoTrendingFillsTheSlots() throws Exception {
         when(vectorStore.similaritySearch(any(SearchRequest.class))).thenAnswer(inv ->
                 String.valueOf(inv.getArgument(0, SearchRequest.class).getFilterExpression()).contains("trending")
