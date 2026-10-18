@@ -453,6 +453,8 @@ Measured on the native arm64 build, which reproduced all three committed result 
 
 Gained q003-en (rank 6 to 5); q008-en, q010-en, q011-en and q013 move their labelled repo from 2 to 1; no item ranks lower. q009 (課程) and q018 (工具) stay at rank 6, since neither names a repo word. The word list was read off golden_v1, so its gain is optimistic. No `/ask` prompt, model or citation change.
 
+The paid LLM run on main after M18 and M19 (CI run 39124505803, 2026-10-18, $4.37) passed its gate with Faithfulness 0.995, AnswerRelevancy 0.914, Attribution 0.914 and Abstention 0.830, against M17's 0.996 / 0.929 / 0.893 / 0.860; citation precision, not gated, read 0.350 against M15's 0.385. Every mean but Abstention moved inside the four-run band; Abstention fell by 0.030, the band's edge, on 20 items, so one run cannot tell a shift from noise. A second run decides it if a later change touches abstention.
+
 Done when:
 - golden_v1 over every source reports no hit→miss flips on CI's runner and its baseline is rewritten from that run's artifact, so q003-en's hit is gated.
 - golden_v2 and golden_v3 unchanged.
