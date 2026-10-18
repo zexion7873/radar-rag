@@ -359,6 +359,13 @@ Measured locally against the committed baselines: golden_v2 answerable hit@5 0.5
 post now behind two others naming the same model). The weight was chosen on golden_v2, so the gain is
 optimistic ([M18](docs/stack-plan.md)).
 
+**Repo questions lead with trending** (golden_v1, every source): most of its misses ask for a 套件,
+and blog's most similar row led the turns and took 3 of the 5 slots, though only trending holds repos.
+A question naming 套件, 函式庫, repo, package or library now takes trending first; 工具 / tools does
+not, since golden_v1's topic questions say it too. Answerable hit@5 0.738 → 0.762, MRR 0.478 → 0.536,
+no item lower; golden_v2 and golden_v3 unchanged. The word list was read off golden_v1, so the gain is
+optimistic ([M19](docs/stack-plan.md)).
+
 **Answer quality** (`/ask` on `claude-opus-5-5` with native citations, judged by
 `claude-sonnet-5-5` through DeepEval; two runs on one commit, all 62 golden_v1 items, measured before
 the blog ingest): no errors, empty answers, or repos named or cited outside the retrieved rows.
