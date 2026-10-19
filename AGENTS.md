@@ -76,6 +76,9 @@ comment, the commit body or the stack plan.
   selects: events `sources`, `delta`, then one `done` or `error`, and `done` is the only success
   signal (a refusal ends in `error`). The JSON mapping must keep no `produces` condition: that is what
   keeps `*/*` (the harness, httpx's default) on JSON.
+- **`/ask`'s system prompt names the archive's scope.** The trending rows are whatever ai-assistant's
+  `github-trending` skill's Scope admits (AI/agent plus four capped adjacent fields); when that
+  Scope changes, the prompt changes with it, or the model misdescribes the rows it is handed.
 - **Langfuse orgs created on or after 2026-09-16 have no legacy read API.** Read traces through
   `GET /api/public/v2/observations` with explicit `fields`.
 - **Docs move with the code.** A milestone's status line in `docs/stack-plan.md`, the README, and
