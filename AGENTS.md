@@ -39,7 +39,8 @@ comment, the commit body or the stack plan.
   stubs from another CPU crash with SIGILL, which is why both are off.
 - **Spring AI spans carry content.** The vector-store span records the query text and
   `ChatContentObservationFilter` puts the prompt and answer on the chat span; `PRIVACY.md` says so and
-  must change with them.
+  must change with them. So `deploy.yml` sets no Langfuse keys: adding them back traces every visitor's
+  question, against `PRIVACY.md` and github-radar-ui's `/ask` footer.
 - **Workflow logs are public.** Connection details live in Secret Manager (`postgres-url` and the
   rest), never in a workflow or a repository variable, whose expanded values appear in the log.
 - **Scheduled workflows stop after 60 days without repository activity** (GitHub, public repos).

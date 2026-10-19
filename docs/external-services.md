@@ -9,7 +9,7 @@ radar-rag 會呼叫、部署在上面，或建置與發佈時要拉取的每一�
 | Notion API | `/sync` 讀取 Trending 與 Blog Archive 兩個資料來源 | 每次同步 |
 | Anthropic API | `/ask` 產生回答 | 只有 `/ask`；`/search` 從不呼叫 |
 | Cloudflare Turnstile | `/ask` 呼叫模型前，先用 siteverify 檢查頁面送來的機器人驗證 token | 設了 `TURNSTILE_SECRET` 時（`prod` profile 必須設定） |
-| Langfuse Cloud | 每個請求的 OTLP trace；預設 JP 區，可用 `LANGFUSE_BASE_URL` 改 | 兩把 Langfuse key 都設定時；否則什麼都不送 |
+| Langfuse Cloud | 每個請求的 OTLP trace；預設 JP 區，可用 `LANGFUSE_BASE_URL` 改 | 兩把 Langfuse key 都設定時；否則什麼都不送。公開 demo 不設定 |
 | Postgres + pgvector | 向量資料庫 | 一律需要：公開 demo 用 Neon，本機用 compose 的容器 |
 
 Embedding 由 ONNX 模型在程式內計算，不呼叫任何 embedding API。

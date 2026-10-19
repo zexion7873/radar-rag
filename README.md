@@ -31,7 +31,7 @@ writes every week ([case study](https://github.com/zexion7873/github-radar-ui/bl
 skeleton: pgvector, Notion ingestion of the **Trending** table, and a semantic `/search`
 endpoint. **P1** adds metadata-filtered search. **P2** adds a RAG `/ask` endpoint —
 grounded Q&A with citations. **P3** adds a Python eval harness with CI gates, and **P4** traces every
-request into Langfuse, and **P5** adds the Blog archive (see [docs/stack-plan.md](docs/stack-plan.md)).
+request into Langfuse (off on the public demo), and **P5** adds the Blog archive (see [docs/stack-plan.md](docs/stack-plan.md)).
 
 > Not a proxy in front of Notion — it exposes *new* capabilities (semantic search and
 > grounded Q&A) that the read-mostly [`github-radar-ui`](https://github.com/zexion7873/github-radar-ui) cannot do.
@@ -298,7 +298,8 @@ other item and writes its results), and when a metric's mean is below 0.7.
 With `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` set (and `LANGFUSE_BASE_URL` for a region other
 than Japan), the service sends every request's spans to Langfuse over OTLP: the HTTP request, the
 vector search, the chat client and the Claude call, which Langfuse shows as a generation with its
-prompt, answer, token usage and cost. Without both keys nothing leaves the process.
+prompt, answer, token usage and cost. Without both keys nothing leaves the process. The public demo
+sets neither key, so visitors' questions are not traced ([PRIVACY.md](PRIVACY.md)).
 
 When the same keys are set for `radar-evals-llm`, the run mirrors the golden set to the Langfuse
 dataset `golden_v1`, runs it as an experiment, passes `traceparent` to `/ask` so the service's spans
