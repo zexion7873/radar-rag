@@ -53,6 +53,9 @@ class SearchControllerTest {
     @MockitoBean
     private KeywordIndex keywordIndex;
 
+    @MockitoBean
+    private RepoNames repoNames;
+
     @BeforeEach
     void noKeywordMatches() {
         when(keywordIndex.match(anyString(), anyString(), anyInt())).thenReturn(KeywordIndex.Match.NONE);
@@ -128,6 +131,31 @@ class SearchControllerTest {
                         .content(JSON.writeValueAsString(Map.of("q", "有能剪片的套件嗎？", "topK", 5))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[*].id").value(contains("t1", "b1", "t2", "b2", "t3")));
+    }
+
+    @Test
+    void aRepoTheQuestionNamesLeadsTrendingAndTrendingLeadsThoughBlogScoresHigher() throws Exception {
+        when(repoNames.in("「c/three」是做什麼的？")).thenReturn(List.of("c/three"));
+        when(vectorStore.similaritySearch(any(SearchRequest.class))).thenAnswer(inv -> {
+            String filter = String.valueOf(inv.getArgument(0, SearchRequest.class).getFilterExpression());
+            if (filter.contains("c/three")) {
+                return List.of(hit("t3", "https://github.com/c/three", 0.3));
+            }
+            return filter.contains("trending")
+                    ? List.of(hit("t1", "https://github.com/a/one", 0.9), hit("t2", "https://github.com/b/two", 0.8),
+                            hit("t3", "https://github.com/c/three", 0.3))
+                    : List.of(hit("b1", "https://x.test/1", 0.95), hit("b2", "https://x.test/2", 0.5));
+        });
+        mvc.perform(post("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(JSON.writeValueAsString(Map.of("q", "「c/three」是做什麼的？", "topK", 5))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[*].id").value(contains("t3", "b1", "t1", "b2", "t2")));
+        ArgumentCaptor<SearchRequest> sent = ArgumentCaptor.forClass(SearchRequest.class);
+        verify(vectorStore, times(3)).similaritySearch(sent.capture());
+        FilterExpressionBuilder b = new FilterExpressionBuilder();
+        assertThat(sent.getAllValues()).extracting(SearchRequest::getFilterExpression).contains(
+                b.and(b.eq("source", "trending"), b.in("repo", "c/three")).build());
     }
 
     @Test
