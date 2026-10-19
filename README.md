@@ -48,7 +48,8 @@ request into Langfuse, and **P5** adds the Blog archive (see [docs/stack-plan.md
   the request sets `category`, "最近" / "latest" ranks each source's last 28 days higher, blog
   posts that share the question's rarer words ("晶片", "chips") rank higher (the returned `score`
   stays the plain similarity), and a question asking for a repo ("套件", "package", "library") takes
-  trending first.
+  trending first. A repo the question names as owner/name ("mattpocock/skills", or its GitHub URL)
+  comes first, with trending leading.
 - `POST /ask` — ask a question in natural language; the service retrieves the relevant radar
   rows from pgvector, sends them to **Claude** as citable documents, and returns the answer plus
   the rows it actually cites as **citations**. Needs `ANTHROPIC_API_KEY`; `/sync` and `/search` do not. Runs on
@@ -365,6 +366,12 @@ A question naming 套件, 函式庫, repo, package or library now takes trending
 not, since golden_v1's topic questions say it too. Answerable hit@5 0.738 → 0.762, MRR 0.478 → 0.536,
 no item lower; golden_v2 and golden_v3 unchanged. The word list was read off golden_v1, so the gain is
 optimistic ([M19](docs/stack-plan.md)).
+
+**Named repos come first** (reported on the live `/ask`): "「mattpocock/skills」是做什麼的？" answered that
+the radar lacks the repo, though it was on the chart. The embedding blurs a repo name inside a question
+and ranked it 22nd among trending repos; a repo the question names as owner/name is now looked up by
+name and placed first. No golden question names one, so all three gated result sets are unchanged item
+for item ([M20](docs/stack-plan.md)).
 
 **Answer quality** (`/ask` on `claude-opus-5-5` with native citations, judged by
 `claude-sonnet-5-5` through DeepEval; two runs on one commit, all 62 golden_v1 items, measured before

@@ -49,17 +49,21 @@ public class RowSearch {
     private final VectorStore vectorStore;
     private final RecentWeeks recentWeeks;
     private final KeywordIndex keywordIndex;
+    private final RepoNames repoNames;
 
-    public RowSearch(VectorStore vectorStore, RecentWeeks recentWeeks, KeywordIndex keywordIndex) {
+    public RowSearch(VectorStore vectorStore, RecentWeeks recentWeeks, KeywordIndex keywordIndex,
+                     RepoNames repoNames) {
         this.vectorStore = vectorStore;
         this.recentWeeks = recentWeeks;
         this.keywordIndex = keywordIndex;
+        this.repoNames = repoNames;
     }
 
     /**
-     * The top k of each source, taken in turns, starting with trending when the question asks for a repo and
-     * otherwise with the source whose most similar row scores higher; a source that runs out leaves the rest
-     * to the other. filter null = no restriction beyond source.
+     * The top k of each source, taken in turns, starting with trending when the question asks for or names a
+     * repo and otherwise with the source whose most similar row scores higher; a source that runs out leaves
+     * the rest to the other. A repo the question names as owner/name leads trending's rows.
+     * filter null = no restriction beyond source.
      * A category the question names becomes a filter unless the caller gave one (categoryGiven); blog
      * rows carry other categories, so trending then fills every slot. A question asking for recent rows
      * ranks each source's last 28 days higher. Blog rows that share the question's rarer words rank higher.
@@ -69,18 +73,26 @@ public class RowSearch {
         FilterExpressionBuilder b = new FilterExpressionBuilder();
         Filter.Expression narrowed = categoryGiven || hints.category() == null ? filter
                 : and(filter, b.eq("category", hints.category()).build());
+        List<String> named = repoNames.in(q);
         Map<String, List<Document>> bySource = new LinkedHashMap<>();
         for (String source : SOURCES) {
             Filter.Expression only = and(narrowed, b.eq("source", source).build());
             List<String> weeks = hints.recent() ? recentWeeks.of(source) : List.of();
             KeywordIndex.Match keywords = source.equals(KEYWORD_SOURCE)
                     ? keywordIndex.match(source, q, k * CANDIDATES_PER_SLOT) : KeywordIndex.Match.NONE;
-            bySource.put(source, search(q, k, only, weeks, keywords));
+            List<Document> found = search(q, k, only, weeks, keywords);
+            if (source.equals(REPO_SOURCE) && !named.isEmpty()) {
+                List<Document> pinned = new ArrayList<>(search(q, k,
+                        and(only, b.in("repo", new ArrayList<Object>(named)).build()), weeks, KeywordIndex.Match.NONE));
+                pinned.addAll(found);
+                found = bestPerUrl(pinned, k);
+            }
+            bySource.put(source, found);
         }
-        // A question asking for a repo gets trending first: led by blog, it would hold 2 of 5 slots.
+        // A question asking for or naming a repo gets trending first: led by blog, it would hold 2 of 5 slots.
         // Otherwise by the best similarity, not the first row: under a recency boost the first row is the best
         // recent one, and recency would then decide which source leads.
-        boolean repos = QueryHints.asksForRepos(q);
+        boolean repos = !named.isEmpty() || QueryHints.asksForRepos(q);
         List<List<Document>> perSource = bySource.entrySet().stream()
                 .sorted(Comparator.comparing((Map.Entry<String, List<Document>> e) ->
                                 !(repos && e.getKey().equals(REPO_SOURCE)))

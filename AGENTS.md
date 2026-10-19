@@ -56,6 +56,8 @@ comment, the commit body or the stack plan.
   source, never sees either. golden_v3 measures both by precision and nDCG; every item hits at 5.
   A question naming 套件 / package / repo / library takes trending first; 工具 / tools does not, for the
   same 22 questions. 35 of golden_v1's 62 say 套件 or packages, so that word list moves golden_v1 over every source.
+  A repo named as owner/name (`RepoNames`) comes first and takes trending first; no golden question names one,
+  so only `SearchControllerTest` and `RepoNamesIT` guard that path.
 - **The live `/ask` takes no harness traffic.** Under `prod` it needs a Turnstile token from github-radar-ui's page,
   so evals run against a local or CI service, which has no Turnstile secret and checks nothing.
 - **The `prod` profile is invisible to the gates.** Only the deployment activates it: low effort, rate
