@@ -1,5 +1,6 @@
 package com.radar.intel.ask;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -13,10 +14,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 class AskPageRedirect {
 
-    static final String ASK_PAGE = "https://whyisthistrending.vercel.app/ask";
+    private final String askPage;
+
+    AskPageRedirect(@Value("https://${radar.ui.host}/ask") String askPage) {
+        this.askPage = askPage;
+    }
 
     @GetMapping("/")
     ResponseEntity<Void> root() {
-        return ResponseEntity.status(HttpStatus.MOVED_PERMANENTLY).header(HttpHeaders.LOCATION, ASK_PAGE).build();
+        return ResponseEntity.status(HttpStatus.MOVED_PERMANENTLY).header(HttpHeaders.LOCATION, askPage).build();
     }
 }

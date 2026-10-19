@@ -48,6 +48,10 @@ radar:
   embedding:
     model: models/paraphrase/model.onnx
     tokenizer: models/paraphrase/tokenizer.json
+  ui:
+    # github-radar-ui's production host, the one place the code names it: GET / redirects to its /ask page,
+    # and prod builds its CORS origin and Turnstile hostname from it. That repo's PRODUCTION_HOST must match.
+    host: whyisthistrending.vercel.app
   ask:
     # Browser origins allowed to POST /ask: github-radar-ui's dev server here, its production site in prod.
     allowed-origins: http://localhost:3000
