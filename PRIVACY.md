@@ -22,7 +22,7 @@ The "Ask the radar" page is github-radar-ui's, and that site's own analytics are
   `/search` trace carries the query text; an `/ask` trace carries the question, the full prompt sent to
   Claude (the question and the retrieved rows), the answer, token counts and timings. Without both
   keys nothing is exported. **The public demo sets neither key**, so its visitors' questions and answers
-  are not traced; the traces it exported before 2026-10-19 expire with the Langfuse plan's 30-day
+  are not traced; the traces it exported until 2026-10-20 expire with the Langfuse plan's 30-day
   retention.
 
 ## What it stores
