@@ -68,7 +68,7 @@
         <dependency>
             <groupId>ai.djl.huggingface</groupId>
             <artifactId>tokenizers</artifactId>
-            <version>0.38.0</version>
+            <version>0.39.0</version>
         </dependency>
 
         <!-- P2: Claude chat model for grounded /ask answers (needs ANTHROPIC_API_KEY). -->
