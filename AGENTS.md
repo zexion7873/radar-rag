@@ -23,7 +23,7 @@ comment, the commit body or the stack plan.
 - CI `eval-retrieval` builds and runs the image and gates on hit@5 flips against
   `evals/results/baseline.json`. A PR that touches only `*.md` and `docs/` skips `build`, `evals`
   and `eval-retrieval` by job `if`; they are required checks, so a workflow `paths` filter would
-  leave them pending and the PR unmergeable. CI `eval-llm` is paid (~$3.3) and runs only on the owner's `eval:llm`
+  leave them pending and the PR unmergeable. CI `eval-llm` is paid (~$4.4) and runs only on the owner's `eval:llm`
   label or dispatch: never trigger it without the owner's yes.
 
 ## Traps
@@ -82,6 +82,8 @@ comment, the commit body or the stack plan.
   Scope changes, the prompt changes with it, or the model misdescribes the rows it is handed.
 - **Langfuse orgs created on or after 2026-09-16 have no legacy read API.** Read traces through
   `GET /api/public/v2/observations` with explicit `fields`.
-- **Docs move with the code.** A milestone's status line in `docs/stack-plan.md`, the README, and
+- **Docs move with the code.** A milestone's status line in `docs/stack-plan.md`, the README,
+  `docs/api.md` when an endpoint, status or the `prod` profile changes, `docs/results.md` (and the
+  README's table) when a gate's numbers move, `evals/README.md` when a harness command changes, and
   `SECURITY.md` / `PRIVACY.md` when exposure or data flow changes, `docs/external-services.md` when a
   service is added or dropped.
