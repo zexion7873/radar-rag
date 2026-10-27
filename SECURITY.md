@@ -19,8 +19,14 @@ Worth knowing before you decide whether something is in scope.
 
 - **Binds loopback by default.** `server.address` is `127.0.0.1` unless `SERVER_ADDRESS` says
   otherwise; only the container image sets `0.0.0.0`, and compose publishes it on `127.0.0.1` alone.
+  Outside the prod profile it also answers only a `Host` of `localhost`, `127.0.0.1` or `[::1]` (`403`
+  otherwise), so a DNS-rebinding page cannot reach it under its own name.
+- **`/sync` refuses browsers.** A request carrying `Origin` gets `403` in every profile: a browser sends
+  one with every cross-site POST, form and no-cors fetch alike, and curl and the Weekly sync workflow
+  send none.
 - **Reads Notion.** `POST /sync` pulls the Trending Archive with one internal integration token and
-  replaces those rows in pgvector. The token stays on the server. Notion failures return a generic
+  replaces those rows in pgvector. The token stays on the server. A row's url is kept only when it is
+  `http(s)`. Notion failures return a generic
   body with Notion's status code; Notion's text is only logged.
 - **Calls Claude.** `POST /ask` sends the retrieved rows to Anthropic with the server's
   `ANTHROPIC_API_KEY`. Anthropic failures return a generic body; the upstream text is only logged.
@@ -68,6 +74,8 @@ Worth knowing before you decide whether something is in scope.
   client.
 - Getting a browser on an origin outside `radar.ask.allowed-origins` to read a response from `/ask`, or
   from any other path cross-origin.
+- Outside the prod profile: getting a web page to reach the loopback service under a name other than a
+  loopback one, or to trigger `/sync`.
 - Making the `@claude` workflow or the LLM eval run for someone other than the owner.
 - Getting a workflow run from another repository, a fork, a non-`main` ref or any workflow other than
   Deploy to authenticate to the project's Google Cloud.
@@ -77,7 +85,7 @@ Worth knowing before you decide whether something is in scope.
 A report of these is a duplicate:
 
 - Without the prod profile, `/sync` has no authentication and Swagger UI is on. That run binds
-  loopback by default.
+  loopback by default, answers only a loopback `Host`, and `/sync` refuses any request with `Origin`.
 - Turnstile stops scripted `/ask` calls, not a person asking by hand from many addresses. Each new
   IPv4 address or IPv6 /48 gets fresh buckets; the 100-a-day `/ask` limit across all clients and the
   dedicated Anthropic workspace's monthly spend limit cap the cost, and a hundred questions that pass

@@ -82,6 +82,21 @@ class NotionClientTest {
                 "https://x.test/p", "official", null, "2026-10-02", "brief", ""));
     }
 
+    // A url reaches the page as a link and /search's url filter as a value, where an ISO-8601-shaped
+    // string is parsed as a date and throws.
+    @Test
+    void aUrlThatIsNotHttpIsDropped(WireMockRuntimeInfo wm) {
+        stubFor(get("/data_sources/" + BLOG_DS).willReturn(okJson("{\"id\":\"" + BLOG_DS + "\"}")));
+        stubFor(post("/data_sources/" + BLOG_DS + "/query").willReturn(okJson(page(false, "null",
+                blogRow("js", "javascript:alert(1)"),
+                blogRow("date", "9999-99-99T99:99:99Z"),
+                blogRow("upper", "HTTPS://x.test/p"),
+                blogRow("plain", "http://x.test/p")))));
+
+        assertThat(client(wm).fetchBlog()).extracting(BlogRow::url)
+                .containsExactly(null, null, "HTTPS://x.test/p", "http://x.test/p");
+    }
+
     @Test
     void aBlankBaseUrlFailsAtBindingInsteadOfAtTheFirstSync() {
         assertThatThrownBy(() -> new NotionProperties("test-token", " ", "2025-09-03", DS, BLOG_DS))
@@ -97,6 +112,12 @@ class NotionClientTest {
         return """
                 {"results": [%s], "has_more": %s, "next_cursor": %s}
                 """.formatted(String.join(",", rows), hasMore, nextCursorJson);
+    }
+
+    private static String blogRow(String id, String url) {
+        return """
+                {"id": "%s", "properties": {"URL": {"type": "url", "url": "%s"}}}
+                """.formatted(id, url);
     }
 
     private static String row(String repo, String week) {

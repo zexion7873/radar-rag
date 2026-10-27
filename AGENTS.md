@@ -62,6 +62,9 @@ comment, the commit body or the stack plan.
   so only `SearchControllerTest` and `RepoNamesIT` guard that path.
 - **The live `/ask` takes no harness traffic.** Under `prod` it needs a Turnstile token from github-radar-ui's page,
   so evals run against a local or CI service, which has no Turnstile secret and checks nothing.
+- **Outside `prod` only a loopback `Host` gets an answer** (`LoopbackHostFilter`): reaching a dev run or
+  the container by any other name (a LAN address, a compose service name) is `403`. CI and the harness
+  call `localhost`.
 - **Boot's `JsonMapper` reads at most 16 KiB** (`spring.jackson.factory.constraints.read`), which caps
   request bodies; a client built on it, rather than on `RestClient.builder()` as `NotionClient` and
   `TurnstileVerifier` are, would fail on a Notion page of rows.
