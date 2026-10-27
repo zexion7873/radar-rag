@@ -33,6 +33,9 @@ radar:
     secret: ${SYNC_SECRET}
   ask:
     effort: low
+    # Every client together; the per-client and per-/48 limits leave a pool of addresses unbounded.
+    # radar-demo's $10 a month buys ~600-1,000 low-effort answers.
+    daily-limit: 100
     allowed-origins: https://${radar.ui.host}
   turnstile:
     # The secret is required: /ask checks every token. Only github-radar-ui's /ask page renders the widget

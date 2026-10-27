@@ -59,14 +59,16 @@ public class AskController {
     private final RowSearch rowSearch;
     private final OutputConfig.Effort effort;
     private final TurnstileVerifier turnstile;
+    private final AskBudget budget;
 
     /**
      * {@code radar.ask.effort} is pinned so a model default change cannot move cost or quality; the
      * LLM gate measures medium, and the public prod path runs low.
      */
     public AskController(ChatClient.Builder chatClientBuilder, RowSearch rowSearch,
-            @Value("${radar.ask.effort:medium}") String effort, TurnstileVerifier turnstile) {
+            @Value("${radar.ask.effort:medium}") String effort, TurnstileVerifier turnstile, AskBudget budget) {
         this.turnstile = turnstile;
+        this.budget = budget;
         this.effort = OutputConfig.Effort.of(effort);
         // Throws on an unknown value, which the SDK would otherwise send to the API on every /ask.
         this.effort.known();
@@ -149,6 +151,7 @@ public class AskController {
                     "q must be at most " + RowSearch.MAX_QUESTION_LENGTH + " characters");
         }
         turnstile.check(turnstileToken);
+        budget.spend();
         // /search with topK 5 returns exactly these rows; the eval harness relies on that.
         return rowSearch.balanced(req.q(), 5, null, false);
     }

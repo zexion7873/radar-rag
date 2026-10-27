@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.InOrder;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.vectorstore.VectorStore;
@@ -16,6 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
@@ -24,6 +26,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.web.ErrorResponseException;
 import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -44,6 +47,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -93,6 +97,9 @@ class AskFlowIT {
 
     @MockitoBean
     TurnstileVerifier turnstile;
+
+    @MockitoBean
+    AskBudget budget;
 
     @Autowired
     VectorStore vectorStore;
@@ -220,6 +227,27 @@ class AskFlowIT {
                 .andExpect(status().isForbidden());
 
         verify(turnstile).check("bad-token");
+        verifyNoInteractions(budget);
+        assertThat(ANTHROPIC.findAll(postRequestedFor(urlEqualTo("/v1/messages")))).isEmpty();
+    }
+
+    @Test
+    void aSpentDailyLimitIs429AfterTheBotCheckAndNeverReachesTheModel() throws Exception {
+        ErrorResponseException refused = new ErrorResponseException(HttpStatus.TOO_MANY_REQUESTS);
+        refused.getHeaders().set(HttpHeaders.RETRY_AFTER, "864");
+        doThrow(refused).when(budget).spend();
+
+        mvc.perform(post("/ask").contentType(MediaType.APPLICATION_JSON).header("X-Turnstile-Token", "t")
+                        .content("{\"q\":\"agents\"}"))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(header().string(HttpHeaders.RETRY_AFTER, "864"));
+        mvc.perform(post("/ask").contentType(MediaType.APPLICATION_JSON).accept(MediaType.TEXT_EVENT_STREAM)
+                        .header("X-Turnstile-Token", "t").content("{\"q\":\"agents\"}"))
+                .andExpect(status().isTooManyRequests());
+
+        InOrder order = inOrder(turnstile, budget);
+        order.verify(turnstile).check("t");
+        order.verify(budget).spend();
         assertThat(ANTHROPIC.findAll(postRequestedFor(urlEqualTo("/v1/messages")))).isEmpty();
     }
 

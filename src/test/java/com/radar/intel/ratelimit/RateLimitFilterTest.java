@@ -47,6 +47,34 @@ class RateLimitFilterTest {
     }
 
     @Test
+    void anIpv6ClientsNetworkIsItsSlash48AndAnIpv4ClientHasNone() {
+        assertThat(RateLimitFilter.networkKey("20010db800010002/64")).isEqualTo("20010db80001/48");
+        assertThat(RateLimitFilter.networkKey("1.2.3.4")).isNull();
+        assertThat(RateLimitFilter.networkKey("ab:/64")).isNull();
+    }
+
+    @Test
+    void aClientRefusedByItsOwnBucketSpendsNothingFromItsNetworks() throws Exception {
+        for (int i = 0; i < 30; i++) {
+            status(request("/ask", "2001:db8:1::1"));
+        }
+        // Its first five are the network's too; the 25 its own bucket refused are not.
+        for (int i = 1; i <= 5; i++) {
+            assertThat(status(request("/ask", "2001:db8:1:" + i + "::1"))).isEqualTo(200);
+        }
+        assertThat(status(request("/ask", "2001:db8:1:ff::1"))).isEqualTo(429);
+    }
+
+    @Test
+    void theSlash64sOfOneSlash48ShareTenAsksAMinute() throws Exception {
+        for (int i = 0; i < 10; i++) {
+            assertThat(status(request("/ask", "2001:db8:1:" + Integer.toHexString(i) + "::1"))).isEqualTo(200);
+        }
+        assertThat(status(request("/ask", "2001:db8:1:ff::1"))).isEqualTo(429);
+        assertThat(status(request("/ask", "2001:db8:2:ff::1"))).isEqualTo(200);
+    }
+
+    @Test
     void anIpv4MappedAddressIsItsIpv4Address() {
         assertThat(RateLimitFilter.clientKey(request("/ask", "::ffff:1.2.3.4"))).isEqualTo("1.2.3.4");
     }
