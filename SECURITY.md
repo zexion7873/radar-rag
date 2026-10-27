@@ -54,10 +54,9 @@ Worth knowing before you decide whether something is in scope.
   question to the model.
 - **Downloads nothing at runtime.** The image carries the model and every native library, pinned and
   checked at build time.
-- **Automation.** The repository's `@claude` workflow runs only for comments, reviews and issues written
-  by the repository owner; the paid LLM eval runs only on the owner's label or dispatch. Any job on
-  `main`, that agent's included, can write the Actions cache, so Deploy builds with no layer cache and
-  the LLM eval restores only the sha256-checked model from it.
+- **Automation.** No workflow runs a model on issue or pull-request text; the paid LLM eval runs only on
+  the owner's label or dispatch. Any job on `main` can write the Actions cache, so Deploy builds with no
+  layer cache and the LLM eval restores only the sha256-checked model from it.
 - **Deploys without a stored cloud key.** The Deploy workflow authenticates to Google Cloud through
   Workload Identity Federation, which trusts only the Deploy workflow file in this repository (by its
   numeric id) on `refs/heads/main`. The service runs as its own account, which can read its secrets in
@@ -76,7 +75,7 @@ Worth knowing before you decide whether something is in scope.
   from any other path cross-origin.
 - Outside the prod profile: getting a web page to reach the loopback service under a name other than a
   loopback one, or to trigger `/sync`.
-- Making the `@claude` workflow or the LLM eval run for someone other than the owner.
+- Making the LLM eval run for someone other than the owner.
 - Getting a workflow run from another repository, a fork, a non-`main` ref or any workflow other than
   Deploy to authenticate to the project's Google Cloud.
 
