@@ -36,8 +36,8 @@ jobs:
           service_account: ${{ vars.GCP_DEPLOY_SA }}
       - uses: google-github-actions/setup-gcloud@v3.0.1
       - run: gcloud auth configure-docker "${{ vars.GCP_REGION }}-docker.pkg.dev" --quiet
-      # No layer cache: any job on main, the @claude agent's included, can write the GHA cache, and a
-      # restored RUN layer ships without running again.
+      # No layer cache: any job on main can write the GHA cache, and a restored RUN layer ships without
+      # running again.
       - uses: docker/setup-buildx-action@v4.4.1
       - uses: docker/build-push-action@v7.4.0
         with:
