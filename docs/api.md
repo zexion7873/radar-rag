@@ -8,7 +8,9 @@ The service's endpoints, the `prod` profile, and how the image is built and depl
 - `POST /sync` — pull the Trending and Blog archives from Notion and replace each one's rows in
   pgvector: one document per Notion row (a repo's week, or a post), keyed by the Notion page id. Each
   source refreshes on its own and reports `{ingested, sources, failed}`; any failed source makes it
-  a 502, with the others still synced. The Loot ledgers stay out: the UI keeps them behind a login.
+  a 502, with the others still synced. A row's url is kept only when it is `http(s)`. A request
+  carrying `Origin`, which every browser POST does, is `403` in every profile. The Loot ledgers stay
+  out: the UI keeps them behind a login.
 - `POST /search` — semantic search over the embedded rows, optionally filtered by metadata
   (`source` / `category` / `language` / `week` exact match, `stars_per_week` ≥ `minStars`). Each
   url comes back once, at its best-scoring row: a repo that charted for several weeks fills one
@@ -55,7 +57,9 @@ controllers. The prod profile turns both off.
 ## Prod profile
 
 `SPRING_PROFILES_ACTIVE=prod` is the public deployment's configuration; the image and CI run without it,
-so the eval gates measure the service unthrottled and at medium effort. It adds:
+so the eval gates measure the service unthrottled and at medium effort. Without it the service answers
+only a `Host` of `localhost`, `127.0.0.1` or `[::1]` and refuses any other with `403`, which keeps a
+DNS-rebinding page off a dev run's `/ask`. The profile drops that check and adds:
 
 - **`/sync` needs `Authorization: Bearer $SYNC_SECRET`.** Boot fails without `SYNC_SECRET`; set but
   empty, every call gets `401`.

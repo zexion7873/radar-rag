@@ -170,7 +170,7 @@ Attribution 0.917, Abstention 0.870, each gated at 0.7. The judge agrees with a 
 ## ⚠️ Known limitations
 
 - **Without the prod profile `/sync` is open and Swagger UI is on**, which is fine on loopback, the
-  default bind.
+  default bind: that run answers only a loopback `Host`, and `/sync` refuses any browser request.
 - **A person can still spend on `/ask`.** Turnstile stops scripts, not someone asking by hand; the
   per-client limit and the Anthropic workspace's monthly spend cap bound what that costs.
 - **Two sources.** Trending and Blog. The Loot ledgers stay out: the UI shows them only after a
