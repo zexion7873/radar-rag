@@ -51,6 +51,14 @@ class IngestControllerTest {
                     .andExpect(jsonPath("$.sources.trending").value(190))
                     .andExpect(jsonPath("$.failed.blog").value("upstream 404"));
         }
+
+        // A browser sends Origin on every cross-site POST, form and no-cors fetch alike; curl and the
+        // Weekly sync workflow send none.
+        @Test
+        void aBrowserRequestIsRefused() throws Exception {
+            mvc.perform(post("/sync").header("Origin", "https://evil.test")).andExpect(status().isForbidden());
+            verifyNoInteractions(ingest);
+        }
     }
 
     @Nested

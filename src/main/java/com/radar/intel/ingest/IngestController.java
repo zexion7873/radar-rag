@@ -34,7 +34,13 @@ public class IngestController {
      */
     @PostMapping("/sync")
     public ResponseEntity<IngestService.SyncResult> sync(
+            @RequestHeader(value = HttpHeaders.ORIGIN, required = false) String origin,
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
+        // A browser names its Origin on every cross-site POST, so a page cannot make a dev run's open
+        // /sync spend the Notion token; curl and the Weekly sync workflow send none.
+        if (origin != null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN);
+        }
         if (secret != null && (secret.isBlank() || !matches(authorization))) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
         }
