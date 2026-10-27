@@ -17,9 +17,10 @@ comment, the commit body or the stack plan.
 - `cd evals && uv run ruff check && uv run ruff format --check && uv run mypy && uv run pytest` —
   exactly the CI `evals` job. `pytest -m service` needs a running service and is CI's.
 - `docker compose --profile app up --build` — the shipped image beside Postgres, 2 GiB, no swap.
-- Deploy (`deploy.yml`) runs only on `main`: Workload Identity trusts this repository's
-  `refs/heads/main` and nothing else, so a PR cannot try a deploy. Weekly sync (`sync.yml`) posts
-  `/sync` with `SYNC_SECRET` to `vars.RADAR_URL`.
+- Deploy (`deploy.yml`) runs only on `main`: Workload Identity trusts only this file on this
+  repository's `refs/heads/main` (its `workflow_ref`), so neither a PR nor another workflow on `main`
+  can deploy; renaming or moving `deploy.yml` breaks deploys until the provider condition changes.
+  Weekly sync (`sync.yml`) posts `/sync` with `SYNC_SECRET` to `vars.RADAR_URL`.
 - CI `eval-retrieval` builds and runs the image and gates on hit@5 flips against
   `evals/results/baseline.json`. A PR that touches only `*.md` and `docs/` skips `build`, `evals`
   and `eval-retrieval` by job `if`; they are required checks, so a workflow `paths` filter would

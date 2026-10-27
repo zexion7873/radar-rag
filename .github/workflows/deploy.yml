@@ -1,7 +1,7 @@
 name: Deploy
 
-# Builds the image and deploys it to Cloud Run. Runs from main only: the Workload Identity provider
-# trusts this repository's refs/heads/main and nothing else, so a PR branch cannot authenticate.
+# Builds the image and deploys it to Cloud Run. The Workload Identity provider trusts only this file on
+# this repository's refs/heads/main, so neither a PR branch nor another workflow on main can authenticate.
 on:
   push:
     branches: [main]
