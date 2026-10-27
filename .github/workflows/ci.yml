@@ -49,6 +49,22 @@ jobs:
           cache: maven
       - run: mvn -B verify
 
+  # GitHub reads only pom.xml's direct dependencies, so a CVE in a BOM-managed library (Tomcat, Jackson)
+  # raised no alert. Main only, and no cache restored: submitting the resolved tree needs contents: write.
+  dependency-graph:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "25"
+      - uses: advanced-security/maven-dependency-submission-action@v6.0.1
+
   evals:
     needs: changes
     if: needs.changes.outputs.code == 'true'
