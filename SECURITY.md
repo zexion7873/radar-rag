@@ -91,6 +91,10 @@ A report of these is a duplicate:
   Turnstile in a day refuse `/ask` to everyone until the limit refills.
 - The rate limit lives in one instance's memory: it resets on restart and is not shared between
   instances (the deployment runs at most one).
+- Slow clients can fill the one instance. The limits count requests, not how long each holds a slot,
+  so about 80 connections trickling a request body (Cloud Run's default concurrency, a 900 s timeout)
+  may keep the demo busy while they last; whether Cloud Run's front end buffers HTTP/1 bodies first is
+  unverified. Nothing leaks and nothing is spent.
 
 ### Out of scope
 
