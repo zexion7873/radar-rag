@@ -20,7 +20,7 @@ Cloud Run has none. Test sizes with `--memory-swap` equal to `--memory`, as CI a
 service do, or a boot that does not fit will look fine.
 
 **The LLM eval costs money and runs on request.** `eval-llm.yml` calls `/ask` on Opus 5.5 and a Sonnet
-judge for all 62 golden items, about $3.3 a run. It runs only when the repository owner adds the
+judge for all 62 golden items, about $4.4 a run. It runs only when the repository owner adds the
 `eval:llm` label or dispatches it by hand.
 
 ## Working on it
@@ -48,5 +48,6 @@ Conventional Commits (`feat:` / `fix:` / `refactor:` / `docs:` / `chore:` / `tes
 English, saying WHY rather than WHAT. One logical change per commit.
 
 If your change alters behaviour, interfaces, or project state, the docs it makes stale are part of the
-diff: the README, `docs/stack-plan.md` if a milestone's status or a decision changed, and
-`.env.example` if a variable was added or renamed.
+diff: the README, `docs/api.md` if an endpoint changed, `docs/results.md` if a gate's numbers moved,
+`docs/stack-plan.md` if a milestone's status or a decision changed, and `.env.example` if a variable
+was added or renamed.
