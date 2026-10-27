@@ -68,9 +68,13 @@ comment, the commit body or the stack plan.
 - **Boot's `JsonMapper` reads at most 16 KiB** (`spring.jackson.factory.constraints.read`), which caps
   request bodies; a client built on it, rather than on `RestClient.builder()` as `NotionClient` and
   `TurnstileVerifier` are, would fail on a Notion page of rows.
-- **Deploy and the LLM eval trust no Actions cache** beyond the sha256-checked model: any job on `main`
-  can write it. Adding `cache-from`, `cache: maven`, uv's cache or
-  `~/.djl.ai` back to either reopens that.
+- **Deploy, the LLM eval and CI's `dependency-graph` job trust no Actions cache** beyond the
+  sha256-checked model: any job on `main` can write it, and each holds a credential (the deploy
+  identity, the Anthropic key, a `contents: write` token). Adding `cache-from`, `cache: maven`, uv's
+  cache or `~/.djl.ai` back to any of them reopens that.
+- **Dependabot sees the resolved Maven tree only through `dependency-graph`**, which submits it on each
+  push to `main`; without it GitHub reads `pom.xml`'s direct dependencies alone, and a CVE in a
+  BOM-managed library (Tomcat, Jackson) raises no alert.
 - **The `prod` profile is invisible to the gates.** Only the deployment activates it: low effort, rate
   limits, a required `SYNC_SECRET`. Turning it on in CI throttles the harness's 62 queries from one
   address and moves the LLM gate off the effort it was measured at.
