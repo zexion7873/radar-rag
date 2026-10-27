@@ -32,8 +32,8 @@ The service's endpoints, the `prod` profile, and how the image is built and depl
 and a similarity `score`. `/ask` returns `{answer, citations, sources, usage}`. `sources` are the 5
 retrieved rows (`id` / `repo` / `url` / `week` / retrieval `score`); `citations` are the sources the
 answer cites, each with the passages it quoted (`citedText`); `usage` is the call's `model`,
-`inputTokens` and `outputTokens` (thinking included). Both refuse a `q` over 1,000 characters, and
-`/search` a `topK` over 50, with a 400.
+`inputTokens` and `outputTokens` (thinking included). Both refuse a body over 16 KiB (read no further),
+a `q` over 1,000 characters, and `/search` a `topK` over 50, with a 400.
 
 A request whose `Accept` names `text/event-stream` gets the answer as Server-Sent Events, each `data` a
 JSON object: `sources` (the retrieved rows, before the model call), `delta` (`{text}`, as the model
@@ -59,9 +59,11 @@ so the eval gates measure the service unthrottled and at medium effort. It adds:
 
 - **`/sync` needs `Authorization: Bearer $SYNC_SECRET`.** Boot fails without `SYNC_SECRET`; set but
   empty, every call gets `401`.
-- **Per-client rate limits.** `/ask`: 5 a minute and 20 a day; `/search`: 30 a minute; past either,
-  `429` with `Retry-After`. The client is the right-most `X-Forwarded-For` entry (the address Cloud
-  Run's front end appends), an IPv6 client its /64.
+- **Rate limits.** Per client, `/ask`: 5 a minute and 20 a day; `/search`: 30 a minute. The /64s of one
+  IPv6 /48 share `/ask` 10 a minute and 50 a day and `/search` 60 a minute, and all clients together
+  get 100 `/ask` a day, spent only by a question that passed the Turnstile check below. Past any of
+  them, `429` with `Retry-After`. The client is the right-most
+  `X-Forwarded-For` entry (the address Cloud Run's front end appends), an IPv6 client its /64.
 - **`/ask` needs a Cloudflare Turnstile token** (`X-Turnstile-Token`), checked with siteverify before
   any retrieval or model call: missing, rejected or issued on a host other than github-radar-ui's is
   `403`, siteverify unreachable is `503`. Without
@@ -72,7 +74,8 @@ so the eval gates measure the service unthrottled and at medium effort. It adds:
 
 ## Deploy
 
-A push to `main` that touches the service runs the Deploy workflow: it builds the image, pushes it to
+A push to `main` that touches the service runs the Deploy workflow: it builds the image with no layer
+cache (any job on `main` can write the Actions cache), pushes it to
 Artifact Registry and deploys it to Cloud Run in asia-east1 (2 GiB, at most one instance, the prod
 profile), then smoke-tests `/search`, `/sync` without the secret and Swagger. It signs in through
 Workload Identity Federation, so no Google Cloud key is stored anywhere; every secret, the Neon JDBC

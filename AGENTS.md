@@ -62,6 +62,12 @@ comment, the commit body or the stack plan.
   so only `SearchControllerTest` and `RepoNamesIT` guard that path.
 - **The live `/ask` takes no harness traffic.** Under `prod` it needs a Turnstile token from github-radar-ui's page,
   so evals run against a local or CI service, which has no Turnstile secret and checks nothing.
+- **Boot's `JsonMapper` reads at most 16 KiB** (`spring.jackson.factory.constraints.read`), which caps
+  request bodies; a client built on it, rather than on `RestClient.builder()` as `NotionClient` and
+  `TurnstileVerifier` are, would fail on a Notion page of rows.
+- **Deploy and the LLM eval trust no Actions cache** beyond the sha256-checked model: any job on `main`
+  can write it, the `@claude` agent's included. Adding `cache-from`, `cache: maven`, uv's cache or
+  `~/.djl.ai` back to either reopens that.
 - **The `prod` profile is invisible to the gates.** Only the deployment activates it: low effort, rate
   limits, a required `SYNC_SECRET`. Turning it on in CI throttles the harness's 62 queries from one
   address and moves the LLM gate off the effort it was measured at.

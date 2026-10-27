@@ -95,8 +95,8 @@ curl -X POST localhost:8080/ask -H 'Content-Type: application/json' \
 Swagger UI is at `/swagger-ui.html`. `docker compose --profile app up --build` runs the shipped image
 instead ([docs/api.md](docs/api.md#in-a-container)).
 
-The public deployment runs on Cloud Run under the `prod` profile: `/sync` behind a secret, per-client
-rate limits, and a Turnstile check on `/ask` ([docs/api.md](docs/api.md#prod-profile)). `/search` also
+The public deployment runs on Cloud Run under the `prod` profile: `/sync` behind a secret, rate
+limits per client and overall, and a Turnstile check on `/ask` ([docs/api.md](docs/api.md#prod-profile)). `/search` also
 answers curl:
 
 ```bash
@@ -172,7 +172,8 @@ Attribution 0.917, Abstention 0.870, each gated at 0.7. The judge agrees with a 
 - **Without the prod profile `/sync` is open and Swagger UI is on**, which is fine on loopback, the
   default bind.
 - **A person can still spend on `/ask`.** Turnstile stops scripts, not someone asking by hand; the
-  per-client limit and the Anthropic workspace's monthly spend cap bound what that costs.
+  per-client limits, a 100-a-day limit across every client and the Anthropic workspace's monthly spend
+  cap bound what that costs.
 - **Two sources.** Trending and Blog. The Loot ledgers stay out: the UI shows them only after a
   login, and this service and repository are public.
 - **Broad questions still miss some posts**, and the keyword weight that helps them was tuned on the
