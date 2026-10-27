@@ -48,14 +48,12 @@ jobs:
         with:
           distribution: temurin
           java-version: "25"
-          cache: maven
+      # Only the sha256-checked models come from the cache: any job on main can write it, and a cached
+      # jar, wheel or ~/.djl.ai native library would run here beside the Anthropic key.
       - uses: astral-sh/setup-uv@v10.3.0
         with:
           working-directory: evals
-      - uses: actions/cache@v6
-        with:
-          path: ~/.djl.ai
-          key: djl-${{ hashFiles('pom.xml') }}
+          enable-cache: false
       - uses: actions/cache@v6
         with:
           path: models

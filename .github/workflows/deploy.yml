@@ -36,14 +36,15 @@ jobs:
           service_account: ${{ vars.GCP_DEPLOY_SA }}
       - uses: google-github-actions/setup-gcloud@v3.0.1
       - run: gcloud auth configure-docker "${{ vars.GCP_REGION }}-docker.pkg.dev" --quiet
-      # Reads CI's GHA layer cache, so the ~480 MB model layer is usually not rebuilt.
+      # No layer cache: any job on main, the @claude agent's included, can write the GHA cache, and a
+      # restored RUN layer ships without running again.
       - uses: docker/setup-buildx-action@v4.4.1
       - uses: docker/build-push-action@v7.4.0
         with:
           context: .
           push: true
           tags: ${{ env.IMAGE }}
-          cache-from: type=gha
+          no-cache: true
       # gen2: under gen1's gVisor, reading the 470 MB model and loading the tokenizer took 15.7 s of a
       # 27 s cold start, against 4.2 s on gen2. 2 GiB: ONNX Runtime holds the model natively (~1.1 GB),
       # measured in M9. At most one instance, so

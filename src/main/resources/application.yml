@@ -5,6 +5,13 @@ spring:
     async:
       # A streamed /ask runs async; Tomcat's 30 s default would end it before the page's 45 s budget.
       request-timeout: 60s
+  jackson:
+    factory:
+      constraints:
+        read:
+          # Request bodies bind through this mapper: without a cap a 4 MiB q is ~17 MB of heap before
+          # its 1000-character check. The longest valid body, 1000 \u-escaped characters, is ~6 KiB.
+          max-document-length: 16384
   datasource:
     url: ${POSTGRES_URL:jdbc:postgresql://localhost:5432/radar}
     username: ${POSTGRES_USER:radar}

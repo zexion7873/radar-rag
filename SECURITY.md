@@ -33,7 +33,8 @@ Worth knowing before you decide whether something is in scope.
 - **Prod profile (`SPRING_PROFILES_ACTIVE=prod`).** `/sync` needs `Authorization: Bearer` with
   `SYNC_SECRET`, compared in constant time; boot fails without it, and an empty one refuses every call.
   `/ask` and `/search` are rate-limited per client, keyed on the right-most `X-Forwarded-For` entry
-  (an IPv6 client by its /64). `/ask` needs a Cloudflare Turnstile token, checked with siteverify
+  (an IPv6 client by its /64), and per IPv6 /48; `/ask` also has one 100-a-day limit for every client
+  together, spent only by a question that passed Turnstile. `/ask` needs a Cloudflare Turnstile token, checked with siteverify
   before any retrieval or model call; a missing or rejected token, or one issued on a host other than
   github-radar-ui's, is `403`, and an unreachable
   siteverify `503`, never a pass. Error bodies carry no message, logs are `INFO`, Swagger UI and
@@ -47,13 +48,16 @@ Worth knowing before you decide whether something is in scope.
   limit. The Turnstile token and the rate limit apply as to any other caller.
 - **Validates filters.** `/search` rejects filter values containing quotes or backslashes before
   building the vector store's filter expression, which Spring AI also escapes into its SQL.
-- **Bounds each request.** `/search` and `/ask` refuse a question over 1,000 characters, and `/search` a
+- **Bounds each request.** `/search` and `/ask` stop reading a body at 16 KiB, refuse a question over
+  1,000 characters, and `/search` a
   `topK` over 50, so one request can neither read an unbounded number of rows nor send an unbounded
   question to the model.
 - **Downloads nothing at runtime.** The image carries the model and every native library, pinned and
   checked at build time.
 - **Automation.** The repository's `@claude` workflow runs only for comments, reviews and issues written
-  by the repository owner; the paid LLM eval runs only on the owner's label or dispatch.
+  by the repository owner; the paid LLM eval runs only on the owner's label or dispatch. Any job on
+  `main`, that agent's included, can write the Actions cache, so Deploy builds with no layer cache and
+  the LLM eval restores only the sha256-checked model from it.
 - **Deploys without a stored cloud key.** The Deploy workflow authenticates to Google Cloud through
   Workload Identity Federation, which trusts only the Deploy workflow file in this repository (by its
   numeric id) on `refs/heads/main`. The service runs as its own account, which can read its secrets in
@@ -83,8 +87,9 @@ A report of these is a duplicate:
 - Without the prod profile, `/sync` has no authentication and Swagger UI is on. That run binds
   loopback by default, answers only a loopback `Host`, and `/sync` refuses any request with `Origin`.
 - Turnstile stops scripted `/ask` calls, not a person asking by hand from many addresses. Each new
-  address gets fresh rate-limit buckets; the dedicated Anthropic workspace's monthly spend limit is
-  what caps the cost.
+  IPv4 address or IPv6 /48 gets fresh buckets; the 100-a-day `/ask` limit across all clients and the
+  dedicated Anthropic workspace's monthly spend limit cap the cost, and a hundred questions that pass
+  Turnstile in a day refuse `/ask` to everyone until the limit refills.
 - The rate limit lives in one instance's memory: it resets on restart and is not shared between
   instances (the deployment runs at most one).
 

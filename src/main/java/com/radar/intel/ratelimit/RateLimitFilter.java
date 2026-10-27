@@ -16,6 +16,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
@@ -24,8 +25,8 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Per-client token buckets on the public endpoints. Prod only: the eval harness sends every golden
- * query from one address.
+ * Token buckets per client and per IPv6 /48 on the public endpoints. Prod only: the eval harness sends
+ * every golden query from one address.
  */
 @Component
 @Profile("prod")
@@ -56,6 +57,20 @@ class RateLimitFilter extends OncePerRequestFilter {
         };
     }
 
+    /** An IPv6 network: a subscriber's /48 holds 65,536 /64s, each with buckets of its own. */
+    private static Bucket newNetworkBucket(String path) {
+        return switch (path) {
+            case "/ask" -> Bucket.builder()
+                    .addLimit(l -> l.capacity(10).refillGreedy(10, Duration.ofMinutes(1)))
+                    .addLimit(l -> l.capacity(50).refillGreedy(50, Duration.ofDays(1)))
+                    .build();
+            case "/search" -> Bucket.builder()
+                    .addLimit(l -> l.capacity(60).refillGreedy(60, Duration.ofMinutes(1)))
+                    .build();
+            default -> throw new IllegalArgumentException(path);
+        };
+    }
+
     // The servlet path is decoded, normalized and stripped of ;parameters, as MVC maps it; the raw URI
     // would let "/ask;x" through unlimited.
     // A browser sends an OPTIONS preflight before each cross-origin POST /ask; counting it would halve
@@ -70,12 +85,25 @@ class RateLimitFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain)
             throws ServletException, IOException {
         String path = req.getServletPath();
-        ConsumptionProbe probe = buckets.computeIfAbsent(path + " " + clientKey(req), k -> newBucket(path))
-                .tryConsumeAndReturnRemaining(1);
-        if (probe.isConsumed()) {
-            chain.doFilter(req, res);
-            return;
+        String client = clientKey(req);
+        String network = networkKey(client);
+        // Narrowest first: a client its own bucket refuses spends nothing from its network's.
+        List<Bucket> scopes = new ArrayList<>(2);
+        scopes.add(buckets.computeIfAbsent(path + " " + client, k -> newBucket(path)));
+        if (network != null) {
+            scopes.add(buckets.computeIfAbsent(path + " " + network, k -> newNetworkBucket(path)));
         }
+        for (Bucket scope : scopes) {
+            ConsumptionProbe probe = scope.tryConsumeAndReturnRemaining(1);
+            if (!probe.isConsumed()) {
+                refuse(res, probe);
+                return;
+            }
+        }
+        chain.doFilter(req, res);
+    }
+
+    private static void refuse(HttpServletResponse res, ConsumptionProbe probe) throws IOException {
         res.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
         res.setHeader(HttpHeaders.RETRY_AFTER,
                 String.valueOf(TimeUnit.NANOSECONDS.toSeconds(probe.getNanosToWaitForRefill()) + 1));
@@ -102,6 +130,11 @@ class RateLimitFilter extends OncePerRequestFilter {
         }
         byte[] bytes = addr.getAddress();
         return bytes.length == 16 ? HexFormat.of().formatHex(bytes, 0, 8) + "/64" : addr.getHostAddress();
+    }
+
+    /** The /48 of an IPv6 client key, or null for an IPv4 client or header text kept as is. */
+    static String networkKey(String clientKey) {
+        return clientKey.length() == 19 && clientKey.endsWith("/64") ? clientKey.substring(0, 12) + "/48" : null;
     }
 
     private static String lastEntry(String header) {

@@ -32,7 +32,7 @@ The "Ask the radar" page is github-radar-ui's, and that site's own analytics are
 | Postgres (`vector_store`; Neon for the demo) | The Trending and Blog Archive rows synced from Notion, and their embeddings. Never questions or answers. |
 | Application log | Startup, and Notion and Anthropic failures with the upstream error. Questions and answers are not logged. |
 | Google Cloud Logging, demo only | Cloud Run's request log: method, path, status, latency, client IP address and user agent, kept for the log bucket's retention (30 days by default). Request bodies, and so questions, are not in it. |
-| Process memory, prod profile only | For rate limiting: each recent client's IP address (an IPv6 client's /64) with its request counters, at most 10,000 clients. Never logged or written anywhere, and gone on restart. |
+| Process memory, prod profile only | For rate limiting: each recent client's IP address (an IPv6 client's /64, and its /48) with its request counters, at most 10,000 clients. Never logged or written anywhere, and gone on restart. |
 | Langfuse, if enabled (not on the public demo) | The traces above, kept for the Langfuse plan's retention (30 days on the free plan). |
 
 The trending rows are public GitHub repositories' names, descriptions and statistics, plus short

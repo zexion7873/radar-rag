@@ -86,6 +86,18 @@ class SearchControllerTest {
     }
 
     @Test
+    void aBodyPastSixteenKibIsRejectedWhileItIsRead() throws Exception {
+        search(Map.of("q", "agents", "pad", "x".repeat(16 * 1024)), 400);
+        verifyNoInteractions(vectorStore);
+
+        // The longest question a client can send: 1000 characters, each written as a \\u escape.
+        mvc.perform(post("/search")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"q\":\"" + "\\u4ee3".repeat(1000) + "\",\"topK\":50}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void aCleanFilterReachesTheStore() throws Exception {
         search(Map.of("q", "agents", "source", "trending", "week", "2026-09-21", "language", "Python"), 200);
         ArgumentCaptor<SearchRequest> sent = ArgumentCaptor.forClass(SearchRequest.class);
