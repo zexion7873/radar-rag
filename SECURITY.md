@@ -49,9 +49,9 @@ Worth knowing before you decide whether something is in scope.
 - **Automation.** The repository's `@claude` workflow runs only for comments, reviews and issues written
   by the repository owner; the paid LLM eval runs only on the owner's label or dispatch.
 - **Deploys without a stored cloud key.** The Deploy workflow authenticates to Google Cloud through
-  Workload Identity Federation, which trusts only this repository (by its numeric id) on
-  `refs/heads/main`. The service runs as its own account, which can read its secrets in Secret Manager
-  and nothing else.
+  Workload Identity Federation, which trusts only the Deploy workflow file in this repository (by its
+  numeric id) on `refs/heads/main`. The service runs as its own account, which can read its secrets in
+  Secret Manager and nothing else.
 
 ### In scope
 
@@ -65,8 +65,8 @@ Worth knowing before you decide whether something is in scope.
 - Getting a browser on an origin outside `radar.ask.allowed-origins` to read a response from `/ask`, or
   from any other path cross-origin.
 - Making the `@claude` workflow or the LLM eval run for someone other than the owner.
-- Getting a workflow run from another repository, a fork or a non-`main` ref to authenticate to the
-  project's Google Cloud.
+- Getting a workflow run from another repository, a fork, a non-`main` ref or any workflow other than
+  Deploy to authenticate to the project's Google Cloud.
 
 ### Not yet, and already known
 
