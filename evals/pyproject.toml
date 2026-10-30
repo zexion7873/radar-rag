@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Black-box retrieval and answer evals for the radar-rag service, over HTTP"
 requires-python = ">=3.13"
 dependencies = [
-    "anthropic>=1.12,<2",
+    "anthropic>=1.12,<3",
     "deepeval>=4.2.8,<5",
     "httpx>=0.28,<1",
     "langfuse>=4,<6",
