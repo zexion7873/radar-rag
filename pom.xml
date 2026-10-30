@@ -19,7 +19,7 @@
 
     <properties>
         <java.version>25</java.version>
-        <spring-ai.version>2.0.1</spring-ai.version>
+        <spring-ai.version>2.0.2</spring-ai.version>
     </properties>
 
     <dependencyManagement>
@@ -63,7 +63,7 @@
         <dependency>
             <groupId>com.microsoft.onnxruntime</groupId>
             <artifactId>onnxruntime</artifactId>
-            <version>1.31.0</version>
+            <version>1.31.1</version>
         </dependency>
         <dependency>
             <groupId>ai.djl.huggingface</groupId>
@@ -98,7 +98,7 @@
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>3.1.1</version>
+            <version>3.2.0</version>
         </dependency>
 
         <!-- Per-IP rate limit on the public prod endpoints (RateLimitFilter). -->
