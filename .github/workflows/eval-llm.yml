@@ -50,7 +50,7 @@ jobs:
           java-version: "25"
       # Only the sha256-checked models come from the cache: any job on main can write it, and a cached
       # jar, wheel or ~/.djl.ai native library would run here beside the Anthropic key.
-      - uses: astral-sh/setup-uv@v10.3.0
+      - uses: astral-sh/setup-uv@v10.3.2
         with:
           working-directory: evals
           enable-cache: false
