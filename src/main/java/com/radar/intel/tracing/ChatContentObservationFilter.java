@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 
 /**
  * Puts the prompt and the answer on chat model spans, where Langfuse reads them as the generation's
- * input and output. Spring AI 2.0.1 only logs content; without this the generation shows null.
+ * input and output. Spring AI 2.0.2 only logs content; without this the generation shows null.
  */
 class ChatContentObservationFilter implements ObservationFilter {
 

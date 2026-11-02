@@ -23,7 +23,7 @@ public class SearchController {
         this.rowSearch = rowSearch;
     }
 
-    // Spring AI 2.0.1 escapes filter values into its SQL literal; without this, a converter regression
+    // Spring AI 2.0.2 escapes filter values into its SQL literal; without this, a converter regression
     // would reach SQL from a public endpoint. No ingested metadata value holds these characters.
     private static final Pattern UNSAFE_FILTER = Pattern.compile("[\"'\\\\]");
 

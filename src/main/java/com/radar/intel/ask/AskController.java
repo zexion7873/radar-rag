@@ -115,7 +115,7 @@ public class AskController {
         ChatResponse resp = prompt(req, docs).call().chatResponse();
 
         List<Generation> generations = resp.getResults();
-        // A refusal is an HTTP 200: before any text Spring AI 2.0.1 returns no Generation, after some a
+        // A refusal is an HTTP 200: before any text Spring AI 2.0.2 returns no Generation, after some a
         // "refusal" finish reason. Without this check both read as an empty or partial answer.
         if (generations.isEmpty()
                 || generations.stream().anyMatch(g -> "refusal".equals(g.getMetadata().getFinishReason()))) {
