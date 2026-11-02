@@ -75,6 +75,10 @@ comment, the commit body or the stack plan.
 - **Dependabot sees the resolved Maven tree only through `dependency-graph`**, which submits it on each
   push to `main`; without it GitHub reads `pom.xml`'s direct dependencies alone, and a CVE in a
   BOM-managed library (Tomcat, Jackson) raises no alert.
+- **Merges wait on CodeQL.** The `main` ruleset requires CodeQL code scanning results (security alerts
+  high or higher, alerts at error) beside the three CI checks. An analysis still running, or CodeQL
+  default setup turned off in the repository settings, blocks every PR, docs-only ones included; the
+  blocked merge does not say which.
 - **The `prod` profile is invisible to the gates.** Only the deployment activates it: low effort, rate
   limits, a required `SYNC_SECRET`. Turning it on in CI throttles the harness's 62 queries from one
   address and moves the LLM gate off the effort it was measured at.
