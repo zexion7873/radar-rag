@@ -20,6 +20,8 @@
     <properties>
         <java.version>25</java.version>
         <spring-ai.version>2.0.2</spring-ai.version>
+        <!-- GHSA-ccrj-gw8r-854m (tracestate parsing): Boot 4.1.2 manages 1.62.0. Drop once Boot's BOM has ≥ 1.67. -->
+        <opentelemetry.version>1.67.0</opentelemetry.version>
     </properties>
 
     <dependencyManagement>
