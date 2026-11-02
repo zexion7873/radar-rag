@@ -36,7 +36,7 @@ import java.util.concurrent.FutureTask;
 
 /**
  * Sentence embeddings from an ONNX transformer: tokenize, run the model, mean-pool the last hidden
- * state over the attention mask. Computes what Spring AI 2.0.1's TransformersEmbeddingModel computes,
+ * state over the attention mask. Computes what Spring AI 2.0.2's TransformersEmbeddingModel computes,
  * without its PyTorch dependency, and loads the model by path so the JVM heap never holds it.
  */
 public class OnnxEmbeddingModel extends AbstractEmbeddingModel implements AutoCloseable {
