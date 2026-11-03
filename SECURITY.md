@@ -56,7 +56,8 @@ Worth knowing before you decide whether something is in scope.
   checked at build time.
 - **Automation.** No workflow runs a model on issue or pull-request text; the paid LLM eval runs only on
   the owner's label or dispatch. Any job on `main` can write the Actions cache, so Deploy builds with no
-  layer cache and the LLM eval restores only the sha256-checked model from it. Dependabot watches the
+  layer cache and the LLM eval restores only the sha256-checked model from it. Every action is pinned
+  by commit SHA, not by a tag someone else can move; Dependabot moves the pins. Dependabot watches the
   resolved Maven tree, transitive libraries included. CodeQL scans the service, the eval harness and the
   workflows on each push to `main`, each pull request and weekly.
 - **Deploys without a stored cloud key.** The Deploy workflow authenticates to Google Cloud through
