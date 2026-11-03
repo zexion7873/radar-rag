@@ -2,6 +2,7 @@ package com.radar.intel.notion;
 
 import tools.jackson.databind.JsonNode;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
 
 import java.util.ArrayList;
@@ -67,8 +68,10 @@ public class NotionClient {
 
     /**
      * The configured uuid already IS a data-source id under the 2025-09-03 API; a GET
-     * confirms it. Fall back to the legacy database endpoint if it turns out to be a
-     * database id (data_sources[0].id).
+     * confirms it. Only a 404 means it is a database id instead, resolved through the legacy
+     * endpoint (data_sources[0].id). Anything else (401 for a dead token, 429, a timeout)
+     * propagates from the first call: retried against /databases it would fail again one call
+     * later, with the log pointing at the wrong endpoint, as github-radar-ui's reader also notes.
      */
     private String resolveDataSourceId(String uuid) {
         try {
@@ -77,11 +80,14 @@ public class NotionClient {
             if (ds != null && ds.hasNonNull("id")) {
                 return ds.get("id").asString();
             }
-        } catch (Exception ignored) {
-            // fall through to database resolution
+        } catch (HttpClientErrorException.NotFound e) {
+            // a database id: fall through to database resolution
         }
         JsonNode db = http.get().uri("/databases/{id}", uuid)
                 .retrieve().body(JsonNode.class);
+        if (db == null) {
+            throw new IllegalStateException("Notion returned no body for database " + uuid);
+        }
         return db.path("data_sources").path(0).path("id").asString(uuid);
     }
 
