@@ -32,6 +32,8 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -109,12 +111,15 @@ class AskFlowIT {
 
     @BeforeEach
     void seedSixRows() {
-        float[] vector = new float[384];
-        vector[0] = 1f;
         when(embeddingModel.dimensions()).thenReturn(384);
-        when(embeddingModel.embed(anyString())).thenReturn(vector);
-        when(embeddingModel.embed(anyList(), any(), any())).thenAnswer(inv ->
-                ((List<?>) inv.getArgument(0)).stream().map(d -> vector).toList());
+        when(embeddingModel.embed(anyString())).thenReturn(unit(0));
+        // Row i embeds as (1, i, 0, ...): its cosine to the query is 1/sqrt(1 + i^2), so the rows rank
+        // 0..5 by arithmetic, not by the order Postgres happens to return a tie in, and the contract
+        // snapshots below are the same on every run. Both coordinates are exact floats.
+        when(embeddingModel.embed(anyList(), any(), any())).thenAnswer(inv -> {
+            List<?> docs = inv.getArgument(0);
+            return IntStream.range(0, docs.size()).mapToObj(AskFlowIT::unit).toList();
+        });
         // Fixed ids, so re-seeding before each test upserts instead of growing the table.
         vectorStore.add(IntStream.range(0, 6)
                 .mapToObj(i -> new Document(UUID.nameUUIDFromBytes(("row-" + i).getBytes()).toString(),
@@ -163,7 +168,9 @@ class AskFlowIT {
                       "document_title":"t","start_char_index":0,"end_char_index":5}]}],
                  "stop_reason":"end_turn","usage":{"input_tokens":10,"output_tokens":5}}""");
 
-        String body = ask().andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String body = ask().andExpect(status().isOk()).andReturn().getResponse()
+                .getContentAsString(StandardCharsets.UTF_8);
+        contract("ask-answer.json", body);
 
         // Every retrieved row goes out as a citable document titled "repo week".
         List<JsonNode> documents = new ArrayList<>();
@@ -321,7 +328,9 @@ class AskFlowIT {
     void streamsSourcesThenDeltasThenDoneCarryingTheWholeAnswer() throws Exception {
         stubStream(textBlock("Grounded ", "answer."), citation(2, "first"), "end_turn");
 
-        List<String[]> events = askStream();
+        String body = askStreamBody();
+        contract("ask-answer.sse", body);
+        List<String[]> events = events(body);
 
         assertThat(events).extracting(e -> e[0]).containsExactly("sources", "delta", "delta", "done");
         assertThat(JSON.readTree(events.get(0)[1])).hasSize(5);
@@ -343,7 +352,9 @@ class AskFlowIT {
     void aRefusalAfterStreamedTextEndsInErrorAndNeverDone() throws Exception {
         stubStream(textBlock("Here is how to "), "", "refusal");
 
-        List<String[]> events = askStream();
+        String body = askStreamBody();
+        contract("ask-refusal.sse", body);
+        List<String[]> events = events(body);
 
         assertThat(events).extracting(e -> e[0]).containsExactly("sources", "delta", "error");
         assertThat(JSON.readTree(events.get(2)[1]).path("status").asInt()).isEqualTo(502);
@@ -365,7 +376,11 @@ class AskFlowIT {
             int upstream, int expected, int attempts) throws Exception {
         stubMessages(upstream, "{\"type\":\"error\",\"error\":{\"message\":\"" + UPSTREAM_SECRET + "\"}}");
 
-        List<String[]> events = askStream();
+        String body = askStreamBody();
+        if (expected == 503) {
+            contract("ask-unavailable.sse", body);
+        }
+        List<String[]> events = events(body);
 
         assertThat(events).extracting(e -> e[0]).containsExactly("sources", "error");
         assertThat(JSON.readTree(events.get(1)[1]).path("status").asInt()).isEqualTo(expected);
@@ -385,16 +400,55 @@ class AskFlowIT {
         assertThat(ANTHROPIC.findAll(postRequestedFor(urlEqualTo("/v1/messages")))).isEmpty();
     }
 
-    /** Each event as {name, data}, in order. */
-    private List<String[]> askStream() throws Exception {
+    /** (1, i, 0, ...): exact in float, and a different direction for each i. */
+    private static float[] unit(int i) {
+        float[] vector = new float[384];
+        vector[0] = 1f;
+        vector[1] = i;
+        return vector;
+    }
+
+    private static final Path CONTRACT = Path.of("src/test/resources/contract");
+
+    /**
+     * The recorded /ask contract: github-radar-ui copies these files into lib/__fixtures__/contract/ and
+     * feeds them to its parser, so a response that no longer matches fails here first, and the page's own
+     * tests next. {@code -Dcontract.write} rewrites them; the failure message carries the body, so a CI
+     * run's log is enough to commit a new recording.
+     */
+    private static void contract(String name, String actual) throws Exception {
+        Path file = CONTRACT.resolve(name);
+        if (System.getProperty("contract.write") != null) {
+            Files.createDirectories(CONTRACT);
+            Files.writeString(file, actual + "\n");
+            return;
+        }
+        String expected = Files.exists(file) ? Files.readString(file) : null;
+        assertThat(expected == null ? null : expected.stripTrailing())
+                .as("%s differs from the recorded contract in %s. If the change is intended, run the IT with "
+                        + "-Dcontract.write, commit the file and copy it to github-radar-ui/lib/__fixtures__/contract/."
+                        + " The body as served:%n%s", name, file, actual)
+                .isEqualTo(actual.stripTrailing());
+    }
+
+    /** The streamed response as served. */
+    private String askStreamBody() throws Exception {
         MvcResult started = mvc.perform(post("/ask").contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.TEXT_EVENT_STREAM).content("{\"q\":\"agents\"}"))
                 .andExpect(request().asyncStarted())
                 .andReturn();
-        String body = mvc.perform(asyncDispatch(started))
+        return mvc.perform(asyncDispatch(started))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Type", startsWith("text/event-stream")))
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+    }
+
+    /** Each event as {name, data}, in order. */
+    private List<String[]> askStream() throws Exception {
+        return events(askStreamBody());
+    }
+
+    private static List<String[]> events(String body) {
         List<String[]> events = new ArrayList<>();
         for (String frame : body.split("\n\n")) {
             String name = null;

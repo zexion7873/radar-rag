@@ -45,6 +45,10 @@ at the end, after its text has streamed, so it ends in `error`. A failure before
 403, 429) keeps its status; list `application/json` after `text/event-stream` to get its JSON body,
 which an event-stream-only `Accept` gets empty. `*/*` and a missing `Accept` get JSON.
 
+Both shapes are recorded, as served, in [`src/test/resources/contract/`](../src/test/resources/contract/):
+`AskFlowIT` fails when a response drifts from the recording, and github-radar-ui tests its parser on a
+copy of the same files.
+
 ```bash
 curl -N -X POST localhost:8080/ask \
   -H 'Content-Type: application/json' -H 'Accept: text/event-stream, application/json' \
