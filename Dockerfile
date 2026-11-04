@@ -1,7 +1,9 @@
 # syntax=docker/dockerfile:1
 # Cloud Run runs amd64; build with --platform linux/amd64 on an ARM machine.
 
-FROM maven:3.9-eclipse-temurin-25 AS build
+# Both stages pin their image by digest: Deploy builds with no cache, so a tag would pull whatever the
+# registry holds that day. Dependabot (docker) moves the digests, as it does the action pins.
+FROM maven:3.9-eclipse-temurin-25@sha256:93b8a14ea2f412782e4e842651273b4d903e35cc496284f178fbbe2d67d00976 AS build
 WORKDIR /build
 COPY scripts/fetch-models.sh scripts/
 RUN scripts/fetch-models.sh
@@ -10,7 +12,7 @@ COPY src src
 RUN --mount=type=cache,target=/root/.m2 mvn -B -q package -DskipTests \
  && java -Djarmode=tools -jar target/radar-rag-0.0.1-SNAPSHOT.jar extract --destination app
 
-FROM eclipse-temurin:25-jre
+FROM eclipse-temurin:25-jre@sha256:ecdc0adb37bde1a281c4d245a3cd535004b1fc8322d560f5b09463b248c81df0
 RUN useradd --system --no-create-home radar
 WORKDIR /application
 COPY --from=build /build/app ./

@@ -27,3 +27,8 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+  # The Dockerfile's base images are pinned by digest; this is what moves them.
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly

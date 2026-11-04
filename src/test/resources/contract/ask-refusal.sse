@@ -1,0 +1,10 @@
+event:sources
+data:[{"id":"63eddf42-adc2-3c43-be45-acfbf497bed8","source":"trending","repo":"o/repo-0","title":null,"url":"https://github.com/o/repo-0","week":"2026-09-21","score":1.0},{"id":"65f12058-1906-3e8f-91b3-05f8507c6078","source":"trending","repo":"o/repo-1","title":null,"url":"https://github.com/o/repo-1","week":"2026-09-21","score":0.7071067690849304},{"id":"f0d9f774-e57a-3e83-a26a-118b9a93a192","source":"trending","repo":"o/repo-2","title":null,"url":"https://github.com/o/repo-2","week":"2026-09-21","score":0.4472135901451111},{"id":"38a951b3-4a3a-3192-b859-d7a2a55a79df","source":"trending","repo":"o/repo-3","title":null,"url":"https://github.com/o/repo-3","week":"2026-09-21","score":0.3162277936935425},{"id":"959754ca-9650-3716-b55d-eb094a43489b","source":"trending","repo":"o/repo-4","title":null,"url":"https://github.com/o/repo-4","week":"2026-09-21","score":0.24253565073013306}]
+
+event:delta
+data:{"text":"Here is how to "}
+
+event:error
+data:{"status":502,"message":"llm declined the request"}
+
+

@@ -94,7 +94,10 @@ comment, the commit body or the stack plan.
   messaging the github-radar-ui session. So is the stream an `Accept` naming `text/event-stream`
   selects: events `sources`, `delta`, then one `done` or `error`, and `done` is the only success
   signal (a refusal ends in `error`). The JSON mapping must keep no `produces` condition: that is what
-  keeps `*/*` (the harness, httpx's default) on JSON.
+  keeps `*/*` (the harness, httpx's default) on JSON. The contract's test is the recording in
+  `src/test/resources/contract/` (`AskFlowIT` compares every `/ask` body to it; `-Dcontract.write`
+  re-records), which github-radar-ui copies verbatim into `lib/__fixtures__/contract/` and feeds to
+  its parser: a contract change is a red `AskFlowIT`, a new recording, and a PR there carrying it.
 - **`/ask`'s system prompt names the archive's scope.** The trending rows are whatever ai-assistant's
   `github-trending` skill's Scope admits (AI/agent plus four capped adjacent fields); when that
   Scope changes, the prompt changes with it, or the model misdescribes the rows it is handed.

@@ -53,7 +53,7 @@ Worth knowing before you decide whether something is in scope.
   `topK` over 50, so one request can neither read an unbounded number of rows nor send an unbounded
   question to the model.
 - **Downloads nothing at runtime.** The image carries the model and every native library, pinned and
-  checked at build time.
+  checked at build time, on a JRE base image pinned by digest.
 - **Automation.** No workflow runs a model on issue or pull-request text; the paid LLM eval runs only on
   the owner's label or dispatch. Any job on `main` can write the Actions cache, so Deploy builds with no
   layer cache and the LLM eval restores only the sha256-checked model from it. Every action is pinned
