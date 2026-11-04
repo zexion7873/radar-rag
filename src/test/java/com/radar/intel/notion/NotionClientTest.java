@@ -4,6 +4,7 @@ import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.util.List;
 
@@ -11,6 +12,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
@@ -62,6 +64,18 @@ class NotionClientTest {
                 .willReturn(okJson(page(false, "null", row("a/one", "2026-09-21")))));
 
         assertThat(client(wm).fetchTrending()).extracting(TrendingRow::repo).containsExactly("a/one");
+    }
+
+    // Only a 404 is "this is a database id". A 401 (dead token) must surface from the call that got
+    // it, not from a second try against /databases that fails for the same reason one call later.
+    @Test
+    void aDeadTokenFailsOnTheDataSourceCallAndNeverTriesTheDatabaseOne(WireMockRuntimeInfo wm) {
+        stubFor(get("/data_sources/" + DS).willReturn(aResponse().withStatus(401)));
+        stubFor(get("/databases/" + DS).willReturn(aResponse().withStatus(401)));
+
+        assertThatThrownBy(() -> client(wm).fetchTrending())
+                .isInstanceOf(HttpClientErrorException.Unauthorized.class);
+        verify(0, getRequestedFor(urlEqualTo("/databases/" + DS)));
     }
 
     @Test
