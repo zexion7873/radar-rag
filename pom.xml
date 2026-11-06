@@ -70,7 +70,7 @@
         <dependency>
             <groupId>ai.djl.huggingface</groupId>
             <artifactId>tokenizers</artifactId>
-            <version>0.39.0</version>
+            <version>0.40.0</version>
         </dependency>
 
         <!-- P2: Claude chat model for grounded /ask answers (needs ANTHROPIC_API_KEY). -->
@@ -107,7 +107,7 @@
         <dependency>
             <groupId>com.bucket4j</groupId>
             <artifactId>bucket4j_jdk17-core</artifactId>
-            <version>8.21.0</version>
+            <version>8.22.0</version>
         </dependency>
 
         <dependency>
