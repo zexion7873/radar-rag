@@ -12,7 +12,7 @@ COPY src src
 RUN --mount=type=cache,target=/root/.m2 mvn -B -q package -DskipTests \
  && java -Djarmode=tools -jar target/radar-rag-0.0.1-SNAPSHOT.jar extract --destination app
 
-FROM eclipse-temurin:25-jre@sha256:945247f9d092703e0c6be92243ef3c51640229e23ab34d353c8dcdc73e6cd4e6
+FROM eclipse-temurin:25-jre@sha256:4ed132f6832e9804b123e89a849a7b4502756ae64a4ee08ebab939d9d5d0a9fa
 RUN useradd --system --no-create-home radar
 WORKDIR /application
 COPY --from=build /build/app ./
